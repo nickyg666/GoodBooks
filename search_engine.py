@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from urllib.parse import quote_plus, urljoin, urlparse, urlencode
 
+import difflib
+import re
 import requests
 from lxml import html
 
@@ -56,6 +58,7 @@ class AnnaSource:
     # ------------------------------------------------------------------
     def search(self, query: str, options: Optional[SearchOptions] = None) -> Tuple[List[Dict], List[str]]:
         opts = options or SearchOptions(query=query)
+        normalized_query = self._normalize_string(opts.query)
         params: List[Tuple[str, str]] = [
             ("q", opts.query),
             ("display", "table"),
@@ -173,6 +176,7 @@ class AnnaSource:
                 continue
             # --- end md5 extraction ---
 
+            preferred_exts = self._preferred_formats(opts.extensions)
             downloads, detail_cover, description = self._get_downloads(
                 md5, formats, debug_log
             )
@@ -201,6 +205,17 @@ class AnnaSource:
             if detected_formats:
                 entry["formats"] = sorted(detected_formats)
 
+            # Compute and attach a match score for later ranking
+            entry["match_score"] = self._match_score(
+                normalized_query, title, author
+            )
+
+            preferred_fmt = self._select_best_format(
+                entry["downloads"], preferred_exts
+            )
+            if preferred_fmt:
+                entry["selected_format"] = preferred_fmt
+
             results.append(entry)
             self.cache[result_id] = entry
 
@@ -213,9 +228,54 @@ class AnnaSource:
                 entry["formats"],
             )
 
+            if opts.autodownload and preferred_fmt:
+                debug_log.append(
+                    "Autodownload enabled; stopping search after first resolved link"
+                )
+                break
+
+        # Final relevance ranking
+        results.sort(key=lambda r: r.get("match_score", 0), reverse=True)
+
         debug_log.append(f"Found {len(results)} results")
         logger.debug("Search parsed %d rows", len(results))
         return results, debug_log
+
+    # ------------------------------------------------------------------
+    # Relevance scoring helpers
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _normalize_string(value: str) -> str:
+        cleaned = re.sub(r"[^\w\s]", " ", value or "")
+        return " ".join(cleaned.lower().split())
+
+    def _match_score(self, normalized_query: str, title: str, author: str) -> float:
+        candidate = self._normalize_string(f"{title} {author}")
+        if not normalized_query or not candidate:
+            return 0.0
+        return difflib.SequenceMatcher(None, normalized_query, candidate).ratio()
+
+    def _preferred_formats(self, requested_exts: List[str]) -> List[str]:
+        base_priority = ["azw3", "azw", "mobi", "epub", "pdf"]
+        extras = [ext.lower() for ext in requested_exts or [] if ext]
+        if extras:
+            ordered = [ext for ext in base_priority if ext in extras]
+            ordered.extend(ext for ext in extras if ext not in ordered)
+            return ordered
+        # Default preference order, with a few other common ebook types last
+        return base_priority + ["djvu", "fb2", "lit", "rtf", "txt"]
+
+    def _select_best_format(
+        self, downloads: Dict[str, str], preferred_exts: List[str]
+    ) -> Optional[str]:
+        if not downloads:
+            return None
+        priority = preferred_exts or self._preferred_formats([])
+        for fmt in priority:
+            if fmt in downloads:
+                return fmt
+        # Fallback to any available key
+        return next(iter(downloads.keys()))
 
     # ------------------------------------------------------------------
     # Download discovery
@@ -224,7 +284,10 @@ class AnnaSource:
     # Download discovery (Anna's Archive slow mirrors)
     # ------------------------------------------------------------------
     def _get_downloads(
-        self, md5: str, formats: List[str], debug_log: List[str]
+        self,
+        md5: str,
+        formats: List[str],
+        debug_log: List[str],
     ) -> Tuple[Dict[str, str], Optional[str], str]:
         """
         For a given md5, go to the AA detail page, then follow
@@ -323,6 +386,12 @@ class AnnaSource:
 
             downloads[fmt] = download_url
 
+            # Stop as soon as we have the first working link for this md5
+            debug_log.append(
+                f"Stopping slow_download resolution early after first success ({fmt})"
+            )
+            break
+
         debug_log.append(
             f"Resolved {len(downloads)} AA slow_download links for md5={md5} "
             f"(cover={bool(cover_url)} description_len={len(description)})"
@@ -346,16 +415,51 @@ class AnnaSource:
     # ------------------------------------------------------------------
     # Resolver helpers (LibGen / Sci-Hub / Z-Lib)
     # ------------------------------------------------------------------
-    def _looks_like_cloudflare(self, text: str) -> bool:
-        if not text:
+    def _is_cloudflare_challenge(self, resp: requests.Response) -> bool:
+        """Heuristically detect Cloudflare/anti-bot interstitials."""
+
+        if resp is None:
             return False
-        lower = text.lower()
-        return (
-            "cloudflare" in lower
-            or "just a moment" in lower
-            or "attention required" in lower
-            or "checking your browser" in lower
+
+        server_header = (resp.headers or {}).get("Server", "").lower()
+        cf_ray = (resp.headers or {}).get("cf-ray") or (resp.headers or {}).get(
+            "CF-RAY"
         )
+        indicators = [
+            "cloudflare",
+            "just a moment",
+            "attention required",
+            "checking your browser",
+            "verify you are human",
+        ]
+
+        try:
+            lower_text = (resp.text or "").lower()
+        except Exception:
+            lower_text = ""
+
+        return (
+            resp.status_code in {403, 503}
+            or "cloudflare" in server_header
+            or cf_ray is not None
+            or any(indicator in lower_text for indicator in indicators)
+        )
+
+    def _is_html_response(self, url: str) -> bool:
+        """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
+
+        try:
+            resp = self.session.head(
+                url, allow_redirects=True, timeout=self.timeout, stream=False
+            )
+        except Exception:
+            return False
+
+        try:
+            content_type = (resp.headers.get("Content-Type") or "").lower()
+            return "text/html" in content_type
+        finally:
+            resp.close()
     def _resolve_aa_slow_download(
         self,
         slow_href: str,
@@ -396,7 +500,7 @@ class AnnaSource:
 
         # HTML response – parse and look for a real file URL
         html_text = resp.text or ""
-        if self._looks_like_cloudflare(html_text):
+        if self._is_cloudflare_challenge(resp):
             debug_log.append(
                 "Cloudflare / human-check detected on slow_download page; "
                 "attempting browser automation if available"
@@ -452,6 +556,17 @@ class AnnaSource:
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
 
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Slow download candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping slow_download candidate because HEAD was HTML url=%s md5=%s",
+                final_url,
+                md5,
+            )
+            return None
+
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(
             f"Resolved AA slow_download {slow_href} -> {final_url} ({fmt})"
@@ -469,8 +584,19 @@ class AnnaSource:
     ) -> Optional[Tuple[str, str]]:
         """
         Optional: use Playwright to get past Cloudflare human detection.
-        Requires `pip install playwright` + `playwright install`.
+        Requires `pip install playwright playwright-stealth` + `playwright install`.
         """
+        try:
+            from stealth_browser import solve_cloudflare_challenge
+        except Exception as exc:  # pragma: no cover - optional dependency path
+            debug_log.append(
+                "Stealth browser not available; cannot bypass Cloudflare for slow_download"
+            )
+            logger.warning(
+                "Stealth browser unavailable for %s: %s", slow_href, exc
+            )
+            return None
+
         if sync_playwright is None:
             debug_log.append(
                 "Playwright not installed; cannot bypass Cloudflare for slow_download"
@@ -481,19 +607,12 @@ class AnnaSource:
             )
             return None
 
-        try:
-            with sync_playwright() as p:
-                browser = p.firefox.launch(headless=True)
-                page = browser.new_page()
-                page.goto(slow_href, wait_until="networkidle", timeout=self.timeout * 1000)
-                content = page.content()
-                browser.close()
-        except Exception as e:
+        content = solve_cloudflare_challenge(
+            slow_href, timeout=self.timeout * 2, wait_seconds=30
+        )
+        if not content:
             debug_log.append(
-                f"Playwright slow_download failed for {slow_href}: {e}"
-            )
-            logger.warning(
-                "Playwright slow_download failed for %s: %s", slow_href, e
+                f"Stealth browser timed out or was blocked at {slow_href}"
             )
             return None
 
@@ -525,6 +644,16 @@ class AnnaSource:
 
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
+
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Playwright candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping Playwright slow_download candidate because HEAD was HTML url=%s",
+                final_url,
+            )
+            return None
 
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(

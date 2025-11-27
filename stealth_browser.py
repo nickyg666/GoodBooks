@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Generator, Optional
 
 from playwright.sync_api import Browser, TimeoutError, sync_playwright
-from playwright_stealth import Stealth, stealth_sync
+from playwright_stealth import Stealth
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def fetch_with_stealth(url: str, timeout: int = 30, browser_type: str = DEFAULT_
     with launch_stealth_browser(browser_type) as browser:
         context = browser.new_context(user_agent=WINDOWS_USER_AGENT)
         page = context.new_page()
-        stealth_sync(page)
+        Stealth().use_sync(sync_playwright(page))
         page.goto(url, wait_until="networkidle", timeout=timeout * 1000)
         page.wait_for_timeout(300)
         html = page.content()

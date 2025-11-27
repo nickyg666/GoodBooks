@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Optional
 from urllib.parse import quote_plus, urljoin, urlparse, urlencode
 
 import re
+import difflib  # <-- Added for relevance scoring
 import requests
 from lxml import html
 
@@ -26,7 +27,106 @@ class SearchOptions:
     extensions: List[str] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
     autodownload: bool = False
+    # New: used for ranking
+    preferred_formats: List[str] = field(default_factory=list)
+    kindle_type: str = ""
 
+
+# --- New Helper Function for Query Normalization ---
+
+def _normalize_string(s: str) -> str:
+    """Normalizes a string for comparison by lowercasing and removing punctuation/whitespace."""
+    s = (s or "").lower()
+    # Remove all non-alphanumeric characters, except spaces (which are useful for token separation)
+    s = re.sub(r"[^\w\s]", "", s)
+    # Collapse multiple spaces into a single space
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+# --- Helpers for Kindle-aware format preference scoring ---
+
+_FORMAT_PRIORITY_BASE: Dict[str, float] = {
+    "azw3": 1.0,
+    "azw": 0.95,
+    "mobi": 0.9,
+    "epub": 0.8,
+    "pdf": 0.6,
+    "djvu": 0.5,
+    "txt": 0.45,
+    "cbz": 0.4,
+    "cbr": 0.35,
+}
+
+
+def _normalize_fmt(fmt: str) -> str:
+    return (fmt or "").lower().strip().lstrip(".")
+
+
+def _kindle_profile(kindle_type: str) -> str:
+    """
+    Rough device buckets:
+      - 'paperwhite' -> e-ink that strongly prefers AZW3/AZW/MOBI
+      - 'oasis' / 'scribe' -> e-ink that is happy with EPUB too
+      - everything else -> generic
+    """
+    kt = (kindle_type or "").lower()
+    if not kt:
+        return "generic"
+    if "paperwhite" in kt:
+        return "eink_legacy"
+    if any(k in kt for k in ("oasis", "scribe")):
+        return "modern_epub"
+    return "generic"
+
+
+def _format_preference_score(formats: List[str], opts: SearchOptions) -> float:
+    """
+    Score how "nice" this result's available formats are for the given SearchOptions
+    (device + preferred formats/ext filters).
+
+    Higher is better. Typical range ~0.0–1.5.
+    """
+    fmts = {_normalize_fmt(f) for f in (formats or []) if f}
+    if not fmts:
+        return 0.0
+
+    preferred = {_normalize_fmt(f) for f in (opts.preferred_formats or []) if f}
+    ext_filter = {_normalize_fmt(e) for e in (opts.extensions or []) if e}
+    profile = _kindle_profile(opts.kindle_type)
+
+    best = 0.0
+    for fmt in fmts:
+        base = _FORMAT_PRIORITY_BASE.get(fmt, 0.3)
+        score = base
+
+        # Explicit preferred_formats (feeds / UI filetype filters)
+        if preferred and fmt in preferred:
+            score += 0.3
+
+        # Respect ext filters from AA (if present)
+        if ext_filter and fmt in ext_filter:
+            score += 0.15
+
+        # Device-specific nudges
+        if profile == "eink_legacy":
+            if fmt in {"azw3", "azw", "mobi"}:
+                score += 0.25
+            elif fmt == "epub":
+                score += 0.05
+            elif fmt == "pdf":
+                score -= 0.15
+        elif profile == "modern_epub":
+            if fmt in {"azw3", "azw", "mobi", "epub"}:
+                score += 0.2
+            elif fmt == "pdf":
+                score -= 0.1
+
+        if score > best:
+            best = score
+
+    # Clamp into a sane range
+    return max(0.0, min(1.5, best))
 
 class AnnaSource:
     """
@@ -55,8 +155,25 @@ class AnnaSource:
     # ------------------------------------------------------------------
     # Search
     # ------------------------------------------------------------------
-    def search(self, query: str, options: Optional[SearchOptions] = None) -> Tuple[List[Dict], List[str]]:
+        # ------------------------------------------------------------------
+    # Search
+    # ------------------------------------------------------------------
+    def search(
+        self, query: str, options: Optional[SearchOptions] = None
+        ) -> Tuple[List[Dict], List[str]]:
+        """
+        Perform a search on Anna's Archive and return ranked results.
+
+        Ranking:
+          * Primary: difflib similarity between normalized query and "title + author"
+          * Secondary: token overlap / exact-ish title match
+          * Tertiary: format preference (azw3 > azw > mobi > epub > pdf > others),
+                      nudged by SearchOptions.preferred_formats and kindle_type.
+        """
         opts = options or SearchOptions(query=query)
+        if not opts.query:
+            opts.query = query
+
         params: List[Tuple[str, str]] = [
             ("q", opts.query),
             ("display", "table"),
@@ -71,15 +188,25 @@ class AnnaSource:
             params.append(("acc", src))
         if opts.autodownload:
             params.append(("autodownload", "1"))
-        # Cache lookup: avoid repeated fetches for the same query
-        cache_key = query.strip().lower()
+
+        # Cache lookup: avoid repeated fetches for the same logical query
+        cache_key = (opts.query or query).strip().lower()
         if cache_key in self.cache:
-            logger.debug("Cache hit for query=%r", query)
-            return [self.cache[cache_key]], [f"Cache hit for query: {query}"]
+            logger.debug("Cache hit for query=%r", opts.query)
+            cached = self.cache[cache_key]
+            # New-style cache: {"results": [...]}
+            if isinstance(cached, dict) and "results" in cached:
+                cached_results = cached.get("results") or []
+                return list(cached_results), [f"Cache hit for query: {opts.query}"]
+            # Old-style: list of results
+            if isinstance(cached, list):
+                return list(cached), [f"Cache hit for query: {opts.query}"]
+            # Oldest style: single result entry
+            return [cached], [f"Cache hit for query: {opts.query}"]
 
         url = f"{self.base_url}/search?{urlencode(params, doseq=True)}"
         debug_log: List[str] = [f"Searching: {url}"]
-        logger.debug("Issuing search request for query='%s'", query)
+        logger.debug("Issuing search request for query='%s'", opts.query)
 
         resp = self._safe_get(url)
         if resp is None:
@@ -104,8 +231,8 @@ class AnnaSource:
         logger.debug("Filtered to %d rows with >= 10 <td> cells", len(rows))
 
         results: List[Dict] = []
-        if results:
-            self.cache[cache_key] = results[0]
+
+        # Parse all rows first; we'll rank afterward
         for row_idx, row in enumerate(rows):
             cols = row.findall("td")
             if len(cols) <= 10:
@@ -115,13 +242,6 @@ class AnnaSource:
                     len(cols),
                 )
                 continue
-
-            if len(results) >= self.max_results:
-                debug_log.append(
-                    f"Reached max results ({self.max_results}); "
-                    "skipping remaining rows"
-                )
-                break
 
             try:
                 title = "".join(cols[1].xpath(".//text()")).strip()
@@ -190,8 +310,6 @@ class AnnaSource:
                 "downloads": downloads,
                 "description": description,
             }
-            entry["id"] = hashlib.sha256(entry["detail"].encode("utf-8")).hexdigest()
-            result_id = entry["id"]
 
             # Stable ID derived from md5
             entry["id"] = hashlib.sha256(entry["detail"].encode("utf-8")).hexdigest()
@@ -203,6 +321,7 @@ class AnnaSource:
                 entry["formats"] = sorted(detected_formats)
 
             results.append(entry)
+            # Cache per-result lookup by ID for manual download
             self.cache[result_id] = entry
 
             logger.debug(
@@ -214,9 +333,100 @@ class AnnaSource:
                 entry["formats"],
             )
 
-        debug_log.append(f"Found {len(results)} results")
-        logger.debug("Search parsed %d rows", len(results))
-        return results, debug_log
+        debug_log.append(f"Found {len(results)} results before ranking")
+        logger.debug("Search parsed %d rows (before ranking)", len(results))
+
+        if not results:
+            return [], debug_log
+
+        # ------------------------------------------------------------------
+        # Ranking stage
+        # ------------------------------------------------------------------
+        normalized_query = _normalize_string(opts.query or query)
+        query_tokens = set(normalized_query.split())
+
+        ranked_results: List[Dict] = []
+
+        for result in results:
+            title = result.get("title", "") or ""
+            author = result.get("author", "") or ""
+
+            full_text = f"{title} {author}".strip()
+            normalized_text = _normalize_string(full_text)
+            text_tokens = set(normalized_text.split()) if normalized_text else set()
+
+            # 1) difflib similarity between normalized query and normalized "title + author"
+            match_score = difflib.SequenceMatcher(
+                None, normalized_query, normalized_text
+            ).ratio()
+
+            # 2) Token overlap / "exact-ish" title matching
+            token_overlap = 0.0
+            if query_tokens and text_tokens:
+                # intersection over max(len(lhs), len(rhs)) – weighted toward full matches
+                token_overlap = len(query_tokens & text_tokens) / float(
+                    max(len(query_tokens), len(text_tokens))
+                )
+
+            title_norm = _normalize_string(title)
+            exact_title_match = bool(title_norm) and title_norm == normalized_query
+            starts_with_title = bool(title_norm) and normalized_query.startswith(
+                title_norm
+            )
+
+            token_score = token_overlap
+            if exact_title_match:
+                # Big bump if the query is basically just the title
+                token_score += 0.5
+            elif starts_with_title:
+                token_score += 0.25
+
+            # 3) Format preference score (Kindle-aware)
+            format_score = _format_preference_score(
+                result.get("formats", []),
+                opts,
+            )
+
+            # Combine into a single rank score.
+            # Text similarity dominates; token + format are tie-breakers.
+            rank_score = (
+                match_score * 0.6
+                + token_score * 0.25
+                + format_score * 0.15
+            )
+
+            result["_match_score"] = match_score
+            result["_token_score"] = token_score
+            result["_format_score"] = format_score
+            result["_rank_score"] = rank_score
+            ranked_results.append(result)
+
+            debug_log.append(
+                "  - Score rank={:.3f} text={:.3f} tokens={:.3f} fmt={:.3f} | Title: {}".format(
+                    rank_score,
+                    match_score,
+                    token_score,
+                    format_score,
+                    result.get("title", "N/A"),
+                )
+            )
+
+        ranked_results.sort(key=lambda x: x.get("_rank_score", 0.0), reverse=True)
+
+        # Apply max_results limit AFTER ranking
+        final_results = ranked_results[: self.max_results]
+
+        # Cache full ranked list for this query
+        if final_results:
+            self.cache[cache_key] = {"results": final_results}
+
+        debug_log.append(f"Returning {len(final_results)} ranked results")
+        logger.debug(
+            "Returning %d ranked results (max_results=%d)",
+            len(final_results),
+            self.max_results,
+        )
+        return final_results, debug_log
 
     # ------------------------------------------------------------------
     # Download discovery
@@ -302,6 +512,8 @@ class AnnaSource:
         # Walk through slow_download URLs until we get at least one real file URL
         for raw_href in ordered_hrefs:
             slow_href = urljoin(self.base_url, raw_href)
+            logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5,)
+            debug_log.append(f"Resolving AA slow_download link={slow_href} md5={md5}")
             try:
                 resolved = self._resolve_aa_slow_download(
                     slow_href, md5, formats, debug_log
@@ -323,6 +535,9 @@ class AnnaSource:
                 continue
 
             downloads[fmt] = download_url
+            debug_log.append(f"Stopping resolution after first success: {fmt} -> {download_url}.")
+            logger.debug("Stopping slow_download resolution after first success: md5=%s fmt=%s, md5, fmt,")
+            break
 
         debug_log.append(
             f"Resolved {len(downloads)} AA slow_download links for md5={md5} "

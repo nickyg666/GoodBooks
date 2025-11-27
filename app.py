@@ -65,7 +65,6 @@ def resolve_download_dir(path_str: str) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
 
-
 def select_best_result(
     results: List[Dict],
     allowed_formats: List[str],
@@ -75,40 +74,110 @@ def select_best_result(
     Pick the "best" search result.
 
     Heuristic:
-      * Prefer results that have at least one of allowed_formats.
-      * Among them, prefer non-PDF if we have a Kindle e-ink (Paperwhite, Oasis etc).
-      * Fall back to the first result.
+      * Prefer results that offer high-priority Kindle formats:
+          azw3 > azw > mobi > epub > pdf > others
+      * Respect feed allowed_formats when present.
+      * Nudge toward formats that work best for the given kindle_type:
+          - paperwhite: strongly prefers azw3/azw/mobi, dislikes pdf
+          - oasis/scribe: happy with azw3/azw/mobi/epub, mild dislike of pdf
+      * Slightly prefer earlier (higher-ranked) search results.
     """
-    allowed = [f.lower() for f in (allowed_formats or [])]
-
-    def score(result: Dict) -> int:
-        formats = [f.lower() for f in result.get("formats", [])]
-        has_allowed = any(f in formats for f in allowed) if allowed else bool(formats)
-        is_pdf_only = formats and all(f == "pdf" for f in formats)
-        score_val = 0
-        if has_allowed:
-            score_val += 10
-        if not is_pdf_only and kindle_type.lower() in {"paperwhite", "oasis", "voyage"}:
-                score_val += 5
-        # Slight bump for more formats available
-        score_val += len(formats)
-        return score_val
-
     if not results:
         return None
 
-    best = max(results, key=score)
-    # Set selected_format to something reasonable for later download()
-    fmts = [f.lower() for f in best.get("formats", [])]
-    for f in allowed or []:
-        if f.lower() in fmts:
-            best["selected_format"] = f.lower()
-            break
-    else:
-        if fmts:
-            best["selected_format"] = fmts[0]
+    allowed = {f.lower() for f in (allowed_formats or []) if f}
 
-    return best
+    def fmt_score(fmt: str) -> int:
+        fmt = (fmt or "").lower()
+        base_order = {
+            "azw3": 6,
+            "azw": 5,
+            "mobi": 4,
+            "epub": 3,
+            "pdf": 1,
+        }
+        score = base_order.get(fmt, 0)
+
+        if allowed and fmt in allowed:
+            score += 3
+
+        kt = (kindle_type or "").lower()
+        if "paperwhite" in kt:
+            # Old-school e-ink: really wants azw/mobi
+            if fmt in {"azw3", "azw", "mobi"}:
+                score += 3
+            elif fmt == "epub":
+                score += 1
+            elif fmt == "pdf":
+                score -= 2
+        elif any(k in kt for k in ("oasis", "scribe")):
+            # Newer devices: epub is first-class
+            if fmt in {"azw3", "azw", "mobi", "epub"}:
+                score += 2
+            elif fmt == "pdf":
+                score -= 1
+
+        return score
+
+    def overall_score(result: Dict, idx: int) -> int:
+        formats = [f.lower() for f in result.get("formats", [])]
+        if not formats:
+            # Very hard to use a result if it has no format metadata
+            return -10_000
+
+        per_format_scores = [fmt_score(f) for f in formats]
+        best_format_score = max(per_format_scores) if per_format_scores else 0
+
+        # Encourage results that have *some* overlap with allowed_formats
+        has_allowed = any(f in allowed for f in formats) if allowed else True
+        allowed_bonus = 5 if has_allowed else 0
+
+        # Slight bias toward earlier search results
+        positional_bonus = max(0, 5 - idx)
+
+        # Small bump for variety of available formats
+        variety_bonus = min(len(formats), 3)
+
+        return best_format_score * 10 + allowed_bonus + positional_bonus + variety_bonus
+
+    best_result: Optional[Dict] = None
+    best_idx = -1
+    best_score = -10**9
+
+    for idx, r in enumerate(results):
+        score = overall_score(r, idx)
+        if score > best_score:
+            best_score = score
+            best_result = r
+            best_idx = idx
+
+    if not best_result:
+        return None
+
+    formats = [f.lower() for f in best_result.get("formats", [])]
+    chosen_fmt: Optional[str] = None
+
+    # Choose actual download format with the same priority order
+    priority_order = ["azw3", "azw", "mobi", "epub", "pdf"]
+    for candidate in priority_order:
+        if candidate in formats and (not allowed or candidate in allowed):
+            chosen_fmt = candidate
+            break
+
+    if not chosen_fmt and formats:
+        # Fallback: prefer something in allowed, otherwise first format
+        for f in formats:
+            if allowed and f in allowed:
+                chosen_fmt = f
+                break
+        if not chosen_fmt:
+            chosen_fmt = formats[0]
+
+    if chosen_fmt:
+        best_result["selected_format"] = chosen_fmt
+
+    return best_result
+
 
 def strip_html_tags(text: str) -> str:
     """
@@ -246,19 +315,30 @@ def index():
 
     if query:
         try:
+            kindle_type = ""
+            if user_id:
+                user_obj = next(
+                    (u for u in settings_manager.settings.users if u.name == user_id),
+                    None,
+                )
+                if user_obj:
+                    kindle_type = user_obj.kindle_type
+
             search_options = SearchOptions(
                 query=query,
                 language=selected_language,
                 extensions=selected_ext,
                 sources=selected_sources,
                 autodownload=autodownload,
+                preferred_formats=selected_ext,
+                kindle_type=kindle_type,
             )
             results, debug_log = source.search(query, options=search_options)
             logger.info(
                 "Search completed for query='%s' with %d results",
                 query,
                 len(results),
-            )
+                )
         except Exception as exc:
             logger.exception("Search failed for query '%s'", query)
             flash(f"Search failed: {exc}", "danger")
@@ -455,8 +535,20 @@ def run_feeds():
                 logger.info("Searching for item title=%s author=%s", item.title, item.author)
 
                 try:
-                    results, search_debug = source.search(query)
+                    query = f"{item.title} {item.author}".strip()
+                    debug_messages.append(f"    Searching for {query}")
+                    logger.info("Searching for item title=%s author=%s", item.title, item.author)
+                    search_options = SearchOptions(
+                        query=query,
+                        language="en",
+                        extensions=feed.filetypes,
+                        preferred_formats=feed.filetypes,
+                        autodownload=False,
+                        )
+                    search_options.kindle_type = user.kindle_type
+                    results, search_debug = source.search(query, options=search_options)
                     debug_messages.extend([f"      {msg}" for msg in search_debug])
+
                 except Exception as exc:
                     logger.exception("Search failed for item title=%s", item.title)
                     debug_messages.append(f"      Search failed: {exc}")
@@ -469,7 +561,17 @@ def run_feeds():
                         f"      No results; retrying with normalized title: {alt_query}"
                     )
                     try:
-                        results, search_debug = source.search(alt_query)
+                        retry_options = SearchOptions(
+                            query=alt_query,
+                            language="en",
+                            extensions=feed.filetypes,
+                            preferred_formats=feed.filetypes,
+                            autodownload=False,
+                        )
+                        retry_options.kindle_type = user.kindle_type
+                        results, search_debug = source.search(
+                            alt_query, options=retry_options
+                        )
                         debug_messages.extend([f"      {msg}" for msg in search_debug])
                     except Exception as exc:
                         logger.exception(

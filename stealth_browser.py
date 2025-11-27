@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from typing import Generator, Optional
 
 from playwright.sync_api import Browser, TimeoutError, sync_playwright
-# CRITICAL IMPORT: We correctly import the Stealth class.
 from playwright_stealth import Stealth 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,6 @@ ROTATING_USER_AGENTS = [
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:126.0) Gecko/20100101 Firefox/126.0",
 ]
 _user_agent_calls = 0
-# Use chromium as the default since stealth is often best on Chromium
 DEFAULT_BROWSER = os.environ.get("PLAYWRIGHT_BROWSER", "chromium") 
 
 
@@ -47,20 +45,17 @@ def is_cloudflare_challenge(text: str, status_code: int, headers: dict) -> bool:
     )
 
 
-# --- REFACTORING LAUNCH_STEALTH_BROWSER TO APPLY STEALTH CORRECTLY ---
 @contextmanager
 def launch_stealth_browser(
     browser_type: str = DEFAULT_BROWSER, 
-    headless: bool = False # CRITICAL: Changed default to False for better stealth
+    headless: bool = False 
 ) -> Generator[Browser, None, None]:
     """Launch a Playwright browser with stealth enabled and a Windows user agent."""
-    # CRITICAL: Stealth must wrap sync_playwright() here.
     with Stealth().use_sync(sync_playwright()) as p: 
         launcher = getattr(p, browser_type, None)
         if launcher is None:
             raise ValueError(f"Unsupported Playwright browser type: {browser_type}")
         
-        # Use args for stealth/anti-detection
         browser = launcher.launch(
             headless=headless, 
             args=["--disable-blink-features=AutomationControlled"]
@@ -73,11 +68,9 @@ def launch_stealth_browser(
 
 def fetch_with_stealth(url: str, timeout: int = 60, browser_type: str = DEFAULT_BROWSER) -> str:
     logger.debug("Stealth fetching url=%s with browser=%s", url, browser_type)
-    # Use the refactored launch_stealth_browser which now correctly applies Stealth
-    with launch_stealth_browser(browser_type, headless=False) as browser: # Explicitly setting headless=False
+    with launch_stealth_browser(browser_type, headless=False) as browser: 
         context = browser.new_context(user_agent=WINDOWS_USER_AGENT)
         page = context.new_page()
-        # Removed the ineffective Stealth().use_sync(sync_playwright(page))
         
         page.goto(url, wait_until="networkidle", timeout=timeout * 1000)
         page.wait_for_timeout(300)
@@ -107,22 +100,21 @@ def _check_cloudflare_status(page) -> str:
     
     # Check for common challenge texts (Cloudflare and general checks)
     challenge_locators = [
-        "text=Checking your browser before accessing", # Cloudflare
-        "text=DDOS-GUARD", # DDoS-Guard (often remains in title)
-        'iframe[src*="captcha"]', # Captcha
-        'iframe[src*="turnstile"]' # Captcha
+        "text=Checking your browser before accessing", 
+        "text=DDOS-GUARD", 
+        'iframe[src*="captcha"]', 
+        'iframe[src*="turnstile"]' 
     ]
 
     for selector in challenge_locators:
         try:
-            # We don't care if it's visible, just if the element is present in the DOM
+            # Check for element presence in DOM
             if page.locator(selector).count() > 0: 
                 is_challenge_text = True
                 break
         except Exception:
-            pass # Ignore any other exceptions
+            pass
             
-    # Check current URL, as DDoS-Guard often redirects to a final destination.
     current_url = page.url
 
     logger.debug(
@@ -135,23 +127,23 @@ def _check_cloudflare_status(page) -> str:
     if "Access Denied" in title or "Forbidden" in title:
         return "BLOCKED"
     
-    # If a specific challenge text is found, or the title is DDOS-GUARD, we are still waiting
     if is_challenge_text or "DDOS-GUARD" in title.upper() or "CHECKING YOUR BROWSER" in title.upper():
         return "CHALLENGED"
     
-    # If the title has changed from a challenge page to a normal page title, it's a success.
-    # We assume any page not matching the challenge indicators is the target content.
     return "SUCCESS"
 
 
 def solve_cloudflare_challenge(
     url: str,
-    timeout: int = 90, # Increased timeout to 90s
-    wait_seconds: int = 90, # Increased challenge wait time to match
+    timeout: int = 90, 
+    wait_seconds: int = 90, 
     browser_type: str = DEFAULT_BROWSER,
 ) -> Optional[str]:
     """
     Run a stealth Playwright session to wait out Cloudflare/DDoS-Guard pages.
+    
+    Returns the direct download URL (str) on successful link extraction, 
+    the page content (str HTML) if link extraction fails, or None on permanent failure/timeout.
     """
 
     user_agent = _next_user_agent()
@@ -159,7 +151,6 @@ def solve_cloudflare_challenge(
         "Attempting Cloudflare bypass for %s with user agent %s", url, user_agent
     )
     
-    # CRITICAL FIX: Ensure Stealth is applied before launching the browser
     with Stealth().use_sync(sync_playwright()) as p: 
         launcher = getattr(p, browser_type, None)
         if launcher is None:
@@ -167,7 +158,7 @@ def solve_cloudflare_challenge(
 
         # Launch browser with anti-detection arguments and HEADLESS=FALSE
         browser = launcher.launch(
-            headless=False, # <-- The major change to bypass DDoS-Guard detection
+            headless=False, 
             args=["--disable-blink-features=AutomationControlled"]
         )
         
@@ -179,7 +170,7 @@ def solve_cloudflare_challenge(
 
         try:
             # Load the page and wait for initial network activity to settle
-            page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000) # Changed to domcontentloaded for faster initial check
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000) 
             
             start_time = time.time()
             status = "CHALLENGED"
@@ -194,8 +185,43 @@ def solve_cloudflare_challenge(
 
             if status == "SUCCESS":
                 logger.info("Challenge solved for %s", url)
-                # Give the page a moment to fully render after the redirect/challenge completion
-                page.wait_for_load_state("networkidle", timeout=10000)
+                
+                # --- STEP 1: Wait for network activity to settle (Aggressive) ---
+                try:
+                    # Wait for network idle state after challenge is solved (up to 5 seconds)
+                    page.wait_for_load_state("networkidle", timeout=5000) 
+                    logger.debug("Network settled after challenge resolution.")
+                except TimeoutError:
+                    logger.debug("Network did not settle within 5 seconds, proceeding aggressively.")
+
+                # --- STEP 2: Aggressive Wait, Extract, and Return Link ---
+                DOWNLOAD_LINK_SELECTOR = 'xpath=/html/body/main/div/p[3]/a'
+                
+                try:
+                    # Wait for selector and get the element
+                    link_element = page.wait_for_selector(
+                        DOWNLOAD_LINK_SELECTOR, 
+                        timeout=5000, 
+                        state="attached" 
+                    ) 
+                    
+                    # Extract the href attribute
+                    download_link = link_element.get_attribute("href")
+                    
+                    if download_link:
+                        logger.debug("Successfully extracted download link: %s", download_link)
+                        # CRITICAL: Return the final URL string directly
+                        return download_link 
+                    else:
+                        logger.warning("Found anchor element but no href attribute.")
+
+                except TimeoutError:
+                    # Log a warning but capture the content anyway, as the page might have loaded
+                    logger.warning(
+                        "Timed out waiting (5s) for download link selector. Capturing current content."
+                    )
+                
+                # Fallback: Capture and return the HTML content if link extraction fails
                 return page.content()
 
             if status == "BLOCKED":

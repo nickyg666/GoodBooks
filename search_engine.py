@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from urllib.parse import quote_plus, urljoin, urlparse, urlencode
 
+import difflib
+import re
 import requests
 from lxml import html
 
@@ -25,6 +27,7 @@ class SearchOptions:
     extensions: List[str] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
     autodownload: bool = False
+    kindle_type: str = ""
 
 
 class AnnaSource:
@@ -56,6 +59,8 @@ class AnnaSource:
     # ------------------------------------------------------------------
     def search(self, query: str, options: Optional[SearchOptions] = None) -> Tuple[List[Dict], List[str]]:
         opts = options or SearchOptions(query=query)
+        normalized_query = self._normalize_string(opts.query)
+        preferred_exts = self._preferred_formats(opts.extensions)
         params: List[Tuple[str, str]] = [
             ("q", opts.query),
             ("display", "table"),
@@ -103,8 +108,6 @@ class AnnaSource:
         logger.debug("Filtered to %d rows with >= 10 <td> cells", len(rows))
 
         results: List[Dict] = []
-        if results:
-            self.cache[cache_key] = results[0]
         for row_idx, row in enumerate(rows):
             cols = row.findall("td")
             if len(cols) <= 10:
@@ -173,33 +176,35 @@ class AnnaSource:
                 continue
             # --- end md5 extraction ---
 
-            downloads, detail_cover, description = self._get_downloads(
-                md5, formats, debug_log
-            )
-
-            if detail_cover:
-                cover = detail_cover
-
             entry: Dict = {
                 "title": title,
                 "author": author,
                 "cover": cover,
                 "detail": md5,
                 "formats": formats,
-                "downloads": downloads,
-                "description": description,
+                "downloads": {},
+                "description": "",
             }
-            entry["id"] = hashlib.sha256(entry["detail"].encode("utf-8")).hexdigest()
-            result_id = entry["id"]
-
             # Stable ID derived from md5
             entry["id"] = hashlib.sha256(entry["detail"].encode("utf-8")).hexdigest()
             result_id = entry["id"]
 
             # Normalize formats list (union of declared + detected from downloads)
-            detected_formats = set(entry["formats"]) | set(entry["downloads"].keys())
+            detected_formats = set(entry["formats"])
             if detected_formats:
                 entry["formats"] = sorted(detected_formats)
+
+            # Compute and attach a match score for later ranking
+            entry["match_score"] = self._match_score(
+                normalized_query, title, author
+            )
+
+            format_score, preferred_fmt = self._format_preference_score(
+                entry["formats"], preferred_exts, getattr(opts, "kindle_type", "")
+            )
+            entry["format_score"] = format_score
+            if preferred_fmt:
+                entry["selected_format"] = preferred_fmt
 
             results.append(entry)
             self.cache[result_id] = entry
@@ -213,9 +218,116 @@ class AnnaSource:
                 entry["formats"],
             )
 
+        # Final relevance ranking (match score primary, format preference secondary)
+        results.sort(
+            key=lambda r: (
+                r.get("match_score", 0),
+                r.get("format_score", 0),
+            ),
+            reverse=True,
+        )
+
+        if results:
+            self.cache[cache_key] = results[0]
+
         debug_log.append(f"Found {len(results)} results")
         logger.debug("Search parsed %d rows", len(results))
         return results, debug_log
+
+    # ------------------------------------------------------------------
+    # Relevance scoring helpers
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _normalize_string(value: str) -> str:
+        cleaned = re.sub(r"[^\w\s]", " ", value or "")
+        return " ".join(cleaned.lower().split())
+
+    def _match_score(self, normalized_query: str, title: str, author: str) -> float:
+        candidate = self._normalize_string(f"{title} {author}")
+        if not normalized_query or not candidate:
+            return 0.0
+        return difflib.SequenceMatcher(None, normalized_query, candidate).ratio()
+
+    def _format_preference_score(
+        self,
+        formats: List[str],
+        preferred_exts: List[str],
+        kindle_type: str = "",
+    ) -> Tuple[float, Optional[str]]:
+        """Score available formats with device-aware preferences.
+
+        Returns (score, best_format).
+        """
+
+        if not formats:
+            return 0.0, None
+
+        normalized_formats = [f.lower() for f in formats if f]
+        priority = preferred_exts or self._preferred_formats([])
+
+        # Device-aware tweaks
+        kindle_lower = kindle_type.lower()
+        pdf_penalty = 0.0
+        if kindle_lower in {"paperwhite", "voyage"}:
+            pdf_penalty = 0.2
+        elif kindle_lower in {"oasis", "scribe"}:
+            pdf_penalty = 0.1
+
+        best_score = -1.0
+        best_fmt: Optional[str] = None
+        for idx, fmt in enumerate(priority):
+            if fmt not in normalized_formats:
+                continue
+            base = max(0.0, 1.0 - (idx * 0.05))
+            if fmt == "pdf":
+                base -= pdf_penalty
+            if base > best_score:
+                best_score = base
+                best_fmt = fmt
+
+        # If none of the priority formats matched, fall back to first available
+        if best_fmt is None and normalized_formats:
+            best_fmt = normalized_formats[0]
+            best_score = 0.1
+
+        return best_score, best_fmt
+
+    def _preferred_formats(self, requested_exts: List[str]) -> List[str]:
+        base_priority = ["azw3", "azw", "mobi", "epub", "pdf"]
+        extras = [ext.lower() for ext in requested_exts or [] if ext]
+        if extras:
+            ordered = [ext for ext in base_priority if ext in extras]
+            ordered.extend(ext for ext in extras if ext not in ordered)
+            return ordered
+        # Default preference order, with a few other common ebook types last
+        return base_priority + ["djvu", "fb2", "lit", "rtf", "txt"]
+
+    def _select_best_format(
+        self, downloads: Dict[str, str], preferred_exts: List[str]
+    ) -> Optional[str]:
+        if not downloads:
+            return None
+
+        priority = list(preferred_exts or self._preferred_formats([]))
+
+        # Append any other discovered formats so we still prefer ebook-like
+        # entries ahead of arbitrary binaries while keeping a deterministic
+        # order for autodownload short-circuiting.
+        for fmt in downloads.keys():
+            if fmt not in priority:
+                priority.append(fmt)
+
+        for fmt in priority:
+            if fmt in downloads:
+                return fmt
+
+        # If the caller specified preferred_exts and none matched, do not
+        # short-circuit on an unsupported type.
+        if preferred_exts:
+            return None
+
+        # Fallback to any available key when no specific preferences exist
+        return next(iter(downloads.keys()))
 
     # ------------------------------------------------------------------
     # Download discovery
@@ -224,7 +336,10 @@ class AnnaSource:
     # Download discovery (Anna's Archive slow mirrors)
     # ------------------------------------------------------------------
     def _get_downloads(
-        self, md5: str, formats: List[str], debug_log: List[str]
+        self,
+        md5: str,
+        formats: List[str],
+        debug_log: List[str],
     ) -> Tuple[Dict[str, str], Optional[str], str]:
         """
         For a given md5, go to the AA detail page, then follow
@@ -323,6 +438,12 @@ class AnnaSource:
 
             downloads[fmt] = download_url
 
+            # Stop as soon as we have the first working link for this md5
+            debug_log.append(
+                f"Stopping slow_download resolution early after first success ({fmt})"
+            )
+            break
+
         debug_log.append(
             f"Resolved {len(downloads)} AA slow_download links for md5={md5} "
             f"(cover={bool(cover_url)} description_len={len(description)})"
@@ -346,16 +467,51 @@ class AnnaSource:
     # ------------------------------------------------------------------
     # Resolver helpers (LibGen / Sci-Hub / Z-Lib)
     # ------------------------------------------------------------------
-    def _looks_like_cloudflare(self, text: str) -> bool:
-        if not text:
+    def _is_cloudflare_challenge(self, resp: requests.Response) -> bool:
+        """Heuristically detect Cloudflare/anti-bot interstitials."""
+
+        if resp is None:
             return False
-        lower = text.lower()
-        return (
-            "cloudflare" in lower
-            or "just a moment" in lower
-            or "attention required" in lower
-            or "checking your browser" in lower
+
+        server_header = (resp.headers or {}).get("Server", "").lower()
+        cf_ray = (resp.headers or {}).get("cf-ray") or (resp.headers or {}).get(
+            "CF-RAY"
         )
+        indicators = [
+            "cloudflare",
+            "just a moment",
+            "attention required",
+            "checking your browser",
+            "verify you are human",
+        ]
+
+        try:
+            lower_text = (resp.text or "").lower()
+        except Exception:
+            lower_text = ""
+
+        return (
+            resp.status_code in {403, 503}
+            or "cloudflare" in server_header
+            or cf_ray is not None
+            or any(indicator in lower_text for indicator in indicators)
+        )
+
+    def _is_html_response(self, url: str) -> bool:
+        """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
+
+        try:
+            resp = self.session.head(
+                url, allow_redirects=True, timeout=self.timeout, stream=False
+            )
+        except Exception:
+            return False
+
+        try:
+            content_type = (resp.headers.get("Content-Type") or "").lower()
+            return "text/html" in content_type
+        finally:
+            resp.close()
     def _resolve_aa_slow_download(
         self,
         slow_href: str,
@@ -396,7 +552,7 @@ class AnnaSource:
 
         # HTML response – parse and look for a real file URL
         html_text = resp.text or ""
-        if self._looks_like_cloudflare(html_text):
+        if self._is_cloudflare_challenge(resp):
             debug_log.append(
                 "Cloudflare / human-check detected on slow_download page; "
                 "attempting browser automation if available"
@@ -452,6 +608,17 @@ class AnnaSource:
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
 
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Slow download candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping slow_download candidate because HEAD was HTML url=%s md5=%s",
+                final_url,
+                md5,
+            )
+            return None
+
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(
             f"Resolved AA slow_download {slow_href} -> {final_url} ({fmt})"
@@ -469,8 +636,19 @@ class AnnaSource:
     ) -> Optional[Tuple[str, str]]:
         """
         Optional: use Playwright to get past Cloudflare human detection.
-        Requires `pip install playwright` + `playwright install`.
+        Requires `pip install playwright playwright-stealth` + `playwright install`.
         """
+        try:
+            from stealth_browser import solve_cloudflare_challenge
+        except Exception as exc:  # pragma: no cover - optional dependency path
+            debug_log.append(
+                "Stealth browser not available; cannot bypass Cloudflare for slow_download"
+            )
+            logger.warning(
+                "Stealth browser unavailable for %s: %s", slow_href, exc
+            )
+            return None
+
         if sync_playwright is None:
             debug_log.append(
                 "Playwright not installed; cannot bypass Cloudflare for slow_download"
@@ -481,19 +659,12 @@ class AnnaSource:
             )
             return None
 
-        try:
-            with sync_playwright() as p:
-                browser = p.firefox.launch(headless=True)
-                page = browser.new_page()
-                page.goto(slow_href, wait_until="networkidle", timeout=self.timeout * 1000)
-                content = page.content()
-                browser.close()
-        except Exception as e:
+        content = solve_cloudflare_challenge(
+            slow_href, timeout=self.timeout * 2, wait_seconds=30
+        )
+        if not content:
             debug_log.append(
-                f"Playwright slow_download failed for {slow_href}: {e}"
-            )
-            logger.warning(
-                "Playwright slow_download failed for %s: %s", slow_href, e
+                f"Stealth browser timed out or was blocked at {slow_href}"
             )
             return None
 
@@ -525,6 +696,16 @@ class AnnaSource:
 
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
+
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Playwright candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping Playwright slow_download candidate because HEAD was HTML url=%s",
+                final_url,
+            )
+            return None
 
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(
@@ -758,9 +939,26 @@ class AnnaSource:
     def download(self, result: Dict, dest_dir: Path) -> Path:
         dest_dir.mkdir(parents=True, exist_ok=True)
 
+        # Resolve downloads lazily if they were not already populated
+        downloads = result.get("downloads") or {}
+        if not downloads:
+            downloads, cover, description = self._get_downloads(
+                result.get("detail", ""), result.get("formats", []), []
+            )
+            result["downloads"] = downloads
+            if cover and not result.get("cover"):
+                result["cover"] = cover
+            if description and not result.get("description"):
+                result["description"] = description
+
         # Prefer explicitly selected_format if set, otherwise first in formats
         fmt = result.get("selected_format") or (result.get("formats") or ["bin"])[0]
-        downloads = result.get("downloads") or {}
+        fmt = fmt.lower() if fmt else fmt
+        if fmt and fmt not in downloads:
+            preferred_exts = self._preferred_formats(result.get("formats", []))
+            auto_fmt = self._select_best_format(downloads, preferred_exts)
+            if auto_fmt:
+                fmt = auto_fmt
 
         url = downloads.get(fmt)
         if not url and downloads:

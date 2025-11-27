@@ -347,15 +347,34 @@ class AnnaSource:
     # ------------------------------------------------------------------
     # Resolver helpers (LibGen / Sci-Hub / Z-Lib)
     # ------------------------------------------------------------------
-    def _looks_like_cloudflare(self, text: str) -> bool:
-        if not text:
+    def _is_cloudflare_challenge(self, resp: requests.Response) -> bool:
+        """Heuristically detect Cloudflare/anti-bot interstitials."""
+
+        if resp is None:
             return False
-        lower = text.lower()
+
+        server_header = (resp.headers or {}).get("Server", "").lower()
+        cf_ray = (resp.headers or {}).get("cf-ray") or (resp.headers or {}).get(
+            "CF-RAY"
+        )
+        indicators = [
+            "cloudflare",
+            "just a moment",
+            "attention required",
+            "checking your browser",
+            "verify you are human",
+        ]
+
+        try:
+            lower_text = (resp.text or "").lower()
+        except Exception:
+            lower_text = ""
+
         return (
-            "cloudflare" in lower
-            or "just a moment" in lower
-            or "attention required" in lower
-            or "checking your browser" in lower
+            resp.status_code in {403, 503}
+            or "cloudflare" in server_header
+            or cf_ray is not None
+            or any(indicator in lower_text for indicator in indicators)
         )
 
     def _is_html_response(self, url: str) -> bool:
@@ -413,7 +432,7 @@ class AnnaSource:
 
         # HTML response – parse and look for a real file URL
         html_text = resp.text or ""
-        if self._looks_like_cloudflare(html_text):
+        if self._is_cloudflare_challenge(resp):
             debug_log.append(
                 "Cloudflare / human-check detected on slow_download page; "
                 "attempting browser automation if available"

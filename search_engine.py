@@ -540,7 +540,7 @@ class AnnaSource:
             return None
 
         content = solve_cloudflare_challenge(
-            slow_href, timeout=self.timeout * 2, wait_seconds=30
+            slow_href, timeout=self.timeout * 2, wait_seconds=60
         )
         if not content:
             debug_log.append(

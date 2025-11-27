@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from urllib.parse import quote_plus, urljoin, urlparse, urlencode
 
+import re
 import requests
 from lxml import html
 
@@ -346,16 +347,51 @@ class AnnaSource:
     # ------------------------------------------------------------------
     # Resolver helpers (LibGen / Sci-Hub / Z-Lib)
     # ------------------------------------------------------------------
-    def _looks_like_cloudflare(self, text: str) -> bool:
-        if not text:
+    def _is_cloudflare_challenge(self, resp: requests.Response) -> bool:
+        """Heuristically detect Cloudflare/anti-bot interstitials."""
+
+        if resp is None:
             return False
-        lower = text.lower()
-        return (
-            "cloudflare" in lower
-            or "just a moment" in lower
-            or "attention required" in lower
-            or "checking your browser" in lower
+
+        server_header = (resp.headers or {}).get("Server", "").lower()
+        cf_ray = (resp.headers or {}).get("cf-ray") or (resp.headers or {}).get(
+            "CF-RAY"
         )
+        indicators = [
+            "cloudflare",
+            "just a moment",
+            "attention required",
+            "checking your browser",
+            "verify you are human",
+        ]
+
+        try:
+            lower_text = (resp.text or "").lower()
+        except Exception:
+            lower_text = ""
+
+        return (
+            resp.status_code in {403, 503}
+            or "cloudflare" in server_header
+            or cf_ray is not None
+            or any(indicator in lower_text for indicator in indicators)
+        )
+
+    def _is_html_response(self, url: str) -> bool:
+        """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
+
+        try:
+            resp = self.session.head(
+                url, allow_redirects=True, timeout=self.timeout, stream=False
+            )
+        except Exception:
+            return False
+
+        try:
+            content_type = (resp.headers.get("Content-Type") or "").lower()
+            return "text/html" in content_type
+        finally:
+            resp.close()
     def _resolve_aa_slow_download(
         self,
         slow_href: str,
@@ -396,7 +432,7 @@ class AnnaSource:
 
         # HTML response – parse and look for a real file URL
         html_text = resp.text or ""
-        if self._looks_like_cloudflare(html_text):
+        if self._is_cloudflare_challenge(resp):
             debug_log.append(
                 "Cloudflare / human-check detected on slow_download page; "
                 "attempting browser automation if available"
@@ -452,6 +488,17 @@ class AnnaSource:
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
 
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Slow download candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping slow_download candidate because HEAD was HTML url=%s md5=%s",
+                final_url,
+                md5,
+            )
+            return None
+
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(
             f"Resolved AA slow_download {slow_href} -> {final_url} ({fmt})"
@@ -469,8 +516,19 @@ class AnnaSource:
     ) -> Optional[Tuple[str, str]]:
         """
         Optional: use Playwright to get past Cloudflare human detection.
-        Requires `pip install playwright` + `playwright install`.
+        Requires `pip install playwright playwright-stealth` + `playwright install`.
         """
+        try:
+            from stealth_browser import solve_cloudflare_challenge
+        except Exception as exc:  # pragma: no cover - optional dependency path
+            debug_log.append(
+                "Stealth browser not available; cannot bypass Cloudflare for slow_download"
+            )
+            logger.warning(
+                "Stealth browser unavailable for %s: %s", slow_href, exc
+            )
+            return None
+
         if sync_playwright is None:
             debug_log.append(
                 "Playwright not installed; cannot bypass Cloudflare for slow_download"
@@ -481,19 +539,12 @@ class AnnaSource:
             )
             return None
 
-        try:
-            with sync_playwright() as p:
-                browser = p.firefox.launch(headless=True)
-                page = browser.new_page()
-                page.goto(slow_href, wait_until="networkidle", timeout=self.timeout * 1000)
-                content = page.content()
-                browser.close()
-        except Exception as e:
+        content = solve_cloudflare_challenge(
+            slow_href, timeout=self.timeout * 2, wait_seconds=30
+        )
+        if not content:
             debug_log.append(
-                f"Playwright slow_download failed for {slow_href}: {e}"
-            )
-            logger.warning(
-                "Playwright slow_download failed for %s: %s", slow_href, e
+                f"Stealth browser timed out or was blocked at {slow_href}"
             )
             return None
 
@@ -525,6 +576,16 @@ class AnnaSource:
 
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
+
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Playwright candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping Playwright slow_download candidate because HEAD was HTML url=%s",
+                final_url,
+            )
+            return None
 
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(

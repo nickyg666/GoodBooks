@@ -137,7 +137,7 @@ def solve_cloudflare_challenge(
             raise ValueError(f"Unsupported Playwright browser type: {browser_type}")
 
         browser = launcher.launch(
-            headless=False, args=["--disable-blink-features=AutomationControlled"]
+            headless=True, args=["--disable-blink-features=AutomationControlled"]
         )
         context = browser.new_context(
             user_agent=user_agent, viewport={"width": 1920, "height": 1080}

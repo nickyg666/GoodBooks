@@ -51,7 +51,7 @@ def launch_stealth_browser(browser_type: str = DEFAULT_BROWSER) -> Generator[Bro
         launcher = getattr(p, browser_type, None)
         if launcher is None:
             raise ValueError(f"Unsupported Playwright browser type: {browser_type}")
-        browser = launcher.launch(headless=True)
+        browser = launcher.launch(headless=False)
         try:
             yield browser
         finally:

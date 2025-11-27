@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Download History</h1>
+    <form method="post" action="{{ url_for('run_feeds') }}">
+        <button type="submit" class="primary">Run Feeds</button>
+    </form>
+    {% if feed_debug %}
+    <details class="debug-block" open>
+        <summary>Last feed run debug log</summary>
+        <pre class="debug">{{ feed_debug|join('\n') }}</pre>
+    </details>
+    {% endif %}
+    <div class="grid history-grid">
+        {% for entry in entries|reverse %}
+        <div class="history-item">
+            {% if entry.cover %}
+            <img src="{{ entry.cover }}" alt="Cover" />
+            {% endif %}
+            <div>
+                <h3>{{ entry.title }}</h3>
+                <p class="muted">{{ entry.author }}</p>
+                {% if entry.description %}
+                <p class="muted description">{{ entry.description }}</p>
+                {% endif %}
+                <p class="meta">User: {{ entry.user }} | Format: {{ entry.filetype }} | Source: {{ entry.source }}</p>
+                <p class="meta">{{ entry.timestamp }}</p>
+            </div>
+        </div>
+        {% else %}
+        <p>No history yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,185 @@
+:root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --primary: #38bdf8;
+    --border: #334155;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(180deg, #0f172a, #111827);
+    color: var(--text);
+}
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: rgba(15, 23, 42, 0.8);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+}
+.navbar .brand {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.navbar a {
+    color: var(--text);
+    margin-left: 1rem;
+    text-decoration: none;
+    font-weight: 600;
+}
+.container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+.card {
+    background: var(--panel);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+label span {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], select {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #0b1220;
+    color: var(--text);
+}
+button {
+    padding: 0.75rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: #1e293b;
+    color: var(--text);
+    font-weight: 600;
+}
+button.primary {
+    background: linear-gradient(135deg, #38bdf8, #6366f1);
+    color: #0b1220;
+}
+button.danger {
+    background: linear-gradient(135deg, #f87171, #ef4444);
+    color: #0b1220;
+}
+button.secondary {
+    border: 1px solid var(--border);
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+.results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+}
+.result, .history-item {
+    display: flex;
+    gap: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    background: #0b1220;
+}
+.nested {
+    margin-bottom: 1rem;
+}
+.result img, .history-item img {
+    width: 96px;
+    height: 128px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+.result .meta h3 { margin: 0; }
+.muted { color: var(--muted); }
+.system-help { margin-top: 0.75rem; display: grid; gap: 0.35rem; }
+.inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.5rem;
+    align-items: end;
+}
+.flash-wrapper { margin-bottom: 1rem; }
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+}
+.flash.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); }
+.flash.error { background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.4); }
+.flash.info { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #bfdbfe; }
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+.debug-block {
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(145deg, #f9fbff, #eef2ff);
+}
+
+.debug-block summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+}
+.debug {
+    background: #0b1220;
+    border-radius: 8px;
+    padding: 1rem;
+    color: #a5b4fc;
+    border: 1px solid var(--border);
+    overflow: auto;
+    white-space: pre-wrap;
+}
+.history-grid {
+    grid-template-columns: 1fr;
+}
+section { margin-bottom: 1rem; }
+.checkbox { display: flex; align-items: center; gap: 0.5rem; }
+.chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #0b1220;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.chip input { margin: 0; }
+.filter-group span { color: var(--muted); display: block; margin-bottom: 0.25rem; }

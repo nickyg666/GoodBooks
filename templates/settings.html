@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Settings</h1>
+    <form method="post" id="settings-form">
+        <section>
+            <h2>System</h2>
+            <p class="muted">Control how the web server runs and how much detail is captured in the logs.</p>
+            <div class="form-grid">
+                <label>Server Port<input type="number" name="server-port" value="{{ settings.server_port }}" min="1" max="65535" required></label>
+                <label>Log Level
+                    <select name="log-level">
+                        {% for level in ['DEBUG', 'INFO', 'WARNING', 'ERROR'] %}
+                        <option value="{{ level }}" {% if settings.log_level == level %}selected{% endif %}>{{ level }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Request Timeout (seconds)<input type="number" name="request-timeout" value="{{ settings.request_timeout }}" min="10" max="300" required></label>
+            </div>
+            <div class="system-help">
+                <p class="muted"><strong>DEBUG</strong> shows complete feed/search/download traces so you can troubleshoot download links. Switch back to INFO after you’re done debugging.</p>
+                <p class="muted">Change the server port if something else is using 5000. Increase the timeout if slow mirrors or “slow download” buttons take longer.</p>
+            </div>
+        </section>
+        <section>
+            <h2>SMTP</h2>
+            <div class="form-grid">
+                <label>Host<input type="text" name="smtp-host" value="{{ settings.smtp.host }}" required></label>
+                <label>Port<input type="number" name="smtp-port" value="{{ settings.smtp.port }}" required></label>
+                <label>Username<input type="text" name="smtp-username" value="{{ settings.smtp.username }}"></label>
+                <label>Password<input type="password" name="smtp-password" value="{{ settings.smtp.password }}"></label>
+                <label>From Email<input type="email" name="smtp-from-email" value="{{ settings.smtp.from_email }}"></label>
+                <label class="checkbox"><input type="checkbox" name="smtp-use-tls" {% if settings.smtp.use_tls %}checked{% endif %}> Use TLS</label>
+            </div>
+        </section>
+        <section>
+            <h2>Defaults</h2>
+            <label>Download Directory<input type="text" name="default-download-dir" value="{{ settings.default_download_dir }}"></label>
+        </section>
+        <section id="users-section">
+            <h2>Users</h2>
+            <div id="users"></div>
+            <button type="button" class="secondary" onclick="addUser()">Add User</button>
+        </section>
+        <input type="hidden" name="user-count" id="user-count" value="{{ settings.users|length }}">
+        <button type="submit" class="primary">Save</button>
+    </form>
+</div>
+<script>
+const existingUsers = {{ existing_users|tojson }};
+</script>
+<script src="{{ url_for('static', filename='settings.js') }}"></script>
+{% endblock %}

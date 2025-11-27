@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Search Anna's Archive</h1>
+    <form method="get" class="form-grid">
+        <label>
+            <span>Query</span>
+            <input type="text" name="q" value="{{ query }}" placeholder="Title, author, keyword" required>
+        </label>
+        <label>
+            <span>Language</span>
+            <select name="lang">
+                {% for lang in ['en','es','fr','de','it'] %}
+                <option value="{{ lang }}" {% if lang == selected_language %}selected{% endif %}>{{ lang|upper }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>User</span>
+            <select name="user">
+                <option value="">-- Select user --</option>
+                {% for user in users %}
+                <option value="{{ user.name }}" {% if user.name == user_id %}selected{% endif %}>{{ user.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="filter-group">
+            <span>File types</span>
+            <div class="chip-list">
+                {% for ext in available_ext %}
+                <label class="chip">
+                    <input type="checkbox" name="ext" value="{{ ext }}" {% if ext in selected_ext %}checked{% endif %}>
+                    <span>{{ ext|upper }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="filter-group">
+            <span>Sources</span>
+            <div class="chip-list">
+                {% for value, label in available_sources %}
+                <label class="chip">
+                    <input type="checkbox" name="acc" value="{{ value }}" {% if value in selected_sources %}checked{% endif %}>
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <label class="checkbox">
+            <input type="checkbox" name="autodownload" value="1" {% if autodownload %}checked{% endif %}>
+            <span>Autodownload</span>
+        </label>
+        <button type="submit" class="primary">Search</button>
+    </form>
+</div>
+
+{% if results %}
+<div class="card">
+    <h2>Results</h2>
+    <div class="grid results-grid">
+        {% for result in results %}
+        <div class="result">
+            <img src="{{ result.cover }}" alt="Cover" onerror="this.style.display='none'" />
+            <div class="meta">
+                <h3>{{ result.title }}</h3>
+                <p class="muted">{{ result.author }}</p>
+                <p>Formats: {{ result.formats|join(', ') }}</p>
+                <form method="post" action="{{ url_for('manual_download') }}" class="inline">
+                    <input type="hidden" name="result_id" value="{{ result.id }}">
+                    <label>
+                        <span>Format</span>
+                        <select name="format">
+                            {% for fmt in result.formats %}
+                            <option value="{{ fmt }}">{{ fmt }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        <span>User</span>
+                        <select name="user" required>
+                            {% for user in users %}
+                            <option value="{{ user.name }}">{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <button type="submit">Download</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if debug_log %}
+<div class="card">
+    <h2>Debug</h2>
+    <pre class="debug">{{ debug_log|join('\n') }}</pre>
+</div>
+{% endif %}
+{% endblock %}

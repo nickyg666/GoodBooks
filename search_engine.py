@@ -357,6 +357,22 @@ class AnnaSource:
             or "attention required" in lower
             or "checking your browser" in lower
         )
+
+    def _is_html_response(self, url: str) -> bool:
+        """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
+
+        try:
+            resp = self.session.head(
+                url, allow_redirects=True, timeout=self.timeout, stream=False
+            )
+        except Exception:
+            return False
+
+        try:
+            content_type = (resp.headers.get("Content-Type") or "").lower()
+            return "text/html" in content_type
+        finally:
+            resp.close()
     def _resolve_aa_slow_download(
         self,
         slow_href: str,
@@ -453,6 +469,17 @@ class AnnaSource:
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
 
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Slow download candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping slow_download candidate because HEAD was HTML url=%s md5=%s",
+                final_url,
+                md5,
+            )
+            return None
+
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(
             f"Resolved AA slow_download {slow_href} -> {final_url} ({fmt})"
@@ -530,6 +557,16 @@ class AnnaSource:
 
         if not urlparse(final_url).netloc:
             final_url = urljoin(self.base_url, final_url)
+
+        if self._is_html_response(final_url):
+            debug_log.append(
+                f"Playwright candidate looked like HTML; skipping {final_url}"
+            )
+            logger.debug(
+                "Skipping Playwright slow_download candidate because HEAD was HTML url=%s",
+                final_url,
+            )
+            return None
 
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(

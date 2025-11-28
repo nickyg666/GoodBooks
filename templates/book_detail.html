@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <h1>{{ entry.title }}</h1>
+
+    <div class="result" style="margin-top: 1rem;">
+        {% if entry.cover %}
+        <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+        {% endif %}
+        <div class="meta">
+            {% if entry.author %}
+            <p class="muted">{{ entry.author }}</p>
+            {% endif %}
+
+            {% if meta.description %}
+            <p>{{ meta.description|safe }}</p>
+            {% endif %}
+
+            {% if meta.goodreads_link %}
+            <p>
+                <a href="{{ meta.goodreads_link }}" target="_blank" rel="noopener">
+                    View on Goodreads
+                </a>
+            </p>
+            {% endif %}
+
+            {% if meta.genres %}
+            <p>
+                <strong>Genres:</strong>
+                {% if meta.genres is string %}
+                    {{ meta.genres }}
+                {% else %}
+                    {{ meta.genres|join(', ') }}
+                {% endif %}
+            </p>
+            {% endif %}
+
+            <p>
+                {% if meta.language %}
+                <strong>Language:</strong> {{ meta.language }}
+                {% endif %}
+                {% if meta.publish_date %}
+                {% if meta.language %} &middot; {% endif %}
+                <strong>Published:</strong> {{ meta.publish_date }}
+                {% endif %}
+            </p>
+
+            {% if meta.rating %}
+            <p>
+                <strong>Rating:</strong> {{ meta.rating }}
+            </p>
+            {% endif %}
+
+            <p class="muted">
+                File type: {{ entry.filetype }}
+            </p>
+
+            <div class="library-chips" style="margin-top: 1rem;">
+                {# Only one applicable action: Direct DL OR Send to Kindle #}
+                {% if entry.filetype in ['mobi','prc','azw','azw3'] %}
+                <a href="{{ url_for('library_direct_download', entry_id=entry.id) }}" class="chip">
+                    Direct DL
+                </a>
+                {% else %}
+                <button type="button" class="chip" data-action="send-kindle" data-entry-id="{{ entry.id }}">
+                    Send to Kindle
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="send-modal" class="modal hidden">
+    <div class="card">
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('library_send_to_kindle') }}">
+            <input type="hidden" name="entry_id" id="send-entry-id" value="{{ entry.id }}">
+            <label>
+                <span>User</span>
+                <select name="user_name" required>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="primary">Send</button>
+                <button type="button" class="secondary" id="send-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('send-modal');
+    const cancelBtn = document.getElementById('send-cancel');
+    const sendButtons = document.querySelectorAll('[data-action="send-kindle"]');
+
+    sendButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            modal.classList.remove('hidden');
+        });
+    });
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+        });
+    }
+});
+</script>
+{% endblock %}

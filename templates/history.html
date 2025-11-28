@@ -2,28 +2,75 @@
 {% block content %}
 <div class="card">
     <h1>Download History</h1>
-    <form method="post" action="{{ url_for('run_feeds') }}">
+
+    <form method="post" action="{{ url_for('run_feeds') }}" style="margin-bottom: 1rem;">
         <button type="submit" class="primary">Run Feeds</button>
     </form>
+
     {% if feed_debug %}
     <details class="debug-block" open>
         <summary>Last feed run debug log</summary>
         <pre class="debug">{{ feed_debug|join('\n') }}</pre>
     </details>
     {% endif %}
+
+    {% if entries %}
     <div class="grid history-grid">
         {% for entry in entries|reverse %}
-        <div class="history-item">
-            {% if entry.cover %}
-            <img src="{{ entry.cover }}" alt="Cover" />
-            {% endif %}
-            <div>
-                <h3>{{ entry.title }}</h3>
-                <p class="muted">{{ entry.author }}</p>
+        <div class="card library-card history-card">
+            <div class="library-cover">
+                {% if entry.entry_id %}
+                <a href="{{ url_for('book_detail', entry_id=entry.entry_id) }}" class="library-cover-link">
+                    {% if entry.cover %}
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ entry.title }}</span>
+                    </div>
+                    {% endif %}
+                </a>
+                {% else %}
+                {% if entry.cover %}
+                <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+                {% else %}
+                <div class="cover-placeholder">
+                    <span>{{ entry.title }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="library-meta">
+                <div class="library-title">{{ entry.title }}</div>
+                {% if entry.author %}
+                <div class="library-author">{{ entry.author }}</div>
+                {% endif %}
+
+                <div class="history-chips library-chips">
+                    {% if entry.has_path %}
+                        {% if entry.is_direct %}
+                        <a href="{{ url_for('history_direct_download', index=entry.index) }}" class="chip">
+                            Direct DL
+                        </a>
+                        {% else %}
+                        <button type="button"
+                                class="chip"
+                                data-action="history-send-kindle"
+                                data-index="{{ entry.index }}">
+                            Send to Kindle
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
                 {% if entry.description %}
                 <p class="muted description">{{ entry.description }}</p>
                 {% endif %}
-                <p class="meta">User: {{ entry.user }} | Format: {{ entry.filetype }} | Source: {{ entry.source }}</p>
+                <p class="meta">
+                    User: {{ entry.user }} |
+                    Format: {{ entry.filetype }} |
+                    Source: {{ entry.source }}
+                </p>
                 <p class="meta">{{ entry.timestamp }}</p>
             </div>
         </div>
@@ -31,5 +78,55 @@
         <p>No history yet.</p>
         {% endfor %}
     </div>
+    {% else %}
+    <p>No history yet.</p>
+    {% endif %}
 </div>
+
+{# Send-to-Kindle modal for history entries #}
+<div id="history-send-modal" class="modal hidden">
+    <div class="card">
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('history_send_to_kindle') }}">
+            <input type="hidden" name="index" id="history-send-index">
+
+            <label>
+                <span>User</span>
+                <select name="user_name" required>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="primary">Send</button>
+                <button type="button" class="secondary" id="history-send-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('history-send-modal');
+    const indexInput = document.getElementById('history-send-index');
+    const cancelBtn = document.getElementById('history-send-cancel');
+
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="history-send-kindle"]');
+        if (!button) return;
+        const idx = button.getAttribute('data-index');
+        if (!idx) return;
+        indexInput.value = idx;
+        modal.classList.remove('hidden');
+    });
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -183,3 +183,102 @@ section { margin-bottom: 1rem; }
 }
 .chip input { margin: 0; }
 .filter-group span { color: var(--muted); display: block; margin-bottom: 0.25rem; }
+.folder-card .folder-placeholder {
+    background: #020617;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+}
+
+.history-grid {
+    align-items: flex-start;
+}
+.history-card {
+    min-height: 0;
+}
+
+.history-chips {
+    margin-top: 0.5rem;
+}
+.feed-divider {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 0.75rem 0;
+}
+
+.feed.feed-removed {
+    opacity: 0.4;
+}
+.library-card {
+    display: flex;
+    flex-direction: column;
+    background: #0b1220;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+}
+
+.library-cover-link {
+    display: block;
+}
+
+.library-cover img,
+.library-cover .cover-placeholder {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.cover-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: #020617;
+    color: var(--muted);
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.library-meta {
+    margin-top: 0.5rem;
+}
+
+.library-title {
+    font-weight: 600;
+}
+
+.library-author {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.library-chips {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Simple modal styling for Send to Kindle */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal .card {
+    max-width: 420px;
+    width: 100%;
+}

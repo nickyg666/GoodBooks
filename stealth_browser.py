@@ -90,53 +90,32 @@ def _next_user_agent() -> str:
 
 
 def _check_cloudflare_status(page) -> str:
-    """Inspect the page for Cloudflare / DDoS-Guard style interstitials.
-
-    Returns one of:
-      * "CHALLENGED" – still seeing a challenge / captcha / DDOS-Guard page.
-      * "BLOCKED"    – hard block (403 / Access Denied).
-      * "SUCCESS"    – appears to be through to the real page.
-    """
+    """Inspect the page for Cloudflare IUAM/Turnstile/DDoS-Guard markers."""
     try:
         title = page.title()
     except TimeoutError:
-        # Playwright timed out waiting for the title – treat as "still challenged".
-        logger.debug("Timed out while fetching page.title() during Cloudflare check")
         title = "TITLE_FETCH_TIMEOUT"
-    except Exception as exc:
-        # This is the one you're hitting:
-        # playwright._impl._errors.Error: Execution context was destroyed, most likely because of a navigation
-        # i.e. the page is in the middle of a navigation. Don't crash the whole resolver for that.
-        logger.debug(
-            "Error while fetching page.title() during Cloudflare check: %s",
-            exc,
-            exc_info=True,
-        )
-        title = "TITLE_FETCH_ERROR"
 
     is_challenge_text = False
-
-    # Check for common challenge texts (Cloudflare / DDOS-Guard / captcha)
+    
+    # Check for common challenge texts (Cloudflare and general checks)
     challenge_locators = [
-        "text=Checking your browser before accessing",
-        "text=DDOS-GUARD",
-        'iframe[src*="captcha"]',
-        'iframe[src*="turnstile"]',
+        "text=Checking your browser before accessing", 
+        "text=DDOS-GUARD", 
+        'iframe[src*="captcha"]', 
+        'iframe[src*="turnstile"]' 
     ]
 
     for selector in challenge_locators:
         try:
-            if page.locator(selector).count() > 0:
+            # Check for element presence in DOM
+            if page.locator(selector).count() > 0: 
                 is_challenge_text = True
                 break
         except Exception:
-            # If the DOM is in flux due to navigation, just ignore and rely on title.
-            continue
-
-    try:
-        current_url = page.url
-    except Exception:
-        current_url = "<unavailable>"
+            pass
+            
+    current_url = page.url
 
     logger.debug(
         "Cloudflare status title=%r URL=%r Challenge Indicator=%s",
@@ -145,21 +124,14 @@ def _check_cloudflare_status(page) -> str:
         is_challenge_text,
     )
 
-    # Hard block – usually not worth retrying this URL in this session
     if "Access Denied" in title or "Forbidden" in title:
         return "BLOCKED"
-
-    # Still looks like a challenge page, or we couldn't reliably read the title
-    if (
-        is_challenge_text
-        or "DDOS-GUARD" in title.upper()
-        or "CHECKING YOUR BROWSER" in title.upper()
-        or "TITLE_FETCH_ERROR" in title
-    ):
+    
+    if is_challenge_text or "DDOS-GUARD" in title.upper() or "CHECKING YOUR BROWSER" in title.upper():
         return "CHALLENGED"
-
-    # Otherwise assume we're through to the real page
+    
     return "SUCCESS"
+
 
 def solve_cloudflare_challenge(
     url: str,

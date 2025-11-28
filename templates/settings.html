@@ -37,6 +37,66 @@
             <h2>Defaults</h2>
             <label>Download Directory<input type="text" name="default-download-dir" value="{{ settings.default_download_dir }}"></label>
         </section>
+        <section>
+            <h2>Library defaults</h2>
+            <p class="muted">
+                Configure where the Library page scans for books and how it displays them.
+            </p>
+            <div class="form-grid">
+                <label>
+                    Master library directory
+                    <input type="text"
+                           name="library-root"
+                           value="{{ settings.library_root or settings.default_download_dir }}">
+                </label>
+                <label>
+                    Library items per page
+                    <input type="number"
+                           name="library-items-per-page"
+                           min="1"
+                           max="500"
+                           value="{{ settings.library_items_per_page }}">
+                </label>
+                <label>
+                    Default library sort
+                    <select name="library-default-sort">
+                        <option value="date_newest" {% if settings.library_default_sort == 'date_newest' %}selected{% endif %}>
+                            Date added (newest first)
+                        </option>
+                        <option value="date_oldest" {% if settings.library_default_sort == 'date_oldest' %}selected{% endif %}>
+                            Date added (oldest first)
+                        </option>
+                        <option value="title_az" {% if settings.library_default_sort == 'title_az' %}selected{% endif %}>
+                            Title A–Z
+                        </option>
+                        <option value="title_za" {% if settings.library_default_sort == 'title_za' %}selected{% endif %}>
+                            Title Z–A
+                        </option>
+                        <option value="author_az" {% if settings.library_default_sort == 'author_az' %}selected{% endif %}>
+                            Author A–Z
+                        </option>
+                        <option value="author_za" {% if settings.library_default_sort == 'author_za' %}selected{% endif %}>
+                            Author Z–A
+                        </option>
+                    </select>
+                </label>
+                <label>
+                    Max feed workers (parallel jobs)
+                    <input type="number"
+                           name="max-feed-workers"
+                           min="1"
+                           max="16"
+                           value="{{ settings.max_feed_workers }}">
+                </label>
+            </div>
+            <div class="form-grid" style="margin-top: 1rem;">
+                <label>
+                    Additional library folders (one per line)
+                    <textarea name="library-extra-dirs" rows="3" placeholder="/mnt/books/extra1&#10;/mnt/books/extra2">{% for p in settings.library_extra_dirs %}{{ p }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
+                </label>
+            </div>
+        </section>
+
         <section id="users-section">
             <h2>Users</h2>
             <div id="users"></div>

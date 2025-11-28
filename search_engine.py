@@ -9,9 +9,10 @@ import re
 import difflib  # <-- Added for relevance scoring
 import requests
 from lxml import html
+import time
 
 logger = logging.getLogger(__name__)
-ENABLE_ZLIB = False
+ENABLE_ZLIB = True
 
 # Optional: playwright for Cloudflare / human-check bypass
 try:
@@ -151,7 +152,8 @@ class AnnaSource:
         self.session = requests.Session()
         # ensure _safe_get has somewhere to store failed hosts
         self.unreachable_hosts: set[str] = set()
-
+        self._last_host_request: Dict[str,float] = {}
+        self.host_throttle_seconds: float = 1.0
     # ------------------------------------------------------------------
     # Search
     # ------------------------------------------------------------------
@@ -221,13 +223,13 @@ class AnnaSource:
         # All table rows that actually contain <td> cells
         all_rows = tree.xpath("//table//tr[td]")
         logger.debug("Found %d raw table rows with <td>", len(all_rows))
-
         # Only keep rows that look like real result rows (>= 10 columns)
         rows: List[html.HtmlElement] = []
         for r in all_rows:
             cols = r.findall("td")
             if len(cols) > 10:
                 rows.append(r)
+        rows = rows[:15]
         logger.debug("Filtered to %d rows with >= 10 <td> cells", len(rows))
 
         results: List[Dict] = []
@@ -455,8 +457,12 @@ class AnnaSource:
 
         detail_url = f"{self.base_url}/md5/{md5}"
         debug_log.append(f"Fetching AA detail page: {detail_url}")
-        resp = self.session.get(detail_url, timeout=self.timeout)
-        resp.raise_for_status()
+        resp = self.session.get(detail_url)
+        if resp is None:
+            msg = f"Failed to fetch AA detail page for md5={md5}"
+            debug_log.append(msg)
+            logger.error(msg)
+            return {}, None, ""
 
         tree = html.fromstring(resp.content)
 
@@ -941,22 +947,72 @@ class AnnaSource:
             return f"{scheme}//{host}/{url}"
         return href
 
-    def _safe_get(self, href: str) -> Optional[requests.Response]:
-        """Best-effort GET that tracks failed hosts to avoid repeat slowdowns."""
-        host = urlparse(href).hostname
-        if host and host in self.unreachable_hosts:
+    def _safe_get(self, href: str, *, for_download: bool = False) -> Optional[requests.Response]:
+        """
+        Best-effort GET that tracks failed hosts to avoid repeat slowdowns.
+
+        For metadata/search calls (for_download=False):
+          * honour self.unreachable_hosts and skip previously failed hosts
+          * raise_for_status() and blacklist on hard HTTP errors (≠ 429)
+
+        For actual file downloads (for_download=True):
+          * do NOT raise_for_status() here
+          * do NOT blacklist hosts on HTTP errors
+          * always return the Response so the caller can inspect status_code
+        """
+        parsed = urlparse(href)
+        host = parsed.hostname or ""
+
+        # For non-download calls, honour host blacklist
+        if host and not for_download and host in self.unreachable_hosts:
             logger.debug("Skipping GET for previously failed host=%s", host)
             return None
 
+        # Very light per-host throttle to reduce 429s when many workers hit same host
+        if host:
+            now = time.time()
+            last = self._last_host_request.get(host)
+            gap = self.host_throttle_seconds
+            if last is not None and now - last < gap:
+                sleep_for = gap - (now - last)
+                if sleep_for > 0:
+                    time.sleep(sleep_for)
+            self._last_host_request[host] = time.time()
+
         try:
-            resp = self.session.get(href, timeout=self.timeout)
-            resp.raise_for_status()
-            return resp
+            resp = self.session.get(href, timeout=self.timeout, stream=for_download)
         except requests.RequestException:
-            if host:
+            # Only blacklist for non-download metadata calls
+            if host and not for_download:
                 self.unreachable_hosts.add(host)
             logger.debug("Resolution failed for href=%s", href, exc_info=True)
             return None
+
+        # Metadata / search path: enforce HTTP success, with softer handling for 429
+        if not for_download:
+            if resp.status_code == 429:
+                logger.warning(
+                    "HTTP 429 (Too Many Requests) for %s; backing off but not blacklisting host=%s",
+                    href,
+                    host,
+                )
+                return None
+            try:
+                resp.raise_for_status()
+                return resp
+            except requests.RequestException:
+                if host:
+                    self.unreachable_hosts.add(host)
+                logger.debug(
+                    "Resolution failed for href=%s status=%s",
+                    href,
+                    resp.status_code,
+                    exc_info=True,
+                )
+                return None
+
+        # Download path: caller is responsible for inspecting status_code / content-type
+        return resp
 
     # ------------------------------------------------------------------
     # Cover / description helpers
@@ -1030,8 +1086,15 @@ class AnnaSource:
     # ------------------------------------------------------------------
     def cached_result(self, result_id: str) -> Optional[Dict]:
         return self.cache.get(result_id)
-
     def download(self, result: Dict, dest_dir: Path) -> Path:
+        """
+        Download the selected result to dest_dir.
+
+        TEMPORARY DEBUG VERSION:
+          - Do NOT force {title}.{fmt}
+          - Use server-provided filename (Content-Disposition or URL path)
+          - Log headers + detected extension + first bytes for debugging send-to-Kindle issues.
+        """
         dest_dir.mkdir(parents=True, exist_ok=True)
 
         # Prefer explicitly selected_format if set, otherwise first in formats
@@ -1058,6 +1121,7 @@ class AnnaSource:
             raise ValueError("Failed to GET download URL")
 
         content_type = (resp.headers.get("Content-Type") or "").lower()
+
         if "text/html" in content_type:
             logger.error(
                 "Download URL returned HTML (Content-Type=%s) for title=%s; likely a homepage / error page",
@@ -1066,9 +1130,58 @@ class AnnaSource:
             )
             raise ValueError("Download URL returned HTML instead of a file")
 
-        filename = f"{result['title']}.{fmt}"
-        # Strip characters illegal on Windows / Unix filenames
-        safe_name = "".join(c for c in filename if c not in '\\/:*?"<>|')
+        # --- NEW: Inspect remote filename & extension for debugging ---
+        cd = resp.headers.get("Content-Disposition") or ""
+        cd_match = re.search(r'filename="?([^";]+)"?', cd)
+        remote_filename: Optional[str] = None
+        if cd_match:
+            remote_filename = cd_match.group(1).strip()
+
+        # Fallback: path component of the *final* URL (after redirects)
+        if not remote_filename:
+            try:
+                final_url = resp.url or url
+            except Exception:
+                final_url = url
+            parsed = urlparse(final_url)
+            path_name = Path(parsed.path).name
+            if path_name:
+                remote_filename = path_name
+
+        # Last resort: old behavior
+        if not remote_filename:
+            remote_filename = f"{result.get('title', 'download')}.{fmt}"
+
+        # Extract extension from remote filename (for comparison)
+        ext_from_remote = ""
+        if "." in remote_filename:
+            ext_from_remote = remote_filename.rsplit(".", 1)[-1].lower()
+
+        logger.info(
+            "Download debug: title=%r fmt=%r content_type=%r CD=%r remote_filename=%r remote_ext=%r",
+            result.get("title"),
+            fmt,
+            content_type,
+            cd,
+            remote_filename,
+            ext_from_remote,
+        )
+
+        if ext_from_remote and ext_from_remote != fmt:
+            logger.warning(
+                "Format mismatch for title=%r: chosen fmt=%r but remote_ext=%r (url=%s)",
+                result.get("title"),
+                fmt,
+                ext_from_remote,
+                url,
+            )
+
+        # TEMP: keep the remote filename as much as possible,
+        # only stripping characters that the filesystem cannot handle.
+        safe_name = "".join(c for c in remote_filename if c not in '\\/:*?"<>|')
+        if not safe_name:
+            safe_name = f"{result.get('title', 'download')}.{fmt}"
+
         path = dest_dir / safe_name
 
         first_chunk: Optional[bytes] = None
@@ -1078,6 +1191,17 @@ class AnnaSource:
                     continue
                 if first_chunk is None:
                     first_chunk = chunk
+
+                    # Log first bytes as hex so we can see actual file type signature
+                    header_preview = first_chunk[:32]
+                    logger.debug(
+                        "Download header preview for title=%r file=%r: %s",
+                        result.get("title"),
+                        safe_name,
+                        header_preview.hex(),
+                    )
+
+                    # Keep existing HTML safety check
                     if b"<html" in chunk.lower():
                         logger.error(
                             "Download URL returned HTML payload for title=%s; aborting",
@@ -1086,7 +1210,15 @@ class AnnaSource:
                         raise ValueError(
                             "Download URL returned HTML payload instead of ebook"
                         )
+
                 f.write(chunk)
 
-        logger.debug("Saved download to %s", path)
+        logger.info(
+            "Saved download for title=%r to %s (content_type=%r, remote_ext=%r, chosen_fmt=%r)",
+            result.get("title"),
+            path,
+            content_type,
+            ext_from_remote,
+            fmt,
+        )
         return path

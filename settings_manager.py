@@ -56,6 +56,15 @@ class Settings:
     server_port: int = 5000
     request_timeout: int = 60
 
+    # Library configuration
+    # If library_root is empty, fall back to default_download_dir.
+    library_root: str = ""
+    library_extra_dirs: List[str] = field(default_factory=list)
+    library_items_per_page: int = 50
+    library_default_sort: str = "date_newest"
+
+    # Threading / feed workers
+    max_feed_workers: int = 4
 
 class SettingsManager:
     def __init__(self, path: Path):
@@ -80,7 +89,15 @@ class SettingsManager:
             )
             for u in data.get("users", [])
         ]
+
         default_download_dir = data.get("default_download_dir", "downloads")
+
+        # Library + threading config, with safe defaults
+        library_root = data.get("library_root", "") or default_download_dir
+        library_extra_dirs = data.get("library_extra_dirs", [])
+        library_items_per_page = int(data.get("library_items_per_page", 50))
+        library_default_sort = data.get("library_default_sort", "date_newest")
+        max_feed_workers = int(data.get("max_feed_workers", 4))
 
         return Settings(
             users=users,
@@ -89,6 +106,11 @@ class SettingsManager:
             log_level=data.get("log_level", "INFO"),
             server_port=int(data.get("server_port", 5000)),
             request_timeout=int(data.get("request_timeout", 60)),
+            library_root=library_root,
+            library_extra_dirs=library_extra_dirs,
+            library_items_per_page=library_items_per_page,
+            library_default_sort=library_default_sort,
+            max_feed_workers=max_feed_workers,
         )
 
     def save(self):
@@ -105,6 +127,11 @@ class SettingsManager:
             "log_level": self.settings.log_level,
             "server_port": self.settings.server_port,
             "request_timeout": self.settings.request_timeout,
+            "library_root": self.settings.library_root,
+            "library_extra_dirs": self.settings.library_extra_dirs,
+            "library_items_per_page": self.settings.library_items_per_page,
+            "library_default_sort": self.settings.library_default_sort,
+            "max_feed_workers": self.settings.max_feed_workers,
         }
         self.path.write_text(json.dumps(payload, indent=2))
 
@@ -117,6 +144,7 @@ class SettingsManager:
             name = form.get(prefix + "name", "").strip()
             if not name:
                 continue
+
             save_dir = form.get(prefix + "save_dir", "downloads").strip()
             kindle_type = form.get(prefix + "kindle_type", "paperwhite")
             kindle_email = form.get(prefix + "kindle_email", "").strip()
@@ -126,18 +154,29 @@ class SettingsManager:
             feed_count = int(form.get(prefix + "feed-count", 0))
             for j in range(feed_count):
                 feed_prefix = f"{prefix}feed-{j}-"
+                removed = form.get(feed_prefix + "removed", "0") == "1"
+                if removed:
+                    # Skip feeds flagged for removal in the UI
+                    continue
+
                 url = form.get(feed_prefix + "url", "").strip()
                 if not url:
                     continue
+
                 mode = form.get(feed_prefix + "mode", "rss")
-                filetypes_str = form.get(feed_prefix + "filetypes", "")
+                filetypes_str = form.get(feed_prefix + "filetypes", "").strip()
                 filetypes = [
-                    f.strip()
-                    for f in filetypes_str.split(",")
-                    if f.strip()
+                    ft.strip()
+                    for ft in filetypes_str.split(",")
+                    if ft.strip()
                 ]
+
                 feeds.append(
-                    FeedSettings(url=url, mode=mode, filetypes=filetypes)
+                    FeedSettings(
+                        url=url,
+                        mode=mode,
+                        filetypes=filetypes,
+                    )
                 )
 
             users.append(
@@ -160,24 +199,68 @@ class SettingsManager:
             from_email=form.get("smtp-from-email", ""),
         )
 
+        # System-level settings
         default_download_dir = form.get(
             "default-download-dir", self.settings.default_download_dir
+        ).strip() or self.settings.default_download_dir
+
+        log_level = form.get("log-level", self.settings.log_level)
+        server_port = int(
+            form.get("server-port", self.settings.server_port)
+        )
+        request_timeout = int(
+            form.get("request-timeout", self.settings.request_timeout)
+        )
+
+        # Library + threading config
+        library_root = form.get(
+            "library-root",
+            self.settings.library_root or default_download_dir,
+        ).strip()
+        if not library_root:
+            library_root = default_download_dir
+
+        extra_dirs_str = form.get("library-extra-dirs", "").strip()
+        if extra_dirs_str:
+            library_extra_dirs = [
+                line.strip()
+                for line in extra_dirs_str.splitlines()
+                if line.strip()
+            ]
+        else:
+            library_extra_dirs = self.settings.library_extra_dirs
+
+        library_items_per_page = int(
+            form.get(
+                "library-items-per-page",
+                self.settings.library_items_per_page,
+            )
+        )
+        library_default_sort = form.get(
+            "library-default-sort",
+            self.settings.library_default_sort or "date_newest",
+        )
+        max_feed_workers = int(
+            form.get(
+                "max-feed-workers",
+                self.settings.max_feed_workers or 4,
+            )
         )
 
         self.settings = Settings(
             users=users,
             default_download_dir=default_download_dir,
             smtp=smtp_settings,
-            log_level=form.get("log-level", self.settings.log_level),
-            server_port=int(
-                form.get("server-port", self.settings.server_port)
-            ),
-            request_timeout=int(
-                form.get("request-timeout", self.settings.request_timeout)
-            ),
+            log_level=log_level,
+            server_port=server_port,
+            request_timeout=request_timeout,
+            library_root=library_root,
+            library_extra_dirs=library_extra_dirs,
+            library_items_per_page=library_items_per_page,
+            library_default_sort=library_default_sort,
+            max_feed_workers=max_feed_workers,
         )
         self.save()
-
 
 class HistoryManager:
     def __init__(self, path: Path):
@@ -205,18 +288,27 @@ class HistoryManager:
         filetype: str,
         source: str,
         description: str = "",
+        path: str = "",
     ):
+        """
+        Record a single download in history.
+
+        path:
+            Optional filesystem path to the saved file. If provided, this enables
+            direct-download and send-to-Kindle actions from the history view.
+        """
         entries = self.load()
-        entries.append(
-            {
-                "user": user,
-                "title": title,
-                "cover": cover,
-                "author": author,
-                "filetype": filetype,
-                "source": source,
-                "description": description,
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-            }
-        )
+        entry = {
+            "user": user,
+            "title": title,
+            "cover": cover,
+            "author": author,
+            "filetype": filetype,
+            "source": source,
+            "description": description,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+        if path:
+            entry["path"] = path
+        entries.append(entry)
         self.path.write_text(json.dumps(entries, indent=2))

@@ -387,6 +387,22 @@ class AnnaSource:
         # ------------------------------
         # Use our local Cloudflare heuristic
         if self._is_cloudflare_challenge(resp):
+            # Some AA search pages still render useful HTML even while tripping our
+            # Cloudflare heuristic. If the body already contains a table of results,
+            # avoid discarding it and let the caller parse as-is.
+            try:
+                body_text = resp.text
+            except Exception:
+                body_text = ""
+
+            if "<table" in body_text and "<td" in body_text:
+                logger.debug(
+                    "Cloudflare heuristic triggered for %s but table rows present; "
+                    "using raw response",
+                    href,
+                )
+                return resp
+
             logger.warning(
                 "Cloudflare / anti-bot challenge detected at %s (status=%s); "
                 "attempting stealth browser bypass",
@@ -395,7 +411,7 @@ class AnnaSource:
             )
             resp.close()
 
-            # Try to use the shared stealth browser helper
+            # Only invoke the challenge solver when we actually detect Cloudflare
             try:
                 from stealth_browser import solve_cloudflare_challenge
                 from stealth_browser import fetch_with_stealth
@@ -470,6 +486,7 @@ class AnnaSource:
             rendered._content = str(solved).encode("utf-8", errors="ignore")  # type: ignore[attr-defined]
             rendered.url = href
             rendered.headers["Content-Type"] = "text/html; charset=utf-8"
+            rendered.encoding = "utf-8"
             return rendered
 
         # ------------------------------
@@ -539,7 +556,7 @@ class AnnaSource:
             params.append(("autodownload", "1"))
 
         # Cache lookup: avoid repeated fetches for the same logical query
-        cache_key = (opts.query or query).strip().lower()
+        cache_key = (opts.query or query).lower()
         if cache_key in self.cache:
             logger.debug("Cache hit for query=%r", opts.query)
             cached = self.cache[cache_key]

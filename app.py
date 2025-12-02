@@ -204,7 +204,8 @@ def search_with_cache(
     - If persist=False (manual UI search):
         * Just call AnnaSource.search; no disk writes/reads.
     """
-    cache_key = (options.query or query or "").strip().lower()
+    # Preserve whitespace inside the query; only normalize casing for cache keys.
+    cache_key = (options.query or query or "").lower()
     debug_log: List[str] = []
 
     if persist:
@@ -1539,7 +1540,8 @@ def search():
           - Optionally send Kindle + notification emails.
     """
     # Basic inputs
-    query = request.args.get("q", "").strip()
+    # Preserve user-entered spacing; avoid trimming so AA sees the exact text.
+    query = request.args.get("q", "")
     user_id = request.args.get("user", "").strip()
     selected_language = request.args.get("lang", "en").strip() or "en"
     selected_ext = request.args.getlist("ext")
@@ -1700,8 +1702,8 @@ def search():
 
     # Pagination over returned results (up to 45)
     total_results = len(results)
+    total_pages = max(1, math.ceil(total_results / page_size) if total_results else 1)
     if total_results:
-        total_pages = math.ceil(total_results / page_size)
         page = min(page, total_pages)
         start = (page - 1) * page_size
         end = start + page_size
@@ -2199,7 +2201,7 @@ def run_feeds():
         local_debug: List[str] = []
         # Preserve the feed-provided query exactly (including spaces/punctuation)
         # so Anna's Archive sees the same text the user curated.
-        query = html.unescape(f"{item.title} {item.author}".strip())
+        query = html.unescape(f"{item.title} {item.author}")
         local_debug.append(f"    Searching for {query}")
         logger.info("Searching for item title=%s author=%s", item.title, item.author)
         # First attempt: full title + author

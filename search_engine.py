@@ -414,41 +414,19 @@ class AnnaSource:
                 )
                 return None
 
-            # For Anna's Archive search pages we only need the rendered HTML; we
-            # don't need to wait for any slow_download link selector.
-            if "/search?" in href:
-                try:
-                    rendered_html = fetch_with_stealth(href, timeout=self.timeout)
-                    rendered = requests.Response()
-                    rendered.status_code = 200
-                    rendered._content = rendered_html.encode(
-                        "utf-8", errors="ignore"
-                    )  # type: ignore[attr-defined]
-                    rendered.url = href
-                    rendered.headers["Content-Type"] = "text/html; charset=utf-8"
-                    return rendered
-                except Exception:
-                    logger.debug(
-                        "Stealth fetch for search page failed, falling back to generic solver",
-                        exc_info=True,
-                    )
-
             try:
-                # solve_cloudflare_challenge returns either HTML (str) or a final download URL (str)
                 solved = solve_cloudflare_challenge(
                     href, timeout=self.timeout * 2, wait_seconds=60
                 )
             except Exception:
                 logger.debug("stealing failed check logs", exc_info=True)
-                return None
+                solved = None
 
             if not solved:
                 logger.warning(
                     "Stealth browser failed to bypass Cloudflare for %s", href
                 )
-                # Last resort: attempt a full stealth fetch to capture rendered HTML
-                # so the parser can still operate even if we could not extract a
-                # direct link from the challenge flow.
+                # Fallback: fetch rendered HTML directly so we can still parse rows.
                 try:
                     from stealth_browser import fetch_with_stealth
 
@@ -482,7 +460,8 @@ class AnnaSource:
                     )
                     return None
 
-            # Otherwise treat the returned HTML as page content.
+            # Otherwise treat the returned HTML as page content (matches the
+            # earlier FakeResponse behavior without the shim class).
             logger.debug(
                 "Stealth browser succeeded for %s, using rendered HTML content", href
             )

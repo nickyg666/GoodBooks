@@ -414,6 +414,7 @@ class AnnaSource:
             # Only invoke the challenge solver when we actually detect Cloudflare
             try:
                 from stealth_browser import solve_cloudflare_challenge
+                from stealth_browser import fetch_with_stealth
             except Exception as exc:
                 logger.warning(
                     "stealth_browser module not available; cannot bypass Cloudflare for %s (%s)",
@@ -441,7 +442,22 @@ class AnnaSource:
                 logger.warning(
                     "Stealth browser failed to bypass Cloudflare for %s", href
                 )
-                return None
+                # Fallback: fetch rendered HTML directly so we can still parse rows.
+                try:
+                    from stealth_browser import fetch_with_stealth
+
+                    rendered_html = fetch_with_stealth(href, timeout=self.timeout)
+                    rendered = requests.Response()
+                    rendered.status_code = 200
+                    rendered._content = rendered_html.encode(
+                        "utf-8", errors="ignore"
+                    )  # type: ignore[attr-defined]
+                    rendered.url = href
+                    rendered.headers["Content-Type"] = "text/html; charset=utf-8"
+                    return rendered
+                except Exception:
+                    logger.debug("Fallback stealth fetch failed for %s", href, exc_info=True)
+                    return None
 
             # If the solver returned a URL, perform a real HTTP GET so downstream
             # callers always receive a genuine requests.Response object.

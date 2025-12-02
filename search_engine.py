@@ -398,6 +398,7 @@ class AnnaSource:
             # Try to use the shared stealth browser helper
             try:
                 from stealth_browser import solve_cloudflare_challenge
+                from stealth_browser import fetch_with_stealth
             except Exception as exc:
                 logger.warning(
                     "stealth_browser module not available; cannot bypass Cloudflare for %s (%s)",

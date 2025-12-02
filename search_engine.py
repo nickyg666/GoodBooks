@@ -1539,7 +1539,7 @@ class AnnaSource:
         if not url or not selected_fmt:
             raise ValueError(f"No DL link available, for any format! Last checked for {fmt}" )
         fmt = selected_fmt
-        logger.debug("Attempting to download %s from %s", result.get("title"), url)
+        logger.info("Downloading %s (%s) from %s", result.get("title"), fmt, url)
 
         # 1. Acquire semaphore for concurrency control
         with _DOWNLOAD_SEMAPHORE:
@@ -1613,7 +1613,7 @@ class AnnaSource:
             except Exception:
                 pass
 
-        logger.debug("Saved download to %s", final_path)
+        logger.info("Saved download to %s", final_path)
         return final_path
 # ----------------------------------------------------------------------
 # Helper for feeds / auto flows: pick best result given allowed formats

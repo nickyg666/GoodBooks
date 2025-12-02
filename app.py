@@ -83,6 +83,7 @@ _SEARCH_CACHE_LOCK = threading.Lock()
 
 # In-memory mirror of disk-backed search cache
 _SEARCH_CACHE_LOADED = False
+_SEARCH_CACHE_MTIME: float = 0.0
 _SEARCH_CACHE: Dict[str, Dict] = {}
 
 # Configure logging based on settings
@@ -161,9 +162,25 @@ def resolve_download_dir(path_str: str) -> Path:
 
 def _load_search_cache() -> Dict[str, Dict]:
     """Load search cache from disk once into _SEARCH_CACHE."""
-    global _SEARCH_CACHE_LOADED, _SEARCH_CACHE
+    global _SEARCH_CACHE_LOADED, _SEARCH_CACHE, _SEARCH_CACHE_MTIME
+
+    current_mtime = 0.0
+    try:
+        if SEARCH_CACHE_PATH.exists():
+            current_mtime = SEARCH_CACHE_PATH.stat().st_mtime
+    except OSError:
+        current_mtime = 0.0
+
+    # If we already loaded but the on-disk cache was removed or refreshed,
+    # reset the in-memory copy so we don't reuse stale, possibly sanitized
+    # queries after manual cache cleanup.
     if _SEARCH_CACHE_LOADED:
-        return _SEARCH_CACHE
+        if current_mtime != _SEARCH_CACHE_MTIME:
+            _SEARCH_CACHE_LOADED = False
+            _SEARCH_CACHE = {}
+            _SEARCH_CACHE_MTIME = current_mtime
+        else:
+            return _SEARCH_CACHE
 
     if SEARCH_CACHE_PATH.exists():
         try:
@@ -174,6 +191,7 @@ def _load_search_cache() -> Dict[str, Dict]:
     else:
         _SEARCH_CACHE = {}
 
+    _SEARCH_CACHE_MTIME = current_mtime
     _SEARCH_CACHE_LOADED = True
     return _SEARCH_CACHE
 
@@ -185,8 +203,30 @@ def _save_search_cache() -> None:
     try:
         SEARCH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         SEARCH_CACHE_PATH.write_text(json.dumps(_SEARCH_CACHE, indent=2))
+        try:
+            _SEARCH_CACHE_MTIME = SEARCH_CACHE_PATH.stat().st_mtime
+        except OSError:
+            pass
     except Exception:
         logger.exception("Failed to save search cache to %s", SEARCH_CACHE_PATH)
+
+
+def _humanize_query_text(text: str) -> str:
+    """
+    Restore spacing/punctuation that may have been removed from filenames.
+
+    This intentionally avoids "sanitizing" by adding separators back in so
+    background jobs (library metadata backfill, feed warm-up) search with
+    human-readable titles instead of slugified strings.
+    """
+    if not text:
+        return ""
+
+    candidate = html.unescape(str(text))
+    candidate = candidate.replace("_", " ").replace("+", " ").replace("-", " ")
+    candidate = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", candidate)
+    candidate = " ".join(candidate.split())
+    return candidate or str(text)
 
 
 def search_with_cache(
@@ -649,7 +689,7 @@ def build_library_entries() -> List[Dict]:
             key = f"{str(root.resolve())}::{rel_unix}"
 
             meta = metadata.get(key, {})
-            title = meta.get("title") or path.stem
+            title = meta.get("title") or _humanize_query_text(path.stem)
             author = meta.get("author", "")
             cover = meta.get("cover", "")
             filetype = (meta.get("filetype") or path.suffix.lstrip(".")).lower()
@@ -892,8 +932,16 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
 
     # ---------- 1) Always make sure basics are set ----------
     meta.setdefault("id", library_id)
-    meta.setdefault("title", entry.get("title", ""))
-    meta.setdefault("author", entry.get("author", ""))
+    raw_title = entry.get("title", "")
+    raw_author = entry.get("author", "")
+
+    # Prefer a human-friendly version of slugged filenames so downstream
+    # searches keep spaces and punctuation intact.
+    human_title = _humanize_query_text(raw_title) if raw_title else ""
+    human_author = _humanize_query_text(raw_author) if raw_author else ""
+
+    meta.setdefault("title", human_title or raw_title)
+    meta.setdefault("author", human_author or raw_author)
     meta.setdefault("path", entry.get("path", ""))
     meta.setdefault("filetype", entry.get("filetype", ""))
     meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
@@ -915,7 +963,7 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
 
     if needs_rich_fields:
         try:
-            query = f"{entry.get('title', '')} {entry.get('author', '')}".strip()
+            query = f"{human_title or raw_title} {human_author or raw_author}".strip()
             if query:
                 # Make a small, format-aware search
                 allowed_formats = [entry.get("filetype", "epub") or "epub"]
@@ -2211,7 +2259,7 @@ def run_feeds():
                 query=query,
                 language="en",
                 extensions=feed.filetypes,
-                autodownload=False,
+                autodownload=True,
                 preferred_formats=feed.filetypes,
                 kindle_type=user.kindle_type,
             )
@@ -2234,7 +2282,7 @@ def run_feeds():
                     query=item.title,
                     language="en",
                     extensions=feed.filetypes,
-                    autodownload=False,
+                    autodownload=True,
                     preferred_formats=feed.filetypes,
                     kindle_type=user.kindle_type,
                 )

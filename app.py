@@ -211,6 +211,24 @@ def _save_search_cache() -> None:
         logger.exception("Failed to save search cache to %s", SEARCH_CACHE_PATH)
 
 
+def _humanize_query_text(text: str) -> str:
+    """
+    Restore spacing/punctuation that may have been removed from filenames.
+
+    This intentionally avoids "sanitizing" by adding separators back in so
+    background jobs (library metadata backfill, feed warm-up) search with
+    human-readable titles instead of slugified strings.
+    """
+    if not text:
+        return ""
+
+    candidate = html.unescape(str(text))
+    candidate = candidate.replace("_", " ").replace("+", " ").replace("-", " ")
+    candidate = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", candidate)
+    candidate = " ".join(candidate.split())
+    return candidate or str(text)
+
+
 def search_with_cache(
     query: str,
     options: SearchOptions,
@@ -675,7 +693,7 @@ def build_library_entries() -> List[Dict]:
             key = f"{str(root.resolve())}::{rel_unix}"
 
             meta = metadata.get(key, {})
-            title = meta.get("title") or path.stem
+            title = meta.get("title") or _humanize_query_text(path.stem)
             author = meta.get("author", "")
             cover = meta.get("cover", "")
             filetype = (meta.get("filetype") or path.suffix.lstrip(".")).lower()

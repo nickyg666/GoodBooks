@@ -65,6 +65,7 @@ class Settings:
     log_level: str = "INFO"
     server_port: int = 5000
     request_timeout: int = 60
+    notify_library_updates: bool = True
 
     # Library configuration
     # If library_root is empty, fall back to default_download_dir.
@@ -147,6 +148,7 @@ class SettingsManager:
         log_level = data.get("log_level", "INFO")
         server_port = int(data.get("server_port", 5000))
         request_timeout = int(data.get("request_timeout", 60))
+        notify_library_updates = bool(data.get("notify_library_updates", True))
 
         library_root = data.get("library_root", "")
         library_extra_dirs = data.get("library_extra_dirs", []) or []
@@ -171,6 +173,7 @@ class SettingsManager:
             library_default_sort=library_default_sort,
             max_feed_workers=max_feed_workers,
             max_concurrent_downloads=max_concurrent_downloads,
+            notify_library_updates=notify_library_updates,
         )
 
     def save(self) -> None:
@@ -189,6 +192,7 @@ class SettingsManager:
             "library_default_sort": self.settings.library_default_sort,
             "max_feed_workers": self.settings.max_feed_workers,
             "max_concurrent_downloads": self.settings.max_concurrent_downloads,
+            "notify_library_updates": self.settings.notify_library_updates,
             "users": [],
         }
 
@@ -353,6 +357,11 @@ class SettingsManager:
                 self.settings.max_concurrent_downloads or 2,
             )
         )
+        notify_library_updates = form.get("notify-library-updates", "") in {
+            "1",
+            "on",
+            "true",
+        }
 
         self.settings = Settings(
             users=users,
@@ -367,6 +376,7 @@ class SettingsManager:
             library_default_sort=library_default_sort,
             max_feed_workers=max_feed_workers,
             max_concurrent_downloads=max_concurrent_downloads,
+            notify_library_updates=notify_library_updates,
         )
         self.save()
 

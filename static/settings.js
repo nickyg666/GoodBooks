@@ -5,7 +5,8 @@ function buildFeed(feed, userIndex, feedIndex) {
     const wrapper = document.createElement('div');
     wrapper.className = 'feed';
     wrapper.id = `feed-${userIndex}-${feedIndex}`;
-
+    const saveDir = feed.save_dir || '';
+    const autoSend = !!feed.auto_send_to_kindle;
     wrapper.innerHTML = `
         <hr class="feed-divider">
         <div class="form-grid">
@@ -30,6 +31,23 @@ function buildFeed(feed, userIndex, feedIndex) {
                        value="${(feed.filetypes || []).join(', ')}">
             </label>
         </div>
+
+
+        <div class="form-grid">
+            <label class="feed-save-dir ${feed.mode === 'html' ? '' : 'hidden'}">
+                Save directory (HTML feeds only)
+                <input type="text"
+                       name="user-${userIndex}-feed-${feedIndex}-save_dir"
+                       value="${saveDir}">
+            </label>
+            <label>
+                <input type="checkbox"
+                       name="user-${userIndex}-feed-${feedIndex}-auto_send_to_kindle"
+                       ${autoSend ? 'checked' : ''}>
+                Auto-send to Kindle for this feed
+            </label>
+        </div>
+        
         <input type="hidden"
                name="user-${userIndex}-feed-${feedIndex}-removed"
                value="0"
@@ -49,7 +67,8 @@ function buildUser(user, index) {
     const container = document.createElement('div');
     container.className = 'card nested';
     const kindleType = user.kindle_type || 'paperwhite';
-
+        const autoSend = !!user.auto_send_to_kindle;
+    
     container.innerHTML = `
         <div class="form-grid">
             <label>
@@ -78,6 +97,12 @@ function buildUser(user, index) {
             <label>
                 Notification Email
                 <input type="email" name="user-${index}-notification_email" value="${user.notification_email || ''}">
+            </label>
+            <label>
+                <input type="checkbox"
+                        name="user-${index}-auto_send_to_kindle"
+                        ${autoSend ? 'checked' : ''}>
+                Auto-send to Kindle by default
             </label>
         </div>
         <div class="feeds" id="feeds-${index}"></div>
@@ -113,13 +138,16 @@ function serializeUsers() {
             url: feedEl.querySelector('input[name$="-url"]')?.value || '',
             mode: feedEl.querySelector('select[name$="-mode"]')?.value || 'rss',
             filetypes: (feedEl.querySelector('input[name$="-filetypes"]')?.value || ''),
+            save_dir: feedEl.querySelector('input[name$="-save_dir"]')?.value || '',
+            auto_send_to_kindle: !!feedEl.querySelector('input[name$="-auto_send_to_kindle"]')?.checked,
         }));
         return {
             name: getValue('input[name$="-name"]'),
             save_dir: getValue('input[name$="-save_dir"]'),
-            kindle_type: getValue('input[name$="-kindle_type"]'),
+            kindle_type: getValue('select[name$="-kindle_type"]') || 'paperwhite',
             kindle_email: getValue('input[name$="-kindle_email"]'),
             notification_email: getValue('input[name$="-notification_email"]'),
+            auto_send_to_kindle: !!card.querySelector('input[name$="-auto_send_to_kindle"]')?.checked,
             feeds,
         };
     });

@@ -35,20 +35,13 @@
                 {% endfor %}
             </div>
         </div>
-        <div class="filter-group">
-            <span>Sources</span>
-            <div class="chip-list">
-                {% for value, label in available_sources %}
-                <label class="chip">
-                    <input type="checkbox" name="acc" value="{{ value }}" {% if value in selected_sources %}checked{% endif %}>
-                    <span>{{ label }}</span>
-                </label>
-                {% endfor %}
-            </div>
-        </div>
         <label class="checkbox">
             <input type="checkbox" name="autodownload" value="1" {% if autodownload %}checked{% endif %}>
             <span>Autodownload</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="autosend" value="1" {% if autosend %}checked{% endif %}>
+            <span>Auto-send to Kindle</span>
         </label>
         <button type="submit" class="primary">Search</button>
     </form>
@@ -60,7 +53,7 @@
     <div class="grid results-grid">
         {% for result in results %}
         <div class="result">
-            <img src="{{ result.cover }}" alt="Cover" onerror="this.style.display='none'" />
+            <img src="{{ result.cover }}" alt="Cover" onerror="this.style.display='none'"  loading="lazy" />
             <div class="meta">
                 <h3>{{ result.title }}</h3>
                 <p class="muted">{{ result.author }}</p>
@@ -89,6 +82,35 @@
         </div>
         {% endfor %}
     </div>
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for(
+            'search',
+            q=query,
+            user=user_id or none,
+            lang=selected_language,
+            page=page-1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none,
+            ext=selected_ext
+        ) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for(
+            'search',
+            q=query,
+            user=user_id or none,
+            lang=selected_language,
+            page=page+1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none,
+            ext=selected_ext
+        ) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 

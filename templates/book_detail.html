@@ -6,7 +6,7 @@
 
     <div class="result" style="margin-top: 1rem;">
         {% if entry.cover %}
-        <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+        <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'" loading="lazy">
         {% endif %}
         <div class="meta">
             {% if entry.author %}

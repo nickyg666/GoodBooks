@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Feed Items</h1>
+    <p class="muted">
+        This page shows items discovered in your configured feeds, grouped by user.
+        Nothing is downloaded automatically here; use the search/manual download
+        flow to fetch specific items.
+    </p>
+</div>
+
+{% if feed_groups %}
+{% for username, items in feed_groups.items() %}
+<div class="card">
+    <h2>{{ username }}</h2>
+    <div class="grid results-grid">
+        {% for item in items %}
+        <div class="result">
+            {% if item.cover %}
+            <img src="{{ item.cover }}" alt="Cover" onerror="this.style.display='none'" loading="lazy" />
+            {% endif %}
+            <div class="meta">
+                <h3>{{ item.title }}</h3>
+                {% if item.author %}
+                <p class="muted">{{ item.author }}</p>
+                {% endif %}
+                {% if item.link %}
+                <p><a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">Open source</a></p>
+                {% endif %}
+                {% if item.description %}
+                <p>{{ item.description }}</p>
+                {% endif %}
+                <form method="get" action="{{ url_for('search') }}" class="inline" style="margin-top: 0.5rem;">
+                    <input type="hidden" name="q" value="{{ item.title }} {{ item.author }}">
+                    <button type="submit">Search &amp; Download</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+    <p>No feed items found. Try running your feeds or adjusting feed settings.</p>
+</div>
+{% endif %}
+
+{% if debug_log %}
+<div class="card">
+    <h2>Debug</h2>
+    <pre class="debug">{{ debug_log|join('\n') }}</pre>
+</div>
+{% endif %}
+{% endblock %}

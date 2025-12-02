@@ -91,6 +91,17 @@
             </div>
             <div class="form-grid" style="margin-top: 1rem;">
                 <label>
+                    Max concurrent downloads
+                    <input type="number"
+                           name="max-concurrent-downloads"
+                           min="1"
+                           max="16"
+                           value="{{ settings.max_concurrent_downloads }}">
+                </label>
+            </div>
+            
+            <div class="form-grid" style="margin-top: 1rem;">
+                <label>
                     Additional library folders (one per line)
                     <textarea name="library-extra-dirs" rows="3" placeholder="/mnt/books/extra1&#10;/mnt/books/extra2">{% for p in settings.library_extra_dirs %}{{ p }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
                 </label>

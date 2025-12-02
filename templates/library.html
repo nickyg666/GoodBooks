@@ -4,6 +4,13 @@
 <div class="card">
     <h1>Library</h1>
 
+    <div id="library-multi-actions" class="library-multi-actions hidden">
+        <span id="library-multi-count">0 selected</span>
+        <button type="button" id="library-multi-send" class="primary">
+            Send selected to Kindle
+        </button>
+    </div>
+
     <form method="get" class="form-grid" style="margin-bottom: 1rem;">
         <input type="hidden" name="prefix" value="{{ prefix }}">
 
@@ -21,7 +28,7 @@
         <label>
             <span>Genre</span>
             <select name="genre">
-                <option value="">All genres</option>
+                <option value="">Any</option>
                 {% for g in genre_options %}
                 <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>
                     {{ g }}
@@ -33,7 +40,7 @@
         <label>
             <span>Author</span>
             <select name="author">
-                <option value="">All authors</option>
+                <option value="">Any</option>
                 {% for a in author_options %}
                 <option value="{{ a }}" {% if a == author_filter %}selected{% endif %}>
                     {{ a }}
@@ -42,27 +49,41 @@
             </select>
         </label>
 
-        <label style="align-self: flex-end;">
-            <span>Direct download only</span>
-            <input type="checkbox" name="direct_only" {% if direct_only %}checked{% endif %}>
+        <label class="checkbox">
+            <input type="checkbox" name="direct_only" value="on" {% if direct_only %}checked{% endif %}>
+            <span>I'm on my kindle</span>
         </label>
 
         <div style="align-self: flex-end; display: flex; gap: 0.5rem;">
             <button type="submit" class="secondary">Apply</button>
-            <a href="{{ url_for('index', prefix=prefix or none, sort=sort_key) }}" class="secondary">
+            <a href="{{ url_for('index', prefix=prefix or none, sort=sort_key) }}" class="button">
                 Clear filters
             </a>
         </div>
     </form>
 
+    {# Folder cards row #}
     {% if folder_cards and not filters_active %}
     <div class="grid results-grid" style="margin-bottom: 1rem;">
         {% for folder in folder_cards %}
-        <div class="card library-card folder-card">
+        <div class="card library-card folder-card" data-folder-prefix="{{ folder.prefix }}">
+            <div class="library-select">
+                <input type="checkbox"
+                       class="library-select-checkbox"
+                       data-folder-prefix="{{ folder.prefix }}">
+            </div>
             <div class="library-cover">
                 <a href="{{ url_for('index', prefix=folder.prefix, sort=sort_key) }}" class="library-cover-link">
                     <div class="cover-placeholder folder-placeholder">
                         <span>📁 {{ folder.name }}</span>
+                    </div>
+                    <div class="library-cover-overlay">
+                        <span class="library-status-chip">
+                            Folder
+                        </span>
+                        <div class="library-title-overlay">
+                            {{ folder.name }}
+                        </div>
                     </div>
                 </a>
             </div>
@@ -71,40 +92,61 @@
     </div>
     {% endif %}
 
+    {# Book cards #}
     {% if entries %}
     <div class="grid results-grid">
         {% for entry in entries %}
-        <div class="card library-card">
+        <div class="card library-card" data-entry-id="{{ entry.id }}">
+            <div class="library-select">
+                <input type="checkbox"
+                       class="library-select-checkbox"
+                       data-entry-id="{{ entry.id }}">
+            </div>
+
             <div class="library-cover">
                 <a href="{{ url_for('book_detail', entry_id=entry.id) }}" class="library-cover-link">
                     {% if entry.cover %}
-                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'" loading="lazy">
                     {% else %}
                     <div class="cover-placeholder">
                         <span>{{ entry.title }}</span>
                     </div>
                     {% endif %}
+                    <div class="library-cover-overlay">
+                        {% if entry.is_direct %}
+                        <button type="button"
+                                class="library-status-chip chip chip-compact"
+                                data-action="library-direct-download"
+                                data-entry-id="{{ entry.id }}">
+                            Direct DL
+                        </button>
+                        {% else %}
+                        <button type="button"
+                                class="library-status-chip chip chip-compact"
+                                data-action="library-send-kindle"
+                                data-entry-id="{{ entry.id }}">
+                            Send to Kindle
+                        </button>
+                        {% endif %}
+                        <div class="library-title-overlay">
+                            {{ entry.title }}
+                            {% if entry.author %}
+                                <span class="library-title-author"> by {{ entry.author }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </a>
             </div>
-            <div class="library-meta">
-                <div class="library-title">{{ entry.title }}</div>
-                {% if entry.author %}
-                <div class="library-author">{{ entry.author }}</div>
-                {% endif %}
 
-                <div class="library-chips">
-                    {% if entry.is_direct %}
-                    <a href="{{ url_for('library_direct_download', entry_id=entry.id) }}" class="chip">
-                        Direct DL
-                    </a>
-                    {% else %}
-                    <button type="button" class="chip"
-                            data-action="send-kindle"
-                            data-entry-id="{{ entry.id }}">
-                        Send to Kindle
-                    </button>
-                    {% endif %}
+            <div class="library-meta">
+                {# You can keep any extra info here if you like, but no duplicated chips #}
+                {% if entry.tags %}
+                <div class="library-tags">
+                    {% for tag in entry.tags %}
+                    <span class="chip chip-compact">{{ tag }}</span>
+                    {% endfor %}
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -142,7 +184,7 @@
     {% endif %}
 </div>
 
-{# Send-to-Kindle modal #}
+{# Single send-to-Kindle modal #}
 <div id="send-modal" class="modal hidden">
     <div class="card">
         <h2>Send to Kindle</h2>
@@ -158,7 +200,7 @@
                 </select>
             </label>
 
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <div class="actions">
                 <button type="submit" class="primary">Send</button>
                 <button type="button" class="secondary" id="send-cancel">Cancel</button>
             </div>
@@ -166,24 +208,160 @@
     </div>
 </div>
 
+{# Batch send modal #}
+<div id="batch-modal" class="modal hidden">
+    <div class="card">
+        <h2>Send selected to Kindle</h2>
+        <form method="post" action="{{ url_for('library_send_batch') }}">
+            <input type="hidden" name="entry_ids" id="batch-entry-ids">
+            <input type="hidden" name="folder_prefixes" id="batch-folder-prefixes">
+
+            <label>
+                <span>User</span>
+                <select name="user_name" required>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div class="actions">
+                <button type="submit" class="primary">Send</button>
+                <button type="button" class="secondary" id="batch-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Single-item send modal
     const modal = document.getElementById('send-modal');
     const entryInput = document.getElementById('send-entry-id');
     const cancelBtn = document.getElementById('send-cancel');
 
+    // Batch modal
+    const batchModal = document.getElementById('batch-modal');
+    const batchEntryInput = document.getElementById('batch-entry-ids');
+    const batchFolderInput = document.getElementById('batch-folder-prefixes');
+    const batchCancelBtn = document.getElementById('batch-cancel');
+
+    // Multi-selection bar
+    const multiBar = document.getElementById('library-multi-actions');
+    const multiCount = document.getElementById('library-multi-count');
+    const multiSendBtn = document.getElementById('library-multi-send');
+
+    function getSelection() {
+        const checkboxes = document.querySelectorAll('.library-select-checkbox');
+        const entryIds = [];
+        const folderPrefixes = [];
+        checkboxes.forEach((cb) => {
+            if (!cb.checked) return;
+            const entryId = cb.getAttribute('data-entry-id');
+            const folderPrefix = cb.getAttribute('data-folder-prefix');
+            if (entryId) {
+                entryIds.push(entryId);
+            } else if (folderPrefix) {
+                folderPrefixes.push(folderPrefix);
+            }
+        });
+        return { entryIds, folderPrefixes, total: entryIds.length + folderPrefixes.length };
+    }
+
+    function updateSelectionUI() {
+        const { total } = getSelection();
+        if (!multiBar) return;
+        if (total > 0) {
+            multiBar.classList.remove('hidden');
+            if (multiCount) {
+                multiCount.textContent = total + ' selected';
+            }
+        } else {
+            multiBar.classList.add('hidden');
+        }
+    }
+
+    // Attach change handlers to selection checkboxes
+    document.body.addEventListener('change', function (ev) {
+        const cb = ev.target.closest('.library-select-checkbox');
+        if (!cb) return;
+        const card = cb.closest('.library-card');
+        if (card) {
+            if (cb.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+        updateSelectionUI();
+    });
+
+    // Allow clicking on empty card area to toggle selection
     document.body.addEventListener('click', function (ev) {
-        const button = ev.target.closest('[data-action="send-kindle"]');
+        const card = ev.target.closest('.library-card');
+        if (!card) return;
+
+        // Don't toggle when clicking interactive elements
+        if (ev.target.closest('a, button, input, select, textarea, label')) {
+            return;
+        }
+
+        const cb = card.querySelector('.library-select-checkbox');
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Single-send button (we rely on overlay chip being informational only;
+    // use the existing card click + modal instead of a separate chip button)
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="library-send-kindle"]');
         if (!button) return;
         const entryId = button.getAttribute('data-entry-id');
         if (!entryId) return;
-        entryInput.value = entryId;
-        modal.classList.remove('hidden');
+        if (entryInput) {
+            entryInput.value = entryId;
+        }
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    });
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="library-direct-download"]');
+        if (!button) return;
+        const entryId = button.getAttribute('data-entry-id');
+        if (!entryId) return;
+        // Navigate to direct download route for this entry
+        const url = `/library/download/${encodeURIComponent(entryId)}`;
+        window.location.href = url;
     });
 
-    if (cancelBtn) {
+
+    if (cancelBtn && modal) {
         cancelBtn.addEventListener('click', function () {
             modal.classList.add('hidden');
+        });
+    }
+
+    if (batchCancelBtn && batchModal) {
+        batchCancelBtn.addEventListener('click', function () {
+            batchModal.classList.add('hidden');
+        });
+    }
+
+    if (multiSendBtn && batchModal) {
+        multiSendBtn.addEventListener('click', function () {
+            const { entryIds, folderPrefixes, total } = getSelection();
+            if (!total) {
+                return;
+            }
+            if (batchEntryInput) {
+                batchEntryInput.value = entryIds.join(',');
+            }
+            if (batchFolderInput) {
+                batchFolderInput.value = folderPrefixes.join(',');
+            }
+            batchModal.classList.remove('hidden');
         });
     }
 });

@@ -132,7 +132,94 @@ def _check_cloudflare_status(page) -> str:
     
     return "SUCCESS"
 
+def resolve_slow_download_link(url: str, timeout: int) -> Optional[str]:
+    """
+    Uses the stealth browser to navigate a slow_download page, solve the
+    challenge, and extract the final, direct download URL (e.g., momot.rs).
 
+    Returns:
+        The final direct download URL string, or None if challenge fails or
+        link extraction fails.
+    """
+    with launch_stealth_browser(DEFAULT_BROWSER) as browser:
+        # Use a random user agent from the pool for context
+        user_agent = _next_user_agent()
+        
+        # Configure the browser context for stealth operations
+        context = browser.new_context(
+            user_agent=user_agent,
+            viewport={"width": 1920, "height": 1080}
+        )
+        # Apply stealth to the context
+        page = context.new_page()
+
+        try:
+            # Load the page and wait for initial network activity to settle
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
+            
+            start_time = time.time()
+            status = _check_cloudflare_status(page) # Initial check
+
+            logger.debug("Initial Cloudflare check for %s: %s", url, status)
+
+            # Wait for challenge resolution (using timeout from settings)
+            while (time.time() - start_time) < (timeout - 5) and status == "CHALLENGED":
+                # Check status title every 3 seconds
+                time.sleep(3) 
+                status = _check_cloudflare_status(page)
+                if status in {"SUCCESS", "BLOCKED"}:
+                    logger.debug("Network settled after challenge resolution.")
+                    break
+            
+            # --- Link Extraction Logic (Only if SUCCESS) ---
+            if status == "SUCCESS":
+                logger.info("Challenge solved for %s", url)
+                # Give the page a moment to fully render after the redirect/challenge completion
+                page.wait_for_load_state("networkidle", timeout=10000) 
+                
+                # Selector for the final direct download link
+                DOWNLOAD_LINK_SELECTOR = "a[href*='momot.rs'], a[href*='cloudflare-ipfs.com'], a[href*='api.annas-archive.org/slow_download']"
+
+                try:
+                    # Wait for the specific download link element to be available
+                    link_element = page.wait_for_selector(
+                        DOWNLOAD_LINK_SELECTOR, 
+                        timeout=5000, 
+                        state="attached" 
+                    ) 
+                    
+                    # Extract the href attribute
+                    download_link = link_element.get_attribute("href")
+                    
+                    if download_link:
+                        logger.debug("Successfully extracted download link: %s", download_link)
+                        # CRITICAL: Return the final URL string directly
+                        return download_link 
+                    else:
+                        logger.warning("Found anchor element but no href attribute.")
+
+                except TimeoutError:
+                    # Log a warning that link extraction failed
+                    logger.warning(
+                        "Timed out waiting (5s) for download link selector after challenge success."
+                    )
+                
+                return None # Failed to extract the final URL
+
+            if status == "BLOCKED":
+                logger.warning("Access permanently blocked to %s", url)
+                return None
+
+            logger.warning("Timed out waiting for challenge to resolve for %s", url)
+            return None
+        
+        except TimeoutError:
+            logger.error("Navigation or wait timed out for %s", url)
+            return None
+            
+        finally:
+            browser.close()
+            
 def solve_cloudflare_challenge(
     url: str,
     timeout: int = 90, 
@@ -201,7 +288,7 @@ def solve_cloudflare_challenge(
                     # Wait for selector and get the element
                     link_element = page.wait_for_selector(
                         DOWNLOAD_LINK_SELECTOR, 
-                        timeout=5000, 
+                        timeout=10000, 
                         state="attached" 
                     ) 
                     

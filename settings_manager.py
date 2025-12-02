@@ -8,8 +8,12 @@ from typing import Dict, List
 @dataclass
 class FeedSettings:
     url: str
-    mode: str = "rss"  # rss or html
+    mode: str = "rss"  # "rss" or "html"
     filetypes: List[str] = field(default_factory=list)
+    # HTML-only save directory override; ignored for RSS feeds.
+    save_dir: str = ""
+    # Per-feed auto-send to Kindle toggle.
+    auto_send_to_kindle: bool = False
 
 
 @dataclass
@@ -20,6 +24,8 @@ class UserSettings:
     kindle_email: str = ""
     notification_email: str = ""
     feeds: List[FeedSettings] = field(default_factory=list)
+    # Default behavior when this user is selected in the UI.
+    auto_send_to_kindle: bool = False
 
 
 @dataclass
@@ -28,15 +34,19 @@ class SMTPSettings:
     port: int = 587
     username: str = ""
     password: str = ""
-    use_tls: bool = True
     from_email: str = ""
+    use_tls: bool = True
 
     def is_configured(self) -> bool:
-        return bool(self.host and self.username and self.from_email)
+        return bool(self.host and self.from_email)
 
-    def send(self, msg):
+    def send(self, msg) -> None:
+        """
+        Send an EmailMessage using the configured SMTP settings.
+        """
         if not self.is_configured():
             return
+
         import smtplib
 
         with smtplib.SMTP(self.host, self.port) as server:
@@ -63,8 +73,10 @@ class Settings:
     library_items_per_page: int = 50
     library_default_sort: str = "date_newest"
 
-    # Threading / feed workers
+    # Threading / concurrency
     max_feed_workers: int = 4
+    max_concurrent_downloads: int = 2
+
 
 class SettingsManager:
     def __init__(self, path: Path):
@@ -72,56 +84,100 @@ class SettingsManager:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.settings = self._load()
 
+    # ------------------------------------------------------------------
+    # Load / save
+    # ------------------------------------------------------------------
     def _load(self) -> Settings:
         if not self.path.exists():
             return Settings()
-        data = json.loads(self.path.read_text())
+
+        try:
+            data = json.loads(self.path.read_text())
+        except json.JSONDecodeError:
+            return Settings()
 
         smtp = SMTPSettings(**data.get("smtp", {}))
-        users = [
-            UserSettings(
-                name=u.get("name", ""),
-                save_dir=u.get("save_dir", "downloads"),
-                kindle_type=u.get("kindle_type", "paperwhite"),
-                kindle_email=u.get("kindle_email", ""),
-                notification_email=u.get("notification_email", ""),
-                feeds=[FeedSettings(**feed) for feed in u.get("feeds", [])],
+
+        users: List[UserSettings] = []
+        for u in data.get("users", []):
+            # Per-user auto-send, default False if not present.
+            user_auto_send = bool(u.get("auto_send_to_kindle", False))
+
+            feeds: List[FeedSettings] = []
+            for f in u.get("feeds", []):
+                raw_filetypes = f.get("filetypes", [])
+                if isinstance(raw_filetypes, str):
+                    filetypes = [
+                        ft.strip()
+                        for ft in raw_filetypes.split(",")
+                        if ft.strip()
+                    ]
+                else:
+                    filetypes = [
+                        str(ft).strip()
+                        for ft in raw_filetypes
+                        if str(ft).strip()
+                    ]
+
+                feeds.append(
+                    FeedSettings(
+                        url=f.get("url", ""),
+                        mode=f.get("mode", "rss"),
+                        filetypes=filetypes,
+                        save_dir=f.get("save_dir", ""),
+                        auto_send_to_kindle=bool(
+                            f.get("auto_send_to_kindle", False)
+                        ),
+                    )
+                )
+
+            users.append(
+                UserSettings(
+                    name=u.get("name", ""),
+                    save_dir=u.get("save_dir", "downloads"),
+                    kindle_type=u.get("kindle_type", "paperwhite"),
+                    kindle_email=u.get("kindle_email", ""),
+                    notification_email=u.get("notification_email", ""),
+                    feeds=feeds,
+                    auto_send_to_kindle=user_auto_send,
+                )
             )
-            for u in data.get("users", [])
-        ]
 
         default_download_dir = data.get("default_download_dir", "downloads")
+        log_level = data.get("log_level", "INFO")
+        server_port = int(data.get("server_port", 5000))
+        request_timeout = int(data.get("request_timeout", 60))
 
-        # Library + threading config, with safe defaults
-        library_root = data.get("library_root", "") or default_download_dir
-        library_extra_dirs = data.get("library_extra_dirs", [])
+        library_root = data.get("library_root", "")
+        library_extra_dirs = data.get("library_extra_dirs", []) or []
         library_items_per_page = int(data.get("library_items_per_page", 50))
         library_default_sort = data.get("library_default_sort", "date_newest")
+
         max_feed_workers = int(data.get("max_feed_workers", 4))
+        max_concurrent_downloads = int(
+            data.get("max_concurrent_downloads", 2)
+        )
 
         return Settings(
             users=users,
             default_download_dir=default_download_dir,
             smtp=smtp,
-            log_level=data.get("log_level", "INFO"),
-            server_port=int(data.get("server_port", 5000)),
-            request_timeout=int(data.get("request_timeout", 60)),
+            log_level=log_level,
+            server_port=server_port,
+            request_timeout=request_timeout,
             library_root=library_root,
             library_extra_dirs=library_extra_dirs,
             library_items_per_page=library_items_per_page,
             library_default_sort=library_default_sort,
             max_feed_workers=max_feed_workers,
+            max_concurrent_downloads=max_concurrent_downloads,
         )
 
-    def save(self):
-        payload = {
-            "users": [
-                {
-                    **asdict(user),
-                    "feeds": [asdict(feed) for feed in user.feeds],
-                }
-                for user in self.settings.users
-            ],
+    def save(self) -> None:
+        """
+        Serialize current settings to JSON.
+        """
+        data: Dict[str, object] = {
             "default_download_dir": self.settings.default_download_dir,
             "smtp": asdict(self.settings.smtp),
             "log_level": self.settings.log_level,
@@ -132,10 +188,22 @@ class SettingsManager:
             "library_items_per_page": self.settings.library_items_per_page,
             "library_default_sort": self.settings.library_default_sort,
             "max_feed_workers": self.settings.max_feed_workers,
+            "max_concurrent_downloads": self.settings.max_concurrent_downloads,
+            "users": [],
         }
-        self.path.write_text(json.dumps(payload, indent=2))
 
-    def update_from_form(self, form: Dict[str, str]):
+        for user in self.settings.users:
+            user_dict = asdict(user)
+            # Ensure feeds are serialized as simple dicts
+            user_dict["feeds"] = [asdict(f) for f in user.feeds]
+            data["users"].append(user_dict)
+
+        self.path.write_text(json.dumps(data, indent=2))
+
+    # ------------------------------------------------------------------
+    # Update from HTML form
+    # ------------------------------------------------------------------
+    def update_from_form(self, form: Dict[str, str]) -> None:
         users: List[UserSettings] = []
         user_count = int(form.get("user-count", 0))
 
@@ -146,9 +214,17 @@ class SettingsManager:
                 continue
 
             save_dir = form.get(prefix + "save_dir", "downloads").strip()
+            if not save_dir:
+                save_dir = "downloads"
+
             kindle_type = form.get(prefix + "kindle_type", "paperwhite")
             kindle_email = form.get(prefix + "kindle_email", "").strip()
-            notification_email = form.get(prefix + "notification_email", "").strip()
+            notification_email = form.get(
+                prefix + "notification_email", ""
+            ).strip()
+            auto_send_to_kindle = form.get(
+                prefix + "auto_send_to_kindle", ""
+            ) in {"1", "on", "true"}
 
             feeds: List[FeedSettings] = []
             feed_count = int(form.get(prefix + "feed-count", 0))
@@ -156,26 +232,40 @@ class SettingsManager:
                 feed_prefix = f"{prefix}feed-{j}-"
                 removed = form.get(feed_prefix + "removed", "0") == "1"
                 if removed:
-                    # Skip feeds flagged for removal in the UI
                     continue
 
                 url = form.get(feed_prefix + "url", "").strip()
                 if not url:
                     continue
 
-                mode = form.get(feed_prefix + "mode", "rss")
-                filetypes_str = form.get(feed_prefix + "filetypes", "").strip()
-                filetypes = [
-                    ft.strip()
-                    for ft in filetypes_str.split(",")
-                    if ft.strip()
-                ]
+                mode = form.get(feed_prefix + "mode", "rss").strip() or "rss"
+                filetypes_str = form.get(
+                    feed_prefix + "filetypes", ""
+                ).strip()
+                if filetypes_str:
+                    filetypes = [
+                        ft.strip()
+                        for ft in filetypes_str.split(",")
+                        if ft.strip()
+                    ]
+                else:
+                    filetypes = []
+
+                # HTML-only save dir and per-feed auto-send
+                save_dir_override = form.get(
+                    feed_prefix + "save_dir", ""
+                ).strip()
+                feed_auto_send = form.get(
+                    feed_prefix + "auto_send_to_kindle", ""
+                ) in {"1", "on", "true"}
 
                 feeds.append(
                     FeedSettings(
                         url=url,
                         mode=mode,
                         filetypes=filetypes,
+                        save_dir=save_dir_override,
+                        auto_send_to_kindle=feed_auto_send,
                     )
                 )
 
@@ -187,23 +277,33 @@ class SettingsManager:
                     kindle_email=kindle_email,
                     notification_email=notification_email,
                     feeds=feeds,
+                    auto_send_to_kindle=auto_send_to_kindle,
                 )
             )
 
+        # SMTP settings
+        current_smtp = self.settings.smtp
         smtp_settings = SMTPSettings(
-            host=form.get("smtp-host", ""),
-            port=int(form.get("smtp-port", 587)),
-            username=form.get("smtp-username", ""),
-            password=form.get("smtp-password", ""),
+            host=form.get("smtp-host", current_smtp.host),
+            port=int(form.get("smtp-port", current_smtp.port or 587)),
+            username=form.get("smtp-username", current_smtp.username),
+            password=form.get("smtp-password", current_smtp.password),
             use_tls=form.get("smtp-use-tls", "on") == "on",
-            from_email=form.get("smtp-from-email", ""),
+            from_email=form.get(
+                "smtp-from-email", current_smtp.from_email
+            ),
         )
 
-        # System-level settings
-        default_download_dir = form.get(
-            "default-download-dir", self.settings.default_download_dir
-        ).strip() or self.settings.default_download_dir
+        # Default download dir
+        default_download_dir = (
+            form.get(
+                "default-download-dir",
+                self.settings.default_download_dir,
+            ).strip()
+            or self.settings.default_download_dir
+        )
 
+        # Log level / server settings
         log_level = form.get("log-level", self.settings.log_level)
         server_port = int(
             form.get("server-port", self.settings.server_port)
@@ -233,17 +333,24 @@ class SettingsManager:
         library_items_per_page = int(
             form.get(
                 "library-items-per-page",
-                self.settings.library_items_per_page,
+                self.settings.library_items_per_page or 50,
             )
         )
         library_default_sort = form.get(
             "library-default-sort",
             self.settings.library_default_sort or "date_newest",
         )
+
         max_feed_workers = int(
             form.get(
                 "max-feed-workers",
                 self.settings.max_feed_workers or 4,
+            )
+        )
+        max_concurrent_downloads = int(
+            form.get(
+                "max-concurrent-downloads",
+                self.settings.max_concurrent_downloads or 2,
             )
         )
 
@@ -259,18 +366,73 @@ class SettingsManager:
             library_items_per_page=library_items_per_page,
             library_default_sort=library_default_sort,
             max_feed_workers=max_feed_workers,
+            max_concurrent_downloads=max_concurrent_downloads,
         )
         self.save()
+
 
 class HistoryManager:
     def __init__(self, path: Path):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        # Simple in-memory cache for history entries so we don't re-read
+        # the JSON file on every request.
+        self._cache: List[Dict] = []
+        self._mtime: float = 0.0
+        self._loaded: bool = False
+
+    def _load_from_disk(self) -> List[Dict]:
+        """Load history entries from disk, updating the in-memory cache."""
+        if not self.path.exists():
+            self._cache = []
+            self._mtime = 0.0
+            self._loaded = True
+            return []
+
+        try:
+            mtime = self.path.stat().st_mtime
+        except OSError:
+            # If we cannot stat the file for some reason, fall back to a direct
+            # read without caching.
+            try:
+                data = json.loads(self.path.read_text())
+            except json.JSONDecodeError:
+                data = []
+            return data
+
+        try:
+            text = self.path.read_text()
+            data = json.loads(text) if text.strip() else []
+        except json.JSONDecodeError:
+            data = []
+
+        self._cache = data
+        self._mtime = mtime
+        self._loaded = True
+        return data
 
     def load(self) -> List[Dict]:
+        if not self._loaded:
+            return self._load_from_disk()
+
         if not self.path.exists():
+            # File was removed after we loaded it; reset cache.
+            self._cache = []
+            self._mtime = 0.0
+            self._loaded = True
             return []
-        return json.loads(self.path.read_text())
+
+        try:
+            mtime = self.path.stat().st_mtime
+        except OSError:
+            # If stat fails, just return the last known cache.
+            return list(self._cache)
+
+        if self._mtime == mtime:
+            # Fast path: return cached data.
+            return list(self._cache)
+
+        return self._load_from_disk()
 
     def seen(self, user: str, title: str) -> bool:
         return any(
@@ -289,7 +451,7 @@ class HistoryManager:
         source: str,
         description: str = "",
         path: str = "",
-    ):
+    ) -> None:
         """
         Record a single download in history.
 
@@ -311,4 +473,12 @@ class HistoryManager:
         if path:
             entry["path"] = path
         entries.append(entry)
+        # Persist to disk
         self.path.write_text(json.dumps(entries, indent=2))
+        # Keep the in-memory cache in sync with what we just wrote.
+        self._cache = entries
+        try:
+            self._mtime = self.path.stat().st_mtime
+        except OSError:
+            self._mtime = 0.0
+        self._loaded = True

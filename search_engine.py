@@ -2,23 +2,89 @@ import hashlib
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from urllib.parse import quote_plus, urljoin, urlparse, urlencode
+from typing import Dict, List, Tuple, Optional, Union
+from urllib.parse import urljoin, urlparse, urlencode
 
 import re
-import difflib  # <-- Added for relevance scoring
+import time
+import threading
+
 import requests
 from lxml import html
-import time
-
+from stealth_browser import resolve_slow_download_link
 logger = logging.getLogger(__name__)
-ENABLE_ZLIB = True
 
-# Optional: playwright for Cloudflare / human-check bypass
-try:
-    from playwright.sync_api import sync_playwright  # type: ignore
-except Exception:  # ImportError or anything else
-    sync_playwright = None  # type: ignore
+ENABLE_ZLIB = True  # we still skip most zlib links by default
+
+SAFE_FILENAME_CHARS = (
+    "-_.() abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
+
+# Global semaphore for concurrent downloads
+_DOWNLOAD_SEMAPHORE = threading.Semaphore(2)
+
+
+def set_download_concurrency(max_concurrent: int) -> None:
+    """
+    Configure the global max number of concurrent downloads.
+
+    Safe bounds:
+      - min: 1
+      - max: 16
+    """
+    global _DOWNLOAD_SEMAPHORE
+    try:
+        value = int(max_concurrent)
+    except Exception:
+        value = 2
+
+    if value < 1:
+        value = 1
+    if value > 16:
+        value = 16
+
+    _DOWNLOAD_SEMAPHORE = threading.Semaphore(value)
+    logger.info("Download concurrency set to %d", value)
+
+
+def sanitize_filename_preserve_ext(name: str, max_length: int = 180) -> str:
+    """
+    Make a filesystem- and Kindle-friendly filename, preserving the extension.
+
+    - Split on the last '.' and keep that suffix unchanged.
+    - Normalize whitespace in the base.
+    - Replace non-safe characters with '_'.
+    - Trim and truncate long names.
+    """
+    name = (name or "").strip() or "download"
+
+    if "." in name:
+        base, ext = name.rsplit(".", 1)
+        ext_part = "." + ext
+    else:
+        base = name
+        ext_part = ""
+
+    # Normalize whitespace
+    base = " ".join(base.split())
+
+    # Filter characters
+    cleaned = "".join(
+        c if c in SAFE_FILENAME_CHARS else "_" for c in base
+    ).strip(" ._")
+
+    if not cleaned:
+        cleaned = "download"
+
+    if len(cleaned) > max_length:
+        cleaned = cleaned[:max_length].rstrip(" ._")
+
+    return cleaned + ext_part
+
+
+# ----------------------------------------------------------------------
+# Search options + ranking helpers
+# ----------------------------------------------------------------------
 
 
 @dataclass
@@ -28,24 +94,32 @@ class SearchOptions:
     extensions: List[str] = field(default_factory=list)
     sources: List[str] = field(default_factory=list)
     autodownload: bool = False
-    # New: used for ranking
+
+    # Used for ranking + device-awareness (feeds / HTML lists)
     preferred_formats: List[str] = field(default_factory=list)
     kindle_type: str = ""
 
+    # Manual-search tuning
+    # - resolve_downloads=False => cheap search, no detail page scraping
+    resolve_downloads: bool = True
+    # Maximum number of <tr> rows to parse from AA result table
+    max_rows: int = 15
+    # Optional override for result limit (default is AnnaSource.max_results)
+    max_results: Optional[int] = None
 
-# --- New Helper Function for Query Normalization ---
 
 def _normalize_string(s: str) -> str:
-    """Normalizes a string for comparison by lowercasing and removing punctuation/whitespace."""
+    """
+    Normalize text for fuzzy matching:
+      - lowercase
+      - strip punctuation
+      - collapse whitespace
+    """
     s = (s or "").lower()
-    # Remove all non-alphanumeric characters, except spaces (which are useful for token separation)
     s = re.sub(r"[^\w\s]", "", s)
-    # Collapse multiple spaces into a single space
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
-
-# --- Helpers for Kindle-aware format preference scoring ---
 
 _FORMAT_PRIORITY_BASE: Dict[str, float] = {
     "azw3": 1.0,
@@ -67,7 +141,7 @@ def _normalize_fmt(fmt: str) -> str:
 def _kindle_profile(kindle_type: str) -> str:
     """
     Rough device buckets:
-      - 'paperwhite' -> e-ink that strongly prefers AZW3/AZW/MOBI
+      - 'paperwhite' -> legacy e-ink that strongly prefers AZW3/AZW/MOBI
       - 'oasis' / 'scribe' -> e-ink that is happy with EPUB too
       - everything else -> generic
     """
@@ -126,8 +200,104 @@ def _format_preference_score(formats: List[str], opts: SearchOptions) -> float:
         if score > best:
             best = score
 
-    # Clamp into a sane range
     return max(0.0, min(1.5, best))
+
+
+# Optional: playwright for Cloudflare / human-check bypass
+try:
+    from playwright.sync_api import sync_playwright  # type: ignore
+except Exception:  # ImportError or anything else
+    sync_playwright = None  # type: ignore
+
+class _FakeResponse:
+    """
+    A minimal mock response object used internally when a real
+    ``requests.Response`` cannot be produced. This shim aims to
+    emulate enough of the ``requests.Response`` API to allow callers
+    (notably ``AnnaSource.download``) to introspect the result and
+    handle failures gracefully without raising attribute errors.
+
+    Parameters
+    ----------
+    status_code : int, optional
+        The HTTP status code to expose. Defaults to ``200``.
+    text : str, optional
+        The textual payload associated with this response. Defaults to
+        an empty string.
+    reason : str, optional
+        A human‑readable reason describing why this fake response was
+        constructed (e.g. ``"HTTP 403"``, ``"Connection Error"``). If
+        omitted, the ``text`` parameter is reused as the reason.
+
+    Additional positional and keyword arguments are accepted for
+    forwards‑compatibility; any unexpected values are ignored.
+    """
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        # Default values
+        self.status_code: int = 200
+        self.text: str = ""
+        self.reason: str = ""
+        self.headers: Dict[str, str] = {}
+        self.content: bytes = b""
+
+        # Allow passing status_code and text positionally, similar to the
+        # previous implementation. Additional positional args are ignored.
+        if args:
+            if len(args) >= 1 and isinstance(args[0], int):
+                self.status_code = args[0]
+            if len(args) >= 2 and isinstance(args[1], str):
+                self.text = args[1]
+
+        # Handle keyword arguments
+        status_code = kwargs.get("status_code")
+        if isinstance(status_code, int):
+            self.status_code = status_code
+        text = kwargs.get("text")
+        if isinstance(text, str):
+            self.text = text
+        reason = kwargs.get("reason")
+        if isinstance(reason, str):
+            self.reason = reason
+
+        # Fallback: if no explicit reason was supplied, derive it from
+        # provided textual content or default to an empty string.
+        if not self.reason:
+            self.reason = self.text or ""
+
+        # Encode the textual content for binary APIs like iter_content
+        self.content = (self.text or "").encode("utf-8", errors="ignore")
+
+    def raise_for_status(self) -> None:
+        """Mimic ``requests.Response.raise_for_status()`` behavior."""
+        if self.status_code >= 400:
+            import requests  # Local import to avoid circular import issues
+            raise requests.HTTPError(f"HTTP Error: {self.status_code}")
+
+    def iter_content(self, chunk_size: int = 8192):  # type: ignore[no-untyped-def]
+        """
+        Provide an iterator over the raw content. This mirrors
+        ``requests.Response.iter_content()`` and allows consumers to
+        stream the response body to disk. For fake responses the
+        content is typically very small, so we yield it once and stop.
+        """
+        if self.content:
+            # Yield at most one chunk for fake responses
+            yield self.content
+        # If there is no content, yield nothing.
+        return
+# --- End of _FakeResponse Definition ---
+
+ENABLE_ZLIB = True  # we still skip most zlib links by default
+
+SAFE_FILENAME_CHARS = (
+    "-_.() abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
+
+# Global semaphore for concurrent downloads
+_DOWNLOAD_SEMAPHORE = threading.Semaphore(2)
+
+
 
 class AnnaSource:
     """
@@ -143,34 +313,284 @@ class AnnaSource:
         timeout: int = 30,
         base_url: str = "https://annas-archive.org",
         max_results: int = 10,
-    ):
+        max_concurrent_downloads: int = 2,
+        enable_zlib: Optional[bool] = None,
+        host_throttle_seconds: Optional[float] = None,
+        **_: object,
+    ) -> None:
+        """
+        Arguments you *can* pass safely from app.py:
+
+        - timeout: request timeout in seconds
+        - base_url: AA base URL (if you ever want to swap mirrors)
+        - max_results: default max results to return from `search`
+        - max_concurrent_downloads: global concurrency for downloads
+        - enable_zlib: optional toggle for z-lib mirrors
+        - host_throttle_seconds: optional per-host delay between requests
+
+        Any extra kwargs are accepted via **_ and ignored, so older/newer
+        app.py versions won't crash with TypeError.
+        """
+        global ENABLE_ZLIB
+
         self.base_url = base_url.rstrip("/")
         self.cache: Dict[str, Dict] = {}
         self.timeout = timeout
         self.max_results = max_results
         self.detail_cache: Dict[str, Dict] = {}
         self.session = requests.Session()
-        # ensure _safe_get has somewhere to store failed hosts
+        self.session.headers.update(
+            {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+        )
+        
+        # Track temporarily unreachable hosts & light per-host throttling
         self.unreachable_hosts: set[str] = set()
-        self._last_host_request: Dict[str,float] = {}
-        self.host_throttle_seconds: float = 1.0
+        self._last_host_request: Dict[str, float] = {}
+
+        # Allow overriding these from settings, but keep sane defaults
+        if host_throttle_seconds is not None:
+            self.host_throttle_seconds = float(host_throttle_seconds)
+        else:
+            self.host_throttle_seconds = 1.0
+
+        if enable_zlib is not None:
+            ENABLE_ZLIB = bool(enable_zlib)
+
+        # Wire up global concurrency control from constructor argument
+        set_download_concurrency(max_concurrent_downloads)
+    def _make_request(self, url: str, stream: bool = False, headers: Optional[Dict] = None) -> Union[requests.Response, _FakeResponse, None]:
+        """
+        Manages the request, including the stealth/browser resolution for slow_download links.
+
+        Returns:
+            - requests.Response if successful (can be streamed)
+            - _FakeResponse if request failed (prevents AttributeError in download)
+            - None if request failed outright
+        """
+        # Copy the base headers from the underlying requests session. ``self.headers``
+        # is not defined on AnnaSource, so we use ``self.session.headers`` as the
+        # canonical store for our default headers. Avoiding ``self.headers`` here
+        # prevents attribute errors.
+        _headers: Dict[str, str] = {}
+        try:
+            _headers = dict(self.session.headers)
+        except Exception:
+            _headers = {}
+        if headers:
+            _headers.update(headers)
+            
+        try:
+            # 1. Check for slow_download link (Anna's Archive protection)
+            if "/slow_download/" in url:
+                # Use the stealth browser to resolve the challenge and get the *final* download URL
+                final_url = resolve_slow_download_link(url, self.timeout)
+                
+                if final_url is None:
+                    logger.warning("Stealth browser failed to resolve challenge for %s", url)
+                    # Construct a fake response with a reason; avoid passing unknown kwargs
+                    fake_resp = _FakeResponse()
+                    fake_resp.reason = "Stealth resolution failed"
+                    fake_resp.status_code = 0
+                    return fake_resp
+                
+                # The browser succeeded and gave us the final direct URL.
+                # Now, perform a standard requests GET to get the actual file stream.
+                logger.debug("Stealth browser succeeded for %s, now fetching actual file from: %s", url, final_url)
+                resp = self.session.get(
+                    final_url,
+                    headers=_headers,
+                    timeout=self.timeout,
+                    stream=stream
+                )
+                resp.raise_for_status() # Raise for HTTP errors on the final download
+                logger.debug("Successfully fetched actual file stream (HTTP %d)", resp.status_code)
+                return resp
+                
+            # 2. Standard direct request (used for covers, search, etc.)
+            resp = self.session.get(
+                url,
+                headers=_headers,
+                timeout=self.timeout,
+                stream=stream,
+            )
+            resp.raise_for_status()
+            return resp
+        
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code in {403, 404, 503}:
+                logger.warning("HTTP error (%d) on URL %s", e.response.status_code, url)
+                fake_resp = _FakeResponse()
+                fake_resp.status_code = e.response.status_code
+                fake_resp.reason = f"HTTP {e.response.status_code}"
+                return fake_resp
+            logger.error("HTTP error fetching %s: %s", url, e)
+            fake_resp = _FakeResponse()
+            fake_resp.status_code = e.response.status_code if e.response is not None else 0
+            fake_resp.reason = "General HTTP Error"
+            return fake_resp
+        except requests.exceptions.ConnectionError as e:
+            logger.error("Connection error fetching %s: %s", url, e)
+            fake_resp = _FakeResponse()
+            fake_resp.reason = "Connection Error"
+            fake_resp.status_code = 0
+            return fake_resp
+        except Exception:
+            logger.exception("Unexpected error during request to %s", url)
+            fake_resp = _FakeResponse()
+            fake_resp.reason = "Unexpected Error"
+            fake_resp.status_code = 0
+            return fake_resp
+
     # ------------------------------------------------------------------
-    # Search
+    # Internal network helper
     # ------------------------------------------------------------------
-        # ------------------------------------------------------------------
+    def _safe_get(self, href: str, for_download: bool = False) -> Optional[requests.Response]:
+
+        # ------------------------------
+        # Raw GET attempt
+        # ------------------------------
+        try:
+            resp = self.session.get(
+                href,
+                timeout=self.timeout,
+                stream=for_download,
+            )
+        except requests.RequestException:
+            # Network-level failure: mark host unreachable for the rest of the run
+            logger.debug("Network error fetching href=%s", href, exc_info=True)
+            return None
+
+        # For pure file downloads we do NOT try to run a browser;
+        # the slow_download resolver already handles CF for that path.
+        if for_download:
+            return resp
+
+        # ------------------------------
+        # Metadata / HTML path: Cloudflare detection
+        # ------------------------------
+        try:
+            # This will also read the error page body.
+            text_sample = (resp.text or "")[:4096]
+        except Exception:
+            text_sample = ""
+
+        # Use our local Cloudflare heuristic
+        if self._is_cloudflare_challenge(resp):
+            logger.warning(
+                "Cloudflare / anti-bot challenge detected at %s (status=%s); "
+                "attempting stealth browser bypass",
+                href,
+                resp.status_code,
+            )
+            resp.close()
+
+            # Try to use the shared stealth browser helper
+            try:
+                from stealth_browser import solve_cloudflare_challenge
+            except Exception as exc:
+                logger.warning(
+                    "stealth_browser module not available; cannot bypass Cloudflare for %s (%s)",
+                    href,
+                    exc,
+                )
+                return None
+
+            if sync_playwright is None:
+                logger.warning(
+                    "Playwright is not installed; cannot bypass Cloudflare for %s",
+                    href,
+                )
+                return None
+            try:
+        
+                content = solve_cloudflare_challenge(
+                    href, timeout=self.timeout * 2, wait_seconds=60
+                )
+            except Exception:
+                logger.debug("stealing failed check logs",exc_info=True)
+                return None
+                
+            if not content:
+                logger.warning(
+                    "Stealth browser failed to bypass Cloudflare for %s", href
+                )
+                return None
+
+            # Wrap the HTML content in a tiny Response-like shim
+            class _FakeResponse:
+                def __init__(self, url: str, html_text: str):
+                    self.url = url
+                    self._text = html_text
+                    self.content = html_text.encode("utf-8", errors="ignore")
+                    self.status_code = 200
+                    self.headers: Dict[str, str] = {"Content-Type": "text/html; charset=utf-8"}
+                def iter_content(self, chunk_size=8192):
+                    yield from []
+                def close(self):
+                    pass
+                @property
+                def text(self) -> str:
+                    return self._text
+
+            logger.debug(
+                "Stealth browser succeeded for %s, returning synthetic Response", href
+            )
+            return _FakeResponse(href, content)
+
+        # ------------------------------
+        # Non-Cloudflare HTTP status handling
+        # ------------------------------
+        if resp.status_code == 429:
+            logger.warning(
+                "Received 429 Too Many Requests for href=%s; backing off but not "
+                "marking host unreachable",
+                href,
+            )
+            resp.close()
+            return None
+
+        try:
+            resp.raise_for_status()
+        except requests.RequestException:
+            logger.debug(
+                "HTTP error status=%s for href=%s; marking host unreachable",
+                resp.status_code,
+                href,
+                exc_info=True,
+            )
+            resp.close()
+            return None
+
+        return resp
+
+    # ------------------------------------------------------------------
     # Search
     # ------------------------------------------------------------------
     def search(
-        self, query: str, options: Optional[SearchOptions] = None
-        ) -> Tuple[List[Dict], List[str]]:
+        self,
+        query: str,
+        options: Optional[SearchOptions] = None,
+    ) -> Tuple[List[Dict], List[str]]:
         """
         Perform a search on Anna's Archive and return ranked results.
 
         Ranking:
-          * Primary: difflib similarity between normalized query and "title + author"
-          * Secondary: token overlap / exact-ish title match
-          * Tertiary: format preference (azw3 > azw > mobi > epub > pdf > others),
+          * Primary: fuzzy similarity between normalized query and "title + author"
+          * Secondary: token overlap / near-exact title match
+          * Tertiary: format preference (AZW3 > AZW > MOBI > EPUB > PDF > others),
                       nudged by SearchOptions.preferred_formats and kindle_type.
+
+        NEW:
+          - We parse and rank all rows FIRST.
+          - We only hit AA detail pages / slow_download for the final top-N results
+            when opts.resolve_downloads is True.
         """
         opts = options or SearchOptions(query=query)
         if not opts.query:
@@ -223,21 +643,31 @@ class AnnaSource:
         # All table rows that actually contain <td> cells
         all_rows = tree.xpath("//table//tr[td]")
         logger.debug("Found %d raw table rows with <td>", len(all_rows))
-        # Only keep rows that look like real result rows (>= 10 columns)
+
+        # Be more forgiving: AA changes column counts sometimes.
+        # We treat any row with >=3 <td> as a "result row".
         rows: List[html.HtmlElement] = []
         for r in all_rows:
             cols = r.findall("td")
-            if len(cols) > 10:
+            if len(cols) >= 3:
                 rows.append(r)
-        rows = rows[:15]
-        logger.debug("Filtered to %d rows with >= 10 <td> cells", len(rows))
+
+        max_rows = opts.max_rows or 15
+        rows = rows[:max_rows]
+        logger.debug(
+            "Filtered to %d rows with >= 3 <td> cells (max_rows=%d)",
+            len(rows),
+            max_rows,
+        )
 
         results: List[Dict] = []
 
-        # Parse all rows first; we'll rank afterward
+        # ------------------------------------------------------------------
+        # Parse rows with MINIMAL work (no detail/slow_download calls here).
+        # ------------------------------------------------------------------
         for row_idx, row in enumerate(rows):
             cols = row.findall("td")
-            if len(cols) <= 10:
+            if len(cols) < 3:
                 logger.debug(
                     "Row %d skipped: only %d <td> cells after filter",
                     row_idx,
@@ -258,13 +688,25 @@ class AnnaSource:
                 )
                 continue
 
+            if not title:
+                debug_log.append(f"Skipping row {row_idx} without a title")
+                continue
+
             if cover and cover.startswith("/"):
                 cover = urljoin(self.base_url, cover)
 
-            # Formats: usually in column 9, but fall back to last column just in case
-            raw_formats_text = "".join(
-                (cols[9].xpath(".//text()") if len(cols) > 9 else cols[-1].xpath(".//text()"))
-            )
+            # Formats:
+            #   Prefer column 9 (file column) if it exists,
+            #   otherwise fall back to the last <td>.
+            try:
+                if len(cols) > 9:
+                    fmt_cell = cols[9]
+                else:
+                    fmt_cell = cols[-1]
+                raw_formats_text = "".join(fmt_cell.xpath(".//text()"))
+            except Exception:
+                raw_formats_text = ""
+
             raw_formats = raw_formats_text.lower().split(",")
             formats = [f.strip() for f in raw_formats if f.strip()]
 
@@ -296,29 +738,23 @@ class AnnaSource:
                 continue
             # --- end md5 extraction ---
 
-            downloads, detail_cover, description = self._get_downloads(
-                md5, formats, debug_log
-            )
-
-            if detail_cover:
-                cover = detail_cover
-
+            # At this stage we DO NOT resolve downloads yet.
             entry: Dict = {
                 "title": title,
                 "author": author,
                 "cover": cover,
                 "detail": md5,
                 "formats": formats,
-                "downloads": downloads,
-                "description": description,
+                "downloads": {},     # will be filled later (or lazily in download())
+                "description": "",
             }
 
             # Stable ID derived from md5
             entry["id"] = hashlib.sha256(entry["detail"].encode("utf-8")).hexdigest()
             result_id = entry["id"]
 
-            # Normalize formats list (union of declared + detected from downloads)
-            detected_formats = set(entry["formats"]) | set(entry["downloads"].keys())
+            # Normalize formats list (only declared formats for now)
+            detected_formats = set(entry["formats"])
             if detected_formats:
                 entry["formats"] = sorted(detected_formats)
 
@@ -327,7 +763,7 @@ class AnnaSource:
             self.cache[result_id] = entry
 
             logger.debug(
-                "Row %d parsed: title=%r author=%r md5=%s formats=%s",
+                "Row %d parsed (pre-ranking): title=%r author=%r md5=%s formats=%s",
                 row_idx,
                 title,
                 author,
@@ -342,8 +778,10 @@ class AnnaSource:
             return [], debug_log
 
         # ------------------------------------------------------------------
-        # Ranking stage
+        # Ranking stage (TEXT + FORMAT preferences)
         # ------------------------------------------------------------------
+        import difflib
+
         normalized_query = _normalize_string(opts.query or query)
         query_tokens = set(normalized_query.split())
 
@@ -365,7 +803,6 @@ class AnnaSource:
             # 2) Token overlap / "exact-ish" title matching
             token_overlap = 0.0
             if query_tokens and text_tokens:
-                # intersection over max(len(lhs), len(rhs)) – weighted toward full matches
                 token_overlap = len(query_tokens & text_tokens) / float(
                     max(len(query_tokens), len(text_tokens))
                 )
@@ -378,7 +815,6 @@ class AnnaSource:
 
             token_score = token_overlap
             if exact_title_match:
-                # Big bump if the query is basically just the title
                 token_score += 0.5
             elif starts_with_title:
                 token_score += 0.25
@@ -415,8 +851,53 @@ class AnnaSource:
 
         ranked_results.sort(key=lambda x: x.get("_rank_score", 0.0), reverse=True)
 
-        # Apply max_results limit AFTER ranking
-        final_results = ranked_results[: self.max_results]
+        # Apply max_results limit AFTER ranking (allow per-call override)
+        limit = getattr(opts, "max_results", None) or self.max_results
+        final_results = ranked_results[:limit]
+
+        # ------------------------------------------------------------------
+        # OPTIONAL: resolve downloads ONLY for the final, ranked top-N.
+        # This keeps "matching before downloading" while still giving you
+        # ready-to-go results when resolve_downloads=True.
+        # ------------------------------------------------------------------
+        if opts.resolve_downloads:
+            for result in final_results:
+                md5 = (result.get("detail") or "").strip()
+                if not md5:
+                    continue
+
+                try:
+                    downloads, detail_cover, description = self._get_downloads(
+                        md5,
+                        list(result.get("formats") or []),
+                        debug_log,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Error resolving downloads for md5=%s title=%r",
+                        md5,
+                        result.get("title"),
+                    )
+                    continue
+
+                if downloads:
+                    result["downloads"] = downloads
+                if detail_cover:
+                    result["cover"] = detail_cover
+                if description:
+                    result["description"] = description
+
+                # Normalize formats list (union of declared + detected)
+                detected_formats = set(result.get("formats") or []) | set(
+                    result.get("downloads", {}).keys()
+                )
+                if detected_formats:
+                    result["formats"] = sorted(detected_formats)
+
+                # Refresh per-result cache entry with enriched data
+                rid = result.get("id")
+                if rid:
+                    self.cache[rid] = result
 
         # Cache full ranked list for this query
         if final_results:
@@ -431,10 +912,7 @@ class AnnaSource:
         return final_results, debug_log
 
     # ------------------------------------------------------------------
-    # Download discovery
-    # ------------------------------------------------------------------
-    # ------------------------------------------------------------------
-    # Download discovery (Anna's Archive slow mirrors)
+    # Download discovery / AA detail page
     # ------------------------------------------------------------------
     def _get_downloads(
         self, md5: str, formats: List[str], debug_log: List[str]
@@ -457,7 +935,9 @@ class AnnaSource:
 
         detail_url = f"{self.base_url}/md5/{md5}"
         debug_log.append(f"Fetching AA detail page: {detail_url}")
-        resp = self.session.get(detail_url)
+
+        # Use _safe_get so Cloudflare / host throttling are respected
+        resp = self._safe_get(detail_url)
         if resp is None:
             msg = f"Failed to fetch AA detail page for md5={md5}"
             debug_log.append(msg)
@@ -472,10 +952,7 @@ class AnnaSource:
 
         downloads: Dict[str, str] = {}
 
-        # ------------------------------------------------------------------
         # Find "Slow Partner" links – we prefer ones mentioning "no waitlist"
-        # Layout today: <ul> ... <li class="list-disc"><a href="/slow_download/md5/...">Slow Partner Server #5</a> (no waitlist, ...)</li>
-        # ------------------------------------------------------------------
         slow_link_els = tree.xpath(
             '//ul//li[contains(@class, "list-disc")]'
             '//a[contains(@href, "/slow_download/")]'
@@ -518,7 +995,7 @@ class AnnaSource:
         # Walk through slow_download URLs until we get at least one real file URL
         for raw_href in ordered_hrefs:
             slow_href = urljoin(self.base_url, raw_href)
-            logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5,)
+            logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5)
             debug_log.append(f"Resolving AA slow_download link={slow_href} md5={md5}")
             try:
                 resolved = self._resolve_aa_slow_download(
@@ -526,9 +1003,11 @@ class AnnaSource:
                 )
             except Exception:
                 logger.debug(
-                    "AA slow_download resolution failed for %s", slow_href, exc_info=True
+                    "AA slow_download resolution failed for %s",
+                    slow_href,
+                    exc_info=True,
                 )
-                continue
+                resolved = None
 
             if not resolved:
                 continue
@@ -541,8 +1020,14 @@ class AnnaSource:
                 continue
 
             downloads[fmt] = download_url
-            debug_log.append(f"Stopping resolution after first success: {fmt} -> {download_url}.")
-            logger.debug("Stopping slow_download resolution after first success: md5=%s fmt=%s, md5, fmt,")
+            debug_log.append(
+                f"Stopping resolution after first success: {fmt} -> {download_url}."
+            )
+            logger.debug(
+                "Stopping slow_download resolution after first success: md5=%s fmt=%s",
+                md5,
+                fmt,
+            )
             break
 
         debug_log.append(
@@ -565,12 +1050,12 @@ class AnnaSource:
         }
 
         return downloads, cover_url, description
+
     # ------------------------------------------------------------------
-    # Resolver helpers (LibGen / Sci-Hub / Z-Lib)
+    # Resolver helpers (Cloudflare / HTML / mirrors)
     # ------------------------------------------------------------------
     def _is_cloudflare_challenge(self, resp: requests.Response) -> bool:
         """Heuristically detect Cloudflare/anti-bot interstitials."""
-
         if resp is None:
             return False
 
@@ -600,7 +1085,6 @@ class AnnaSource:
 
     def _is_html_response(self, url: str) -> bool:
         """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
-
         try:
             resp = self.session.head(
                 url, allow_redirects=True, timeout=self.timeout, stream=False
@@ -613,6 +1097,7 @@ class AnnaSource:
             return "text/html" in content_type
         finally:
             resp.close()
+
     def _resolve_aa_slow_download(
         self,
         slow_href: str,
@@ -630,7 +1115,10 @@ class AnnaSource:
         debug_log.append(f"Resolving AA slow_download link: {slow_href}")
         logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5)
 
-        resp = self.session.get(slow_href, timeout=self.timeout * 2)
+        resp = self._safe_get(slow_href)
+        if resp is None:
+            return None
+
         content_type = (resp.headers.get("Content-Type") or "").lower()
 
         # If it's already a non-HTML response, treat slow_href as direct URL.
@@ -652,7 +1140,6 @@ class AnnaSource:
             return slow_href, fmt
 
         # HTML response – parse and look for a real file URL
-        html_text = resp.text or ""
         if self._is_cloudflare_challenge(resp):
             debug_log.append(
                 "Cloudflare / human-check detected on slow_download page; "
@@ -663,13 +1150,11 @@ class AnnaSource:
                 slow_href,
                 md5,
             )
-            # Try Playwright if present
             browser_result = self._resolve_aa_slow_download_browser(
                 slow_href, formats, debug_log
             )
             if browser_result:
                 return browser_result
-            # If browser path failed or not available, give up on this mirror
             return None
 
         doc = html.fromstring(resp.content)
@@ -678,7 +1163,9 @@ class AnnaSource:
         candidates: List[str] = []
         candidates.extend(
             doc.xpath(
-                '//a[contains(@class, "btn") or contains(translate(text(),"DOWNLOAD","download"), "download")]/@href'
+                '//a[contains(@class, "btn") or '
+                'contains(translate(text(),"DOWNLOAD","download"), "download")]'
+                "/@href"
             )
         )
 
@@ -736,7 +1223,7 @@ class AnnaSource:
         debug_log: List[str],
     ) -> Optional[Tuple[str, str]]:
         """
-        Optional: use Playwright to get past Cloudflare human detection.
+        Optional: use Playwright+stealth to get past Cloudflare human detection.
         Requires `pip install playwright playwright-stealth` + `playwright install`.
         """
         try:
@@ -769,12 +1256,34 @@ class AnnaSource:
             )
             return None
 
+        if isinstance(content, str) and content.strip().lower().startswith(("http://", "https://")):
+            final_url = content.strip()
+
+            if self._is_html_response(final_url):
+                debug_log.append(f"For some reason, the stealth browser gave us what looks like HTML; skipping {final_url}")
+                logger.debug("skipping 'URL' because HEAD looks like HTML for %s",final_url,)
+                return None
+
+            fmt = self._detect_format("", final_url, formats) or "bin"
+            debug_log.append(
+                f"Playwright returned direct URL for slow_download {slow_href} -> {final_url} ({fmt})"
+            )
+            logger.debug(
+                "Playwright returned direct URL for slow_download %s -> %s fmt=%s",
+                slow_href,
+                final_url,
+                fmt,
+            )
+            return final_url, fmt
+            
         doc = html.fromstring(content)
         candidates: List[str] = []
 
         candidates.extend(
             doc.xpath(
-                '//a[contains(@class, "btn") or contains(translate(text(),"DOWNLOAD","download"), "download")]/@href'
+                '//a[contains(@class, "btn") or '
+                'contains(translate(text(),"DOWNLOAD","download"), "download")]'
+                "/@href"
             )
         )
 
@@ -787,7 +1296,7 @@ class AnnaSource:
 
         if not candidates:
             debug_log.append(
-                f"Playwright did not find any direct link on {slow_href}"
+                f"Playwright did not find any direct link on {slow_href}, even though they are probably there!"
             )
             return None
 
@@ -810,7 +1319,7 @@ class AnnaSource:
 
         fmt = self._detect_format("", final_url, formats) or "bin"
         debug_log.append(
-            f"Playwright resolved AA slow_download {slow_href} -> {final_url} ({fmt})"
+            f"Stealth browser got the direct download link! {slow_href} -> {final_url} ({fmt})"
         )
         logger.debug(
             "Playwright resolved AA slow_download %s -> %s fmt=%s",
@@ -820,94 +1329,9 @@ class AnnaSource:
         )
         return final_url, fmt
 
-    def _resolve_download_link(
-        self, href: str
-    ) -> Optional[Tuple[str, str]]:
-        """
-        Given a link found on Anna's Archive detail page, try to turn it into
-        a direct download URL and a format label ("epub", "pdf", etc.).
-
-        We *skip*:
-          - onion links
-          - Anna's Archive torrents helper page
-          - z-lib mirrors (Cloudflare / human check)
-        """
-        parsed = urlparse(href)
-        netloc = (parsed.netloc or "").lower()
-        path = parsed.path or ""
-
-        # Skip Tor/onion links – we can't use them from here
-        if parsed.hostname and parsed.hostname.endswith(".onion"):
-            logger.debug("Skipping onion link href=%s", href)
-            return None
-
-        # Skip AA torrents helper page (not a direct file)
-        if "annas-archive.org" in netloc and "/torrents" in path:
-            logger.debug("Skipping torrents helper link href=%s", href)
-            return None
-
-        # Skip z-lib mirrors by default – Cloudflare/human check
-        if ("z-lib." in netloc or "zlib." in netloc) and not ENABLE_ZLIB:
-            logger.debug(
-                "Skipping z-lib mirror href=%s (Cloudflare / manual-only)", href
-            )
-            return None
-
-        # Libgen / Library Genesis mirrors
-        if "libgen.li" in netloc or "libgen.is" in netloc or "library.lol" in netloc:
-            resolved_url = self._resolve_libgen_nonfiction(href)
-            if resolved_url:
-                # Format is still unknown at this point; _detect_format will refine later
-                return resolved_url, ""
-            return None
-
-        # Sci-Hub etc. can be handled inside the libgen resolver, so
-        # anything else we don't recognize we just ignore.
-        logger.debug("Unrecognized download host for href=%s", href)
-        return None
-
-    def _extract_cover(self, doc: html.HtmlElement) -> str:
-        candidates = doc.xpath(
-            '//meta[@property="og:image"]/@content'
-            ' | //img[@id="cover-img"]/@src'
-            ' | //div[contains(@class, "cover")]/img/@src'
-        )
-        for cover in candidates:
-            cover = cover.strip()
-            if not cover:
-                continue
-            if cover.startswith("/"):
-                return urljoin(self.base_url, cover)
-            return cover
-        return ""
-
-    def _extract_description(self, doc: html.HtmlElement) -> str:
-        """Return the first non-empty description candidate.
-
-        The previous XPath attempted to union string() calls, which raises an
-        ``XPathEvalError: Invalid type``. Instead, check each source
-        sequentially and return the first populated value.
-        """
-
-        candidates = [
-            "".join(doc.xpath('string(//meta[@name="description"]/@content)')).strip(),
-            "".join(
-                doc.xpath('string(//meta[@property="og:description"]/@content)')
-            ).strip(),
-            " ".join(
-                [text.strip() for text in doc.xpath('//div[contains(@class, "book-description")]//text()')]
-            ).strip(),
-            " ".join(
-                [text.strip() for text in doc.xpath('//div[@id="book-description"]//text()')]
-            ).strip(),
-        ]
-
-        for candidate in candidates:
-            if candidate:
-                return candidate
-
-        return ""
-
+    # ------------------------------------------------------------------
+    # LibGen / Sci-Hub / Z-Lib resolvers
+    # ------------------------------------------------------------------
     def _resolve_libgen_li(self, href: str) -> str:
         resp = self._safe_get(href)
         if resp is None:
@@ -947,72 +1371,46 @@ class AnnaSource:
             return f"{scheme}//{host}/{url}"
         return href
 
-    def _safe_get(self, href: str, *, for_download: bool = False) -> Optional[requests.Response]:
+    def _resolve_download_link(self, href: str) -> Optional[Tuple[str, str]]:
         """
-        Best-effort GET that tracks failed hosts to avoid repeat slowdowns.
+        Given a link found on Anna's Archive detail page, try to turn it into
+        a direct download URL and a format label ("epub", "pdf", etc.).
 
-        For metadata/search calls (for_download=False):
-          * honour self.unreachable_hosts and skip previously failed hosts
-          * raise_for_status() and blacklist on hard HTTP errors (≠ 429)
-
-        For actual file downloads (for_download=True):
-          * do NOT raise_for_status() here
-          * do NOT blacklist hosts on HTTP errors
-          * always return the Response so the caller can inspect status_code
+        We *skip*:
+          - onion links
+          - Anna's Archive torrents helper page
+          - z-lib mirrors (Cloudflare / human check) when ENABLE_ZLIB is False
         """
         parsed = urlparse(href)
-        host = parsed.hostname or ""
+        netloc = (parsed.netloc or "").lower()
+        path = parsed.path or ""
 
-        # For non-download calls, honour host blacklist
-        if host and not for_download and host in self.unreachable_hosts:
-            logger.debug("Skipping GET for previously failed host=%s", host)
+        # Skip Tor/onion links – we can't use them from here
+        if parsed.hostname and parsed.hostname.endswith(".onion"):
+            logger.debug("Skipping onion link href=%s", href)
             return None
 
-        # Very light per-host throttle to reduce 429s when many workers hit same host
-        if host:
-            now = time.time()
-            last = self._last_host_request.get(host)
-            gap = self.host_throttle_seconds
-            if last is not None and now - last < gap:
-                sleep_for = gap - (now - last)
-                if sleep_for > 0:
-                    time.sleep(sleep_for)
-            self._last_host_request[host] = time.time()
-
-        try:
-            resp = self.session.get(href, timeout=self.timeout, stream=for_download)
-        except requests.RequestException:
-            # Only blacklist for non-download metadata calls
-            if host and not for_download:
-                self.unreachable_hosts.add(host)
-            logger.debug("Resolution failed for href=%s", href, exc_info=True)
+        # Skip AA torrents helper page (not a direct file)
+        if "annas-archive.org" in netloc and "/torrents" in path:
+            logger.debug("Skipping torrents helper link href=%s", href)
             return None
 
-        # Metadata / search path: enforce HTTP success, with softer handling for 429
-        if not for_download:
-            if resp.status_code == 429:
-                logger.warning(
-                    "HTTP 429 (Too Many Requests) for %s; backing off but not blacklisting host=%s",
-                    href,
-                    host,
-                )
-                return None
-            try:
-                resp.raise_for_status()
-                return resp
-            except requests.RequestException:
-                if host:
-                    self.unreachable_hosts.add(host)
-                logger.debug(
-                    "Resolution failed for href=%s status=%s",
-                    href,
-                    resp.status_code,
-                    exc_info=True,
-                )
-                return None
+        # Skip z-lib mirrors by default – Cloudflare/human check
+        if ("z-lib." in netloc or "zlib." in netloc) and not ENABLE_ZLIB:
+            logger.debug(
+                "Skipping z-lib mirror href=%s (Cloudflare / manual-only)", href
+            )
+            return None
 
-        # Download path: caller is responsible for inspecting status_code / content-type
-        return resp
+        # Libgen / Library Genesis mirrors
+        if "libgen.li" in netloc or "libgen.is" in netloc or "library.lol" in netloc:
+            resolved_url = self._resolve_libgen_nonfiction(href)
+            if resolved_url:
+                return resolved_url, ""
+            return None
+
+        logger.debug("Unrecognized download host for href=%s", href)
+        return None
 
     # ------------------------------------------------------------------
     # Cover / description helpers
@@ -1021,7 +1419,7 @@ class AnnaSource:
         candidates = doc.xpath(
             '//meta[@property="og:image"]/@content'
             ' | //img[@id="cover-img"]/@src'
-            ' | //img[contains(@class, "cover")]/@src'
+            ' | //div[contains(@class, "cover")]/img/@src'
             ' | //img[contains(@class, "book-cover")]/@src'
         )
         for cover in candidates:
@@ -1034,12 +1432,7 @@ class AnnaSource:
         return ""
 
     def _extract_description(self, doc: html.HtmlElement) -> str:
-        """Extract a human-readable description from the detail page.
-
-        We deliberately avoid XPath unions of string() results because lxml
-        requires node-sets for union and will raise XPathEvalError otherwise.
-        Instead we query each candidate separately and fall back in Python.
-        """
+        """Extract a human-readable description from the detail page."""
         xpaths = [
             'string(//meta[@name="description"]/@content)',
             'string(//meta[@property="og:description"]/@content)',
@@ -1055,7 +1448,9 @@ class AnnaSource:
     # ------------------------------------------------------------------
     # Format detection
     # ------------------------------------------------------------------
-    def _detect_format(self, text: str, href: Optional[str], formats: List[str]) -> str:
+    def _detect_format(
+        self, text: str, href: Optional[str], formats: List[str]
+    ) -> str:
         text_lower = (text or "").lower()
 
         # 1) If an allowed format appears in the button text, trust that
@@ -1086,139 +1481,263 @@ class AnnaSource:
     # ------------------------------------------------------------------
     def cached_result(self, result_id: str) -> Optional[Dict]:
         return self.cache.get(result_id)
-    def download(self, result: Dict, dest_dir: Path) -> Path:
+
+
+    def resolve_downloads_for_result(self, result: Dict) -> Dict:
+        """Ensure a search result has its download links resolved.
+
+        Used by the Flask app for manual and auto-download flows when search
+        ran in "cheap" mode (no detail page calls). Reuses the same detail-page
+        logic as `download`, but without fetching the file.
         """
-        Download the selected result to dest_dir.
+        if not result:
+            return result
 
-        TEMPORARY DEBUG VERSION:
-          - Do NOT force {title}.{fmt}
-          - Use server-provided filename (Content-Disposition or URL path)
-          - Log headers + detected extension + first bytes for debugging send-to-Kindle issues.
-        """
-        dest_dir.mkdir(parents=True, exist_ok=True)
+        downloads_map: Dict[str, Any] = result.get("downloads") or {}
+        md5 = (result.get("detail") or "").strip()
+        formats = list(result.get("formats") or [])
+        debug_log: List[str] = []
 
-        # Prefer explicitly selected_format if set, otherwise first in formats
-        fmt = result.get("selected_format") or (result.get("formats") or ["bin"])[0]
-        downloads = result.get("downloads") or {}
+        # If we already have downloads and at least one format, keep them.
+        if downloads_map and formats:
+            return result
 
-        url = downloads.get(fmt)
-        if not url and downloads:
-            # Fallback to any available link, and keep its format key
-            fmt, url = next(iter(downloads.items()))
+        if md5:
+            try:
+                downloads_map, cover, description = self._get_downloads(
+                    md5, formats, debug_log
+                )
+                if downloads_map:
+                    result["downloads"] = downloads_map
+                if cover and not result.get("cover"):
+                    result["cover"] = cover
+                if description and not result.get("description"):
+                    result["description"] = description
+            except Exception:
+                logger.exception(
+                    "resolve_downloads_for_result: failed for %s (md5=%s)",
+                    result.get("title"),
+                    md5,
+                )
+
+        return result
+    def download(self, result: Dict, fmt: str, dest_dir: Path) -> Path:
+        downloads_map: Dict[str, Any] = result.get("downloads") or {}
+        if not downloads_map:
+            # Try to lazily resolve downloads using the detail (md5) page
+            md5 = (result.get("detail") or "").strip()
+            formats = list(result.get("formats") or [])
+            debug_log: List[str] = []
+
+            if md5:
+                try:
+                    downloads_map, _, _ = self._get_downloads(md5, formats, debug_log)
+                    result["downloads"] = downloads_map
+                except Exception:
+                    logger.exception(
+                        "Lazy download resolution failed for %s (md5=%s)",
+                        result.get("title"),
+                        md5,
+                    )
+                    downloads_map = {}
+
+        if not downloads_map:
+            raise ValueError(
+                f"No download links available for any format (requested={fmt or 'none'})"
+            )
+        requested_fmt = (fmt or "").lower()
+        selected_fmt: Optional[str] = None
+        url: Optional[str] = None
+        if requested_fmt and requested_fmt in downloads_map:
+            selected_fmt = requested_fmt
+            raw_links = downloads_map[selected_fmt]
+            if isinstance(raw_links, str):
+                url = raw_links
+            elif isinstance(raw_links, (list, tuple)) and raw_links:
+                url = raw_links[0]
 
         if not url:
+            # Try to respect the result["formats"] ordering if present
+            candidate_order: List[str] = []
+            for f in (result.get("formats") or []):
+                f_l = f.lower()
+                if f_l in downloads_map and f_l not in candidate_order:
+                    candidate_order.append(f_l)
+
+            # If that produced nothing, just use any key order
+            if not candidate_order:
+                candidate_order = list(downloads_map.keys())
+
+            for alt_fmt in candidate_order:
+                alt_links = downloads_map.get(alt_fmt)
+                if isinstance(alt_links, str) and alt_links:
+                    if requested_fmt and alt_fmt != requested_fmt:
+                        logger.warning(
+                            "Requested format %s unavailable for %s; "
+                            "falling back to %s",
+                            requested_fmt,
+                            result.get("title"),
+                            alt_fmt,
+                        )
+                    selected_fmt = alt_fmt
+                    url = alt_links
+                    break
+                elif isinstance(alt_links, (list, tuple)) and alt_links:
+                    if requested_fmt and alt_fmt != requested_fmt:
+                        logger.warning(
+                            "Requested format %s unavailable for %s; "
+                            "falling back to %s",
+                            requested_fmt,
+                            result.get("title"),
+                            alt_fmt,
+                        )
+                    selected_fmt = alt_fmt
+                    url = alt_links[0]
+                    break
+
+        if not url or not selected_fmt:
+            raise ValueError(f"No DL link available, for any format! Last checked for {fmt}" )
+        fmt = selected_fmt
+        logger.debug("Attempting to download %s from %s", result.get("title"), url)
+        
+        # 1. Acquire semaphore for concurrency control
+        with _DOWNLOAD_SEMAPHORE:
+            # 2. Make the request via the integrated handler
+            # It will resolve slow_download using the browser if necessary
+            resp = self._make_request(url, stream=True)
+        if resp is None or isinstance(resp, _FakeResponse):
+                logger.error(
+                    "Download failed via _FakeResponse (Status %s, Reason: %s) for title=%s",
+                    getattr(resp, "status_code", None) if resp is not None else "N/A",
+                    getattr(resp, "reason", "") if resp is not None else "N/A",
+                    result.get("title"),
+                )
+                raise ValueError("Failed to GET download URL or resolve stealth challenge")
+        
+        # 3. Check for failed response object
+        if not hasattr(resp, "iter_content"):
             logger.error(
-                "No download link available for title=%s", result.get("title")
+                "Download failed (bad object %r) for title=%s",
+                type(resp),
+                result.get("title"),
             )
-            raise ValueError("No download link available")
+            raise ValueError("Failed to GET download URL or resolve stealth challenge")
 
-        logger.info("Downloading from %s", url)
-        logger.debug("Requested format=%s available=%s", fmt, downloads)
 
-        resp = self._safe_get(url)
-        if resp is None:
-            logger.error("Download GET failed for title=%s", result.get("title"))
-            raise ValueError("Failed to GET download URL")
-
+        # 4. Content Type Check (only useful if it's a direct link or stealth failed to find the file)
         content_type = (resp.headers.get("Content-Type") or "").lower()
-
         if "text/html" in content_type:
             logger.error(
                 "Download URL returned HTML (Content-Type=%s) for title=%s; likely a homepage / error page",
                 content_type,
                 result.get("title"),
             )
+            resp.close()
             raise ValueError("Download URL returned HTML instead of a file")
 
-        # --- NEW: Inspect remote filename & extension for debugging ---
-        cd = resp.headers.get("Content-Disposition") or ""
-        cd_match = re.search(r'filename="?([^";]+)"?', cd)
-        remote_filename: Optional[str] = None
-        if cd_match:
-            remote_filename = cd_match.group(1).strip()
-
-        # Fallback: path component of the *final* URL (after redirects)
-        if not remote_filename:
-            try:
-                final_url = resp.url or url
-            except Exception:
-                final_url = url
-            parsed = urlparse(final_url)
-            path_name = Path(parsed.path).name
-            if path_name:
-                remote_filename = path_name
-
-        # Last resort: old behavior
-        if not remote_filename:
-            remote_filename = f"{result.get('title', 'download')}.{fmt}"
-
-        # Extract extension from remote filename (for comparison)
-        ext_from_remote = ""
-        if "." in remote_filename:
-            ext_from_remote = remote_filename.rsplit(".", 1)[-1].lower()
-
-        logger.info(
-            "Download debug: title=%r fmt=%r content_type=%r CD=%r remote_filename=%r remote_ext=%r",
-            result.get("title"),
-            fmt,
-            content_type,
-            cd,
-            remote_filename,
-            ext_from_remote,
-        )
-
-        if ext_from_remote and ext_from_remote != fmt:
-            logger.warning(
-                "Format mismatch for title=%r: chosen fmt=%r but remote_ext=%r (url=%s)",
-                result.get("title"),
-                fmt,
-                ext_from_remote,
-                url,
-            )
-
-        # TEMP: keep the remote filename as much as possible,
-        # only stripping characters that the filesystem cannot handle.
-        safe_name = "".join(c for c in remote_filename if c not in '\\/:*?"<>|')
-        if not safe_name:
-            safe_name = f"{result.get('title', 'download')}.{fmt}"
-
-        path = dest_dir / safe_name
+        # 5. Determine save path
+        filename = f"{result['title']}.{fmt}"
+        # Strip characters illegal on Windows / Unix filenames
+        safe_name = sanitize_filename_preserve_ext(filename)
+        final_path = dest_dir / safe_name
 
         first_chunk: Optional[bytes] = None
-        with path.open("wb") as f:
-            for chunk in resp.iter_content(chunk_size=8192):
-                if not chunk:
-                    continue
-                if first_chunk is None:
-                    first_chunk = chunk
+        try:
+            with final_path.open("wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
+                    if first_chunk is None:
+                        first_chunk = chunk
+                        if b"<html" in chunk.lower():
+                            logger.error(
+                                "Download URL returned HTML payload for title=%s; aborting",
+                                result.get("title"),
+                            )
+                            raise ValueError(
+                                "Download URL returned HTML payload instead of ebook"
+                            )
+                    f.write(chunk)
+        except Exception:
+            try:
+                if final_path.exists():
+                    final_path.unlink()
+            except Exception:
+                logger.debug(
+                    "Failed to remove partial file %s after download error",
+                    final_path,
+                    exc_info=True,
+                )
+            raise
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
-                    # Log first bytes as hex so we can see actual file type signature
-                    header_preview = first_chunk[:32]
-                    logger.debug(
-                        "Download header preview for title=%r file=%r: %s",
-                        result.get("title"),
-                        safe_name,
-                        header_preview.hex(),
-                    )
+        logger.debug("Saved download to %s", final_path)
+        return final_path
+# ----------------------------------------------------------------------
+# Helper for feeds / auto flows: pick best result given allowed formats
+# ----------------------------------------------------------------------
+def select_best_result(
+    results: List[Dict],
+    allowed_formats: List[str],
+    kindle_type: str,
+) -> Optional[Dict]:
+    """
+    Given a list of AA results and allowed formats (e.g. feed.filetypes),
+    choose the "best" candidate:
 
-                    # Keep existing HTML safety check
-                    if b"<html" in chunk.lower():
-                        logger.error(
-                            "Download URL returned HTML payload for title=%s; aborting",
-                            result.get("title"),
-                        )
-                        raise ValueError(
-                            "Download URL returned HTML payload instead of ebook"
-                        )
+      - Prefer results that have at least one allowed format.
+      - Tie-break using the same _format_preference_score heuristic.
+      - Fall back to overall _rank_score if present.
 
-                f.write(chunk)
+    This is used by RSS/HTML feed processing so that we always pick a sane
+    candidate before calling source.download().
+    """
+    if not results:
+        return None
 
-        logger.info(
-            "Saved download for title=%r to %s (content_type=%r, remote_ext=%r, chosen_fmt=%r)",
-            result.get("title"),
-            path,
-            content_type,
-            ext_from_remote,
-            fmt,
-        )
-        return path
+    allowed = {(_normalize_fmt(f)) for f in (allowed_formats or []) if f}
+
+    # We construct a temporary SearchOptions to reuse _format_preference_score.
+    opts = SearchOptions(
+        preferred_formats=list(allowed),
+        kindle_type=kindle_type or "",
+    )
+
+    best_result: Optional[Dict] = None
+    best_score: float = -1.0
+
+    for r in results:
+        formats = [(_normalize_fmt(f)) for f in (r.get("formats") or []) if f]
+        has_allowed = bool(allowed & set(formats)) if allowed else bool(formats)
+
+        if not has_allowed:
+            # Still consider it, but with a big penalty.
+            base = r.get("_rank_score", 0.0) - 0.5
+        else:
+            base = r.get("_rank_score", 0.0)
+
+        fmt_score = _format_preference_score(r.get("formats", []), opts)
+        total = base + fmt_score
+
+        if total > best_score:
+            best_score = total
+            best_result = r
+
+    if best_result and allowed:
+        # Choose a concrete selected_format for download convenience
+        fmts = [(_normalize_fmt(f)) for f in (best_result.get("formats") or []) if f]
+        chosen = None
+        for f in fmts:
+            if f in allowed:
+                chosen = f
+                break
+        if not chosen and fmts:
+            chosen = fmts[0]
+        if chosen:
+            best_result["selected_format"] = chosen
+
+    return best_result

@@ -7,8 +7,28 @@
         <button type="submit" class="primary">Run Feeds</button>
     </form>
 
+    <div id="feed-progress" class="card feed-progress hidden" style="margin-bottom: 1rem;">
+        <h2>Feed Progress</h2>
+        <div id="feed-progress-overall" style="margin-bottom: 0.5rem;">
+            <div id="feed-progress-overall-label" class="feed-progress-label"
+                 style="font-size: 0.9rem; margin-bottom: 0.25rem;">
+                Overall: 0/0 (0%)
+            </div>
+            <div class="feed-progress-bar-outer"
+                 style="position: relative; height: 0.5rem; background: #ddd; border-radius: 999px; overflow: hidden;">
+                <div id="feed-progress-overall-bar"
+                     class="feed-progress-bar"
+                     style="height: 100%; width: 0%; background: #888;"></div>
+            </div>
+        </div>
+        <div id="feed-progress-users" class="feed-progress-users" style="margin-top: 0.75rem;">
+            <!-- Per-user feed progress rows will be populated by SSE client script. -->
+        </div>
+    </div>
+
+
     {% if feed_debug %}
-    <details class="debug-block" open>
+    <details class="debug-block">
         <summary>Last feed run debug log</summary>
         <pre class="debug">{{ feed_debug|join('\n') }}</pre>
     </details>
@@ -81,6 +101,23 @@
     {% else %}
     <p>No history yet.</p>
     {% endif %}
+    {% if total_pages > 1 %}
+    <div class="pagination" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            {% if page > 1 %}
+            <a href="{{ url_for('history', page=page-1) }}">&laquo; Newer</a>
+            {% endif %}
+        </div>
+        <div>
+            Page {{ page }} of {{ total_pages }}
+        </div>
+        <div>
+            {% if page < total_pages %}
+            <a href="{{ url_for('history', page=page+1) }}">Older &raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 {# Send-to-Kindle modal for history entries #}
@@ -126,6 +163,124 @@ document.addEventListener('DOMContentLoaded', function () {
         cancelBtn.addEventListener('click', function () {
             modal.classList.add('hidden');
         });
+    }
+    // Live feed progress via Server-Sent Events
+    if (!!window.EventSource) {
+        const progressContainer = document.getElementById('feed-progress');
+        const usersContainer = document.getElementById('feed-progress-users');
+        const overallBar = document.getElementById('feed-progress-overall-bar');
+        const overallLabel = document.getElementById('feed-progress-overall-label');
+
+        const es = new EventSource("{{ url_for('feeds_stream') }}");
+
+        es.onmessage = function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                updateFeedProgressUI(data);
+            } catch (e) {
+                console.error('Failed to parse feed progress payload', e);
+            }
+        };
+
+        function updateFeedProgressUI(state) {
+            if (!state || !state.active) {
+                if (progressContainer) {
+                    progressContainer.classList.add('hidden');
+                }
+                return;
+            }
+
+            if (progressContainer) {
+                progressContainer.classList.remove('hidden');
+            }
+
+            const overall = state.overall || {};
+            const feeds = state.feeds || {};
+
+            const total = overall.total_items || 0;
+            const completed = overall.completed_items || 0;
+            let pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            pct = Math.max(0, Math.min(100, pct));
+
+            if (overallBar) {
+                overallBar.style.width = pct + '%';
+            }
+            if (overallLabel) {
+                let text = `Overall: ${completed}/${total} (${pct}%)`;
+                const eta = overall.eta_seconds;
+                if (eta != null && eta >= 0) {
+                    const mins = Math.floor(eta / 60);
+                    const secs = Math.floor(eta % 60);
+                    text += ` – ETA ${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+                overallLabel.textContent = text;
+            }
+
+            // Group feeds by user for per-user progress display
+            const byUser = {};
+            Object.keys(feeds).forEach(function (key) {
+                const f = feeds[key] || {};
+                const uname = f.user || 'Unknown';
+                if (!byUser[uname]) {
+                    byUser[uname] = [];
+                }
+                byUser[uname].push(f);
+            });
+
+            if (!usersContainer) {
+                return;
+            }
+            usersContainer.innerHTML = '';
+
+            Object.keys(byUser).forEach(function (uname) {
+                const group = document.createElement('div');
+                group.className = 'feed-user-group';
+
+                const header = document.createElement('div');
+                header.className = 'feed-user-header';
+                header.textContent = uname;
+                group.appendChild(header);
+
+                byUser[uname].forEach(function (f) {
+                    const row = document.createElement('div');
+                    row.className = 'feed-row';
+
+                    const title = document.createElement('div');
+                    title.className = 'feed-title';
+                    title.textContent = f.label || f.feed_url || '';
+                    row.appendChild(title);
+
+                    const barWrap = document.createElement('div');
+                    barWrap.className = 'feed-bar-wrap';
+
+                    const bar = document.createElement('div');
+                    bar.className = 'feed-bar';
+                    const ftot = f.total_items || 0;
+                    const fcomp = f.completed_items || 0;
+                    let fpct = ftot > 0 ? Math.round((fcomp / ftot) * 100) : 0;
+                    fpct = Math.max(0, Math.min(100, fpct));
+                    bar.style.width = fpct + '%';
+                    barWrap.appendChild(bar);
+
+                    const label = document.createElement('div');
+                    label.className = 'feed-bar-label';
+                    let line = `${fcomp}/${ftot} (${fpct}%)`;
+                    if (f.eta_seconds != null && f.eta_seconds >= 0) {
+                        const mins = Math.floor(f.eta_seconds / 60);
+                        const secs = Math.floor(f.eta_seconds % 60);
+                        line += ` – ETA ${mins}:${secs.toString().padStart(2, '0')}`;
+                    }
+                    label.textContent = line;
+
+                    row.appendChild(barWrap);
+                    row.appendChild(label);
+
+                    group.appendChild(row);
+                });
+
+                usersContainer.appendChild(group);
+            });
+        }
     }
 });
 </script>

@@ -309,26 +309,44 @@ class AnnaSource:
         try:
             # 1. Check for slow_download link (Anna's Archive protection)
             if "/slow_download/" in url:
-                # Use the stealth browser to resolve the challenge and get the *final* download URL
-                final_url = resolve_slow_download_link(url, self.timeout)
-
-                if final_url is None:
-                    logger.warning("Stealth browser failed to resolve challenge for %s", url)
-                    return None
-                
-                # The browser succeeded and gave us the final direct URL.
-                # Now, perform a standard requests GET to get the actual file stream.
-                logger.debug("Stealth browser succeeded for %s, now fetching actual file from: %s", url, final_url)
+                # First attempt a direct request; only fall back to Playwright when
+                # the response clearly indicates a Cloudflare / DDoS guard page.
                 resp = self.session.get(
-                    final_url,
+                    url,
                     headers=_headers,
                     timeout=self.timeout,
-                    stream=stream
+                    stream=stream,
                 )
-                resp.raise_for_status() # Raise for HTTP errors on the final download
-                logger.debug("Successfully fetched actual file stream (HTTP %d)", resp.status_code)
+
+                if self._is_cloudflare_challenge(resp):
+                    resp.close()
+                    final_url = resolve_slow_download_link(url, self.timeout)
+
+                    if final_url is None:
+                        logger.warning(
+                            "Stealth browser failed to resolve challenge for %s",
+                            url,
+                        )
+                        return None
+
+                    logger.debug(
+                        "Stealth browser succeeded for %s, now fetching actual file from: %s",
+                        url,
+                        final_url,
+                    )
+                    resp = self.session.get(
+                        final_url,
+                        headers=_headers,
+                        timeout=self.timeout,
+                        stream=stream,
+                    )
+                resp.raise_for_status()  # Raise for HTTP errors on the final download
+                logger.debug(
+                    "Successfully fetched actual file stream (HTTP %d)",
+                    resp.status_code,
+                )
                 return resp
-                
+
             # 2. Standard direct request (used for covers, search, etc.)
             resp = self.session.get(
                 url,
@@ -358,11 +376,19 @@ class AnnaSource:
         # ------------------------------
         # Raw GET attempt
         # ------------------------------
+        allow_redirects = True
+        # Avoid following redirects on slow_download pages when we're only trying
+        # to harvest the final URL. This prevents eager fetching of large files
+        # before the caller explicitly requests a download.
+        if (not for_download) and "/slow_download/" in href:
+            allow_redirects = False
+
         try:
             resp = self.session.get(
                 href,
                 timeout=self.timeout,
                 stream=for_download,
+                allow_redirects=allow_redirects,
             )
         except requests.RequestException:
             # Network-level failure: mark host unreachable for the rest of the run
@@ -442,22 +468,7 @@ class AnnaSource:
                 logger.warning(
                     "Stealth browser failed to bypass Cloudflare for %s", href
                 )
-                # Fallback: fetch rendered HTML directly so we can still parse rows.
-                try:
-                    from stealth_browser import fetch_with_stealth
-
-                    rendered_html = fetch_with_stealth(href, timeout=self.timeout)
-                    rendered = requests.Response()
-                    rendered.status_code = 200
-                    rendered._content = rendered_html.encode(
-                        "utf-8", errors="ignore"
-                    )  # type: ignore[attr-defined]
-                    rendered.url = href
-                    rendered.headers["Content-Type"] = "text/html; charset=utf-8"
-                    return rendered
-                except Exception:
-                    logger.debug("Fallback stealth fetch failed for %s", href, exc_info=True)
-                    return None
+                return None
 
             # If the solver returned a URL, avoid fetching large payloads unless
             # this call is explicitly for a download stream.
@@ -1076,6 +1087,15 @@ class AnnaSource:
         # If it's already a non-HTML response, treat it as a direct file URL.
         # Prefer the ultimate URL if the request followed redirects or the
         # Cloudflare solver handed us the final link via X-Final-URL.
+        if resp.is_redirect or resp.status_code in {301, 302}:
+            final_url = resp.headers.get("Location") or resp.url or slow_href
+            fmt = self._detect_format("", final_url, formats) or "bin"
+            resp.close()
+            debug_log.append(
+                f"AA slow_download returned redirect; using Location {final_url} ({fmt})"
+            )
+            return final_url, fmt
+
         if "text/html" not in content_type:
             final_url = resp.headers.get("X-Final-URL") or resp.url or slow_href
             cd = resp.headers.get("Content-Disposition") or ""

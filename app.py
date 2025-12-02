@@ -2267,6 +2267,7 @@ def run_feeds():
                 autodownload=True,
                 preferred_formats=feed.filetypes,
                 kindle_type=user.kindle_type,
+                resolve_downloads=False,
             )
             results, search_debug = search_with_cache(
                 query,
@@ -2290,6 +2291,7 @@ def run_feeds():
                     autodownload=True,
                     preferred_formats=feed.filetypes,
                     kindle_type=user.kindle_type,
+                    resolve_downloads=False,
                 )
                 results, search_debug = search_with_cache(
                     item.title,

@@ -204,8 +204,9 @@ def search_with_cache(
     - If persist=False (manual UI search):
         * Just call AnnaSource.search; no disk writes/reads.
     """
-    # Preserve whitespace inside the query; only normalize casing for cache keys.
-    cache_key = (options.query or query or "").lower()
+    # Preserve the exact query text (including whitespace/punctuation) for cache keys
+    # so feed/user-provided titles aren't altered before lookups.
+    cache_key = options.query or query or ""
     debug_log: List[str] = []
 
     if persist:

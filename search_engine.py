@@ -555,8 +555,10 @@ class AnnaSource:
         if opts.autodownload:
             params.append(("autodownload", "1"))
 
-        # Cache lookup: avoid repeated fetches for the same logical query
-        cache_key = (opts.query or query).lower()
+        # Cache lookup: avoid repeated fetches for the same logical query. Keep the
+        # exact query text (including spacing/punctuation) so lookups don't mutate
+        # titles that users or feeds provided.
+        cache_key = opts.query or query
         if cache_key in self.cache:
             logger.debug("Cache hit for query=%r", opts.query)
             cached = self.cache[cache_key]

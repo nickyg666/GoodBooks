@@ -317,6 +317,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.addEventListener('click', function (ev) {
         const button = ev.target.closest('[data-action="library-send-kindle"]');
         if (!button) return;
+        ev.preventDefault();
+        ev.stopPropagation();
         const entryId = button.getAttribute('data-entry-id');
         if (!entryId) return;
         if (entryInput) {
@@ -329,6 +331,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.addEventListener('click', function (ev) {
         const button = ev.target.closest('[data-action="library-direct-download"]');
         if (!button) return;
+        ev.preventDefault();
+        ev.stopPropagation();
         const entryId = button.getAttribute('data-entry-id');
         if (!entryId) return;
         // Navigate to direct download route for this entry

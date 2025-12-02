@@ -388,20 +388,20 @@ class AnnaSource:
         # Use our local Cloudflare heuristic
         if self._is_cloudflare_challenge(resp):
             # Some AA search pages still render useful HTML even while tripping our
-            # Cloudflare heuristic. If the body already contains a table of results,
-            # avoid discarding it and let the caller parse as-is.
+            # Cloudflare heuristic. Before invoking Playwright, inspect the parsed
+            # tree to see if we already have usable rows.
             try:
-                body_text = resp.text
+                parsed_tree = html.fromstring(resp.content)
+                if parsed_tree.xpath("//table//tr[td]"):
+                    logger.debug(
+                        "Cloudflare heuristic triggered for %s but table rows present; "
+                        "using raw response",
+                        href,
+                    )
+                    return resp
             except Exception:
-                body_text = ""
-
-            if "<table" in body_text and "<td" in body_text:
-                logger.debug(
-                    "Cloudflare heuristic triggered for %s but table rows present; "
-                    "using raw response",
-                    href,
-                )
-                return resp
+                # Fall back to the solver
+                logger.debug("Failed to inspect HTML before Cloudflare bypass", exc_info=True)
 
             logger.warning(
                 "Cloudflare / anti-bot challenge detected at %s (status=%s); "
@@ -1005,16 +1005,13 @@ class AnnaSource:
         if resp is None:
             return False
 
-        server_header = (resp.headers or {}).get("Server", "").lower()
-        cf_ray = (resp.headers or {}).get("cf-ray") or (resp.headers or {}).get(
-            "CF-RAY"
-        )
         indicators = [
             "cloudflare",
             "just a moment",
             "attention required",
             "checking your browser",
             "verify you are human",
+            "ddos-guard",
         ]
 
         try:
@@ -1024,8 +1021,6 @@ class AnnaSource:
 
         return (
             resp.status_code in {403, 503}
-            or "cloudflare" in server_header
-            or cf_ray is not None
             or any(indicator in lower_text for indicator in indicators)
         )
 

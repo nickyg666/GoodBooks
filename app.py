@@ -654,6 +654,10 @@ def build_library_entries() -> List[Dict]:
             is_direct = filetype in DIRECT_DL_EXTENSIONS
 
             genres = meta.get("genres")
+            if isinstance(genres, str):
+                genres = [g.strip() for g in genres.split(",") if g.strip()]
+            elif genres is None:
+                genres = []
             language = meta.get("language")
             publish_date = meta.get("publish_date")
             rating = meta.get("rating")
@@ -675,6 +679,8 @@ def build_library_entries() -> List[Dict]:
                     "publish_date": publish_date,
                     "rating": rating,
                     "goodreads_link": goodreads_link,
+                    # Surface genres as tags for chips/filter UI
+                    "tags": genres,
                 }
             )
 

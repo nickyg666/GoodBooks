@@ -412,31 +412,49 @@ class AnnaSource:
                     href,
                 )
                 return None
+
             try:
-        
-                content = solve_cloudflare_challenge(
+                # solve_cloudflare_challenge returns either HTML (str) or a final download URL (str)
+                solved = solve_cloudflare_challenge(
                     href, timeout=self.timeout * 2, wait_seconds=60
                 )
             except Exception:
-                logger.debug("stealing failed check logs",exc_info=True)
+                logger.debug("stealing failed check logs", exc_info=True)
                 return None
-                
-            if not content:
+
+            if not solved:
                 logger.warning(
                     "Stealth browser failed to bypass Cloudflare for %s", href
                 )
                 return None
 
-            logger.debug(
-                "Stealth browser succeeded for %s, returning synthetic Response", href
-            )
+            # If the solver returned a URL, perform a real HTTP GET so downstream
+            # callers always receive a genuine requests.Response object.
+            if isinstance(solved, str) and solved.startswith("http"):
+                try:
+                    resp = self.session.get(
+                        solved,
+                        timeout=self.timeout,
+                        stream=for_download,
+                    )
+                    resp.raise_for_status()
+                    return resp
+                except requests.RequestException:
+                    logger.debug(
+                        "HTTP error after browser bypass for %s", solved, exc_info=True
+                    )
+                    return None
 
-            synthetic = requests.Response()
-            synthetic.status_code = 200
-            synthetic._content = content.encode("utf-8", errors="ignore")  # type: ignore[attr-defined]
-            synthetic.url = href
-            synthetic.headers["Content-Type"] = "text/html; charset=utf-8"
-            return synthetic
+            # Otherwise treat the returned HTML as page content.
+            logger.debug(
+                "Stealth browser succeeded for %s, using rendered HTML content", href
+            )
+            rendered = requests.Response()
+            rendered.status_code = 200
+            rendered._content = str(solved).encode("utf-8", errors="ignore")  # type: ignore[attr-defined]
+            rendered.url = href
+            rendered.headers["Content-Type"] = "text/html; charset=utf-8"
+            return rendered
 
         # ------------------------------
         # Non-Cloudflare HTTP status handling

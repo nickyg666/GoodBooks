@@ -1,10 +1,11 @@
 import hashlib
 import logging
+import os
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
-from urllib.parse import urljoin, urlparse, urlencode
+from urllib.parse import urljoin, urlparse, urlencode, urlsplit
 
 import re
 import time
@@ -646,7 +647,11 @@ class AnnaSource:
 
             try:
                 title = "".join(cols[1].xpath(".//text()")).strip()
-                author = "".join(cols[2].xpath(".//text()")).strip()
+                author_fragments = [
+                    (txt or "").strip() for txt in cols[2].xpath(".//text()") if (txt or "").strip()
+                ]
+                # Preserve order but avoid duplicating the same author strings
+                author = " ".join(dict.fromkeys(author_fragments)).strip()
                 cover = "".join(cols[0].xpath(".//img/@src")).strip()
             except IndexError:
                 logger.debug(
@@ -1609,9 +1614,17 @@ class AnnaSource:
             resp.close()
             raise ValueError("Download URL returned HTML instead of a file")
 
-        # 5. Determine save path
-        filename = f"{result['title']}.{fmt}"
-        # Strip characters illegal on Windows / Unix filenames
+        # 5. Determine save path from server-provided context instead of renaming
+        cd_header = resp.headers.get("Content-Disposition") or ""
+        filename_match = re.search(r'filename="?([^";]+)"?', cd_header)
+        if filename_match:
+            filename = filename_match.group(1)
+        else:
+            parsed = urlsplit(url)
+            filename = os.path.basename(parsed.path) or f"download.{fmt}"
+            if "." not in filename and fmt:
+                filename = f"{filename}.{fmt}"
+
         safe_name = sanitize_filename_preserve_ext(filename)
         final_path = dest_dir / safe_name
 

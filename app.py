@@ -935,13 +935,8 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
     raw_title = entry.get("title", "")
     raw_author = entry.get("author", "")
 
-    # Prefer a human-friendly version of slugged filenames so downstream
-    # searches keep spaces and punctuation intact.
-    human_title = _humanize_query_text(raw_title) if raw_title else ""
-    human_author = _humanize_query_text(raw_author) if raw_author else ""
-
-    meta.setdefault("title", human_title or raw_title)
-    meta.setdefault("author", human_author or raw_author)
+    meta.setdefault("title", raw_title)
+    meta.setdefault("author", raw_author)
     meta.setdefault("path", entry.get("path", ""))
     meta.setdefault("filetype", entry.get("filetype", ""))
     meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
@@ -963,7 +958,7 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
 
     if needs_rich_fields:
         try:
-            query = f"{human_title or raw_title} {human_author or raw_author}".strip()
+            query = f"{raw_title} {raw_author}".strip()
             if query:
                 # Make a small, format-aware search
                 allowed_formats = [entry.get("filetype", "epub") or "epub"]
@@ -2248,14 +2243,7 @@ def run_feeds():
             1 if a book was successfully downloaded, 0 otherwise.
         """
         local_debug: List[str] = []
-        # Preserve the feed-provided query exactly (including spaces/punctuation)
-        # so Anna's Archive sees the same text the user curated.
-        # Some feeds provide slug-style titles (no spaces/ punctuation). Restore
-        # human-friendly spacing solely for searching; we still persist the
-        # original text elsewhere so we don't rewrite user data.
-        human_title = _humanize_query_text(item.title)
-        human_author = _humanize_query_text(item.author)
-        query = html.unescape(f"{human_title or item.title} {human_author or item.author}").strip()
+        query = html.unescape(f"{item.title} {item.author}").strip()
         local_debug.append(f"    Searching for {query}")
         logger.info("Searching for item title=%s author=%s", item.title, item.author)
         # First attempt: full title + author

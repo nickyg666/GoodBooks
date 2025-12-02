@@ -524,11 +524,6 @@ class AnnaSource:
         opts = options or SearchOptions(query=query)
         if not opts.query:
             opts.query = query
-        # Preserve human-entered spacing even if upstream callers passed slugified
-        # titles (e.g., "Mistborn1-TheFinalEmpire" from feeds). This improves AA
-        # fuzzy matching for queries that originally contained spaces.
-        opts.query = (opts.query or "").replace("_", " ").replace("+", " ")
-
         params: List[Tuple[str, str]] = [
             ("q", opts.query),
             ("display", "table"),

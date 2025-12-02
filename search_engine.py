@@ -426,7 +426,24 @@ class AnnaSource:
                 logger.warning(
                     "Stealth browser failed to bypass Cloudflare for %s", href
                 )
-                return None
+                # Last resort: attempt a full stealth fetch to capture rendered HTML
+                # so the parser can still operate even if we could not extract a
+                # direct link from the challenge flow.
+                try:
+                    from stealth_browser import fetch_with_stealth
+
+                    rendered_html = fetch_with_stealth(href, timeout=self.timeout)
+                    rendered = requests.Response()
+                    rendered.status_code = 200
+                    rendered._content = rendered_html.encode(
+                        "utf-8", errors="ignore"
+                    )  # type: ignore[attr-defined]
+                    rendered.url = href
+                    rendered.headers["Content-Type"] = "text/html; charset=utf-8"
+                    return rendered
+                except Exception:
+                    logger.debug("Fallback stealth fetch failed for %s", href, exc_info=True)
+                    return None
 
             # If the solver returned a URL, perform a real HTTP GET so downstream
             # callers always receive a genuine requests.Response object.
@@ -507,6 +524,10 @@ class AnnaSource:
         opts = options or SearchOptions(query=query)
         if not opts.query:
             opts.query = query
+        # Preserve human-entered spacing even if upstream callers passed slugified
+        # titles (e.g., "Mistborn1-TheFinalEmpire" from feeds). This improves AA
+        # fuzzy matching for queries that originally contained spaces.
+        opts.query = (opts.query or "").replace("_", " ").replace("+", " ")
 
         params: List[Tuple[str, str]] = [
             ("q", opts.query),

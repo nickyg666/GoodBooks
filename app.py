@@ -2197,7 +2197,9 @@ def run_feeds():
             1 if a book was successfully downloaded, 0 otherwise.
         """
         local_debug: List[str] = []
-        query = f"{item.title} {item.author}".strip()
+        # Preserve the feed-provided query exactly (including spaces/punctuation)
+        # so Anna's Archive sees the same text the user curated.
+        query = html.unescape(f"{item.title} {item.author}".strip())
         local_debug.append(f"    Searching for {query}")
         logger.info("Searching for item title=%s author=%s", item.title, item.author)
         # First attempt: full title + author

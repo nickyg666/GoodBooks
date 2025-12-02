@@ -398,6 +398,7 @@ class AnnaSource:
             # Try to use the shared stealth browser helper
             try:
                 from stealth_browser import solve_cloudflare_challenge
+                from stealth_browser import fetch_with_stealth
             except Exception as exc:
                 logger.warning(
                     "stealth_browser module not available; cannot bypass Cloudflare for %s (%s)",
@@ -412,6 +413,25 @@ class AnnaSource:
                     href,
                 )
                 return None
+
+            # For Anna's Archive search pages we only need the rendered HTML; we
+            # don't need to wait for any slow_download link selector.
+            if "/search?" in href:
+                try:
+                    rendered_html = fetch_with_stealth(href, timeout=self.timeout)
+                    rendered = requests.Response()
+                    rendered.status_code = 200
+                    rendered._content = rendered_html.encode(
+                        "utf-8", errors="ignore"
+                    )  # type: ignore[attr-defined]
+                    rendered.url = href
+                    rendered.headers["Content-Type"] = "text/html; charset=utf-8"
+                    return rendered
+                except Exception:
+                    logger.debug(
+                        "Stealth fetch for search page failed, falling back to generic solver",
+                        exc_info=True,
+                    )
 
             try:
                 # solve_cloudflare_challenge returns either HTML (str) or a final download URL (str)

@@ -654,6 +654,10 @@ def build_library_entries() -> List[Dict]:
             is_direct = filetype in DIRECT_DL_EXTENSIONS
 
             genres = meta.get("genres")
+            if isinstance(genres, str):
+                genres = [g.strip() for g in genres.split(",") if g.strip()]
+            elif genres is None:
+                genres = []
             language = meta.get("language")
             publish_date = meta.get("publish_date")
             rating = meta.get("rating")
@@ -675,6 +679,8 @@ def build_library_entries() -> List[Dict]:
                     "publish_date": publish_date,
                     "rating": rating,
                     "goodreads_link": goodreads_link,
+                    # Surface genres as tags for chips/filter UI
+                    "tags": genres,
                 }
             )
 
@@ -815,6 +821,11 @@ def upsert_library_metadata_for_download(
         or best.get("goodreads_rating")
         or getattr(item, "rating", None)
     )
+    rating_count = best.get("rating_count") or getattr(item, "rating_count", None)
+    edition_format = best.get("edition_format") or getattr(item, "edition_format", None)
+    edition_published = best.get("edition_published") or getattr(item, "edition_published", None)
+    edition_language = best.get("edition_language") or getattr(item, "edition_language", None)
+    reviews_html = best.get("reviews_html") or getattr(item, "reviews_html", "")
     filetype = best.get("selected_format") or file_path.suffix.lstrip(".").lower()
 
     with library_metadata_lock:
@@ -843,6 +854,11 @@ def upsert_library_metadata_for_download(
             set_if_value(entry, "language", language)
             set_if_value(entry, "publish_date", publish_date)
             set_if_value(entry, "rating", rating)
+            set_if_value(entry, "rating_count", rating_count)
+            set_if_value(entry, "edition_format", edition_format)
+            set_if_value(entry, "edition_published", edition_published)
+            set_if_value(entry, "edition_language", edition_language)
+            set_if_value(entry, "reviews_html", reviews_html)
             set_if_value(entry, "filetype", filetype)
             metadata[key] = entry
 
@@ -879,6 +895,11 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
     meta.setdefault("path", entry.get("path", ""))
     meta.setdefault("filetype", entry.get("filetype", ""))
     meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
+    meta.setdefault("rating_count", entry.get("rating_count"))
+    meta.setdefault("edition_format", entry.get("edition_format", ""))
+    meta.setdefault("edition_published", entry.get("edition_published", ""))
+    meta.setdefault("edition_language", entry.get("edition_language", ""))
+    meta.setdefault("reviews_html", entry.get("reviews_html", ""))
 
     # ---------- 2) Decide if we need enrichment ----------
     needs_rich_fields = (
@@ -966,6 +987,24 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
                             meta["rating"] = float(rating)
                         except (TypeError, ValueError):
                             pass
+
+                    # Rating count
+                    r_count = best.get("rating_count")
+                    if r_count is not None:
+                        try:
+                            meta["rating_count"] = int(r_count)
+                        except (TypeError, ValueError):
+                            pass
+
+                    # Edition + reviews
+                    for field in (
+                        "edition_format",
+                        "edition_published",
+                        "edition_language",
+                        "reviews_html",
+                    ):
+                        if best.get(field):
+                            meta[field] = best[field]
 
         except Exception:
             logger.exception(
@@ -1668,22 +1707,6 @@ def search():
         end = start + page_size
         display_results = results[start:end]
 
-    # Opportunistically hydrate covers/downloads for the current page of results
-    try:
-        hydrated: List[Dict] = []
-        for r in (display_results or []):
-            try:
-                hydrated.append(source.resolve_downloads_for_result(r))
-            except Exception:
-                hydrated.append(r)
-        display_results = hydrated
-    except Exception:
-        logger.exception("Failed to hydrate search results with download metadata")
-    else:
-        total_pages = 0
-        page = 1
-        display_results = results
-
     return render_template(
         "index.html",
         settings=settings_manager.settings,
@@ -2174,7 +2197,9 @@ def run_feeds():
             1 if a book was successfully downloaded, 0 otherwise.
         """
         local_debug: List[str] = []
-        query = f"{item.title} {item.author}".strip()
+        # Preserve the feed-provided query exactly (including spaces/punctuation)
+        # so Anna's Archive sees the same text the user curated.
+        query = html.unescape(f"{item.title} {item.author}".strip())
         local_debug.append(f"    Searching for {query}")
         logger.info("Searching for item title=%s author=%s", item.title, item.author)
         # First attempt: full title + author
@@ -2235,6 +2260,17 @@ def run_feeds():
             expected_title=item.title,
             expected_author=item.author,
         )
+        # Resolve downloads now that we know which match to grab. This also
+        # ensures we persist the final resolved URL so later stages don't need
+        # to fall back to FakeResponse-style shims.
+        try:
+            best = source.resolve_downloads_for_result(best)
+        except Exception as exc:
+            local_debug.append(f"      Failed to resolve downloads: {exc}")
+            logger.exception("Failed to resolve downloads for feed item")
+            append_debug(local_debug)
+            return 0
+
         # Determine the desired file format once we have the best match.  We don't
         # attempt to download here because the destination directory (dest_dir)
         # depends on the user and feed.

@@ -459,9 +459,18 @@ class AnnaSource:
                     logger.debug("Fallback stealth fetch failed for %s", href, exc_info=True)
                     return None
 
-            # If the solver returned a URL, perform a real HTTP GET so downstream
-            # callers always receive a genuine requests.Response object.
+            # If the solver returned a URL, avoid fetching large payloads unless
+            # this call is explicitly for a download stream.
             if isinstance(solved, str) and solved.startswith("http"):
+                if not for_download:
+                    proxy = requests.Response()
+                    proxy.status_code = 200
+                    proxy.url = solved
+                    proxy._content = b""
+                    proxy.headers["X-Final-URL"] = solved
+                    proxy.headers["Content-Type"] = "text/plain"
+                    proxy.encoding = "utf-8"
+                    return proxy
                 try:
                     resp = self.session.get(
                         solved,
@@ -929,7 +938,7 @@ class AnnaSource:
             else:
                 secondary_links.append(href)
 
-        ordered_hrefs = primary_links or secondary_links
+        ordered_hrefs = list(dict.fromkeys(primary_links or secondary_links))
 
         debug_log.append(
             f"Found {len(ordered_hrefs)} slow_download links on AA detail page"
@@ -1023,12 +1032,11 @@ class AnnaSource:
             lower_text = ""
 
         # Only treat a page as a challenge when we see either an explicit CF
-        # status/header or well-known challenge text. This avoids sending normal
-        # pages through Playwright unless we are confident a block is present.
-        has_cf_headers = "cloudflare" in server_header or cf_ray is not None
+        # error status or recognizable challenge text. Header presence alone is
+        # too noisy because Anna's Archive always sits behind Cloudflare.
         has_challenge_text = any(indicator in lower_text for indicator in indicators)
 
-        return resp.status_code in {403, 503} or has_cf_headers or has_challenge_text
+        return resp.status_code in {403, 503} or has_challenge_text
 
     def _is_html_response(self, url: str) -> bool:
         """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
@@ -1065,9 +1073,11 @@ class AnnaSource:
 
         content_type = (resp.headers.get("Content-Type") or "").lower()
 
-        # If it's already a non-HTML response, treat slow_href as direct URL.
-        # Try to infer format from Content-Disposition or URL.
+        # If it's already a non-HTML response, treat it as a direct file URL.
+        # Prefer the ultimate URL if the request followed redirects or the
+        # Cloudflare solver handed us the final link via X-Final-URL.
         if "text/html" not in content_type:
+            final_url = resp.headers.get("X-Final-URL") or resp.url or slow_href
             cd = resp.headers.get("Content-Disposition") or ""
             filename_match = re.search(r'filename="?([^";]+)"?', cd)
             ext = ""
@@ -1076,12 +1086,12 @@ class AnnaSource:
                 if "." in fname:
                     ext = fname.rsplit(".", 1)[-1].lower()
 
-            fmt = ext or self._detect_format("", slow_href, formats) or "bin"
+            fmt = ext or self._detect_format("", final_url, formats) or "bin"
             resp.close()
             debug_log.append(
-                f"AA slow_download returned non-HTML; using slow_href directly fmt={fmt}"
+                f"AA slow_download returned non-HTML; using resolved URL directly fmt={fmt}"
             )
-            return slow_href, fmt
+            return final_url, fmt
 
         # HTML response – parse and look for a real file URL
         if self._is_cloudflare_challenge(resp):

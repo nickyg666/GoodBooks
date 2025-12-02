@@ -1005,6 +1005,9 @@ class AnnaSource:
         if resp is None:
             return False
 
+        server_header = (resp.headers.get("Server") or "").lower()
+        cf_ray = resp.headers.get("cf-ray") or resp.headers.get("CF-RAY")
+
         indicators = [
             "cloudflare",
             "just a moment",
@@ -1019,10 +1022,13 @@ class AnnaSource:
         except Exception:
             lower_text = ""
 
-        return (
-            resp.status_code in {403, 503}
-            or any(indicator in lower_text for indicator in indicators)
-        )
+        # Only treat a page as a challenge when we see either an explicit CF
+        # status/header or well-known challenge text. This avoids sending normal
+        # pages through Playwright unless we are confident a block is present.
+        has_cf_headers = "cloudflare" in server_header or cf_ray is not None
+        has_challenge_text = any(indicator in lower_text for indicator in indicators)
+
+        return resp.status_code in {403, 503} or has_cf_headers or has_challenge_text
 
     def _is_html_response(self, url: str) -> bool:
         """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
@@ -1053,9 +1059,6 @@ class AnnaSource:
         If the response is a Cloudflare challenge page, optionally try
         using Playwright (if available).
         """
-        debug_log.append(f"Resolving AA slow_download link: {slow_href}")
-        logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5)
-
         resp = self._safe_get(slow_href)
         if resp is None:
             return None

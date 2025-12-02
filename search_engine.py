@@ -2,7 +2,7 @@ import hashlib
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional
 from urllib.parse import urljoin, urlparse, urlencode
 
 import re
@@ -209,85 +209,6 @@ try:
 except Exception:  # ImportError or anything else
     sync_playwright = None  # type: ignore
 
-class _FakeResponse:
-    """
-    A minimal mock response object used internally when a real
-    ``requests.Response`` cannot be produced. This shim aims to
-    emulate enough of the ``requests.Response`` API to allow callers
-    (notably ``AnnaSource.download``) to introspect the result and
-    handle failures gracefully without raising attribute errors.
-
-    Parameters
-    ----------
-    status_code : int, optional
-        The HTTP status code to expose. Defaults to ``200``.
-    text : str, optional
-        The textual payload associated with this response. Defaults to
-        an empty string.
-    reason : str, optional
-        A human‑readable reason describing why this fake response was
-        constructed (e.g. ``"HTTP 403"``, ``"Connection Error"``). If
-        omitted, the ``text`` parameter is reused as the reason.
-
-    Additional positional and keyword arguments are accepted for
-    forwards‑compatibility; any unexpected values are ignored.
-    """
-
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        # Default values
-        self.status_code: int = 200
-        self.text: str = ""
-        self.reason: str = ""
-        self.headers: Dict[str, str] = {}
-        self.content: bytes = b""
-
-        # Allow passing status_code and text positionally, similar to the
-        # previous implementation. Additional positional args are ignored.
-        if args:
-            if len(args) >= 1 and isinstance(args[0], int):
-                self.status_code = args[0]
-            if len(args) >= 2 and isinstance(args[1], str):
-                self.text = args[1]
-
-        # Handle keyword arguments
-        status_code = kwargs.get("status_code")
-        if isinstance(status_code, int):
-            self.status_code = status_code
-        text = kwargs.get("text")
-        if isinstance(text, str):
-            self.text = text
-        reason = kwargs.get("reason")
-        if isinstance(reason, str):
-            self.reason = reason
-
-        # Fallback: if no explicit reason was supplied, derive it from
-        # provided textual content or default to an empty string.
-        if not self.reason:
-            self.reason = self.text or ""
-
-        # Encode the textual content for binary APIs like iter_content
-        self.content = (self.text or "").encode("utf-8", errors="ignore")
-
-    def raise_for_status(self) -> None:
-        """Mimic ``requests.Response.raise_for_status()`` behavior."""
-        if self.status_code >= 400:
-            import requests  # Local import to avoid circular import issues
-            raise requests.HTTPError(f"HTTP Error: {self.status_code}")
-
-    def iter_content(self, chunk_size: int = 8192):  # type: ignore[no-untyped-def]
-        """
-        Provide an iterator over the raw content. This mirrors
-        ``requests.Response.iter_content()`` and allows consumers to
-        stream the response body to disk. For fake responses the
-        content is typically very small, so we yield it once and stop.
-        """
-        if self.content:
-            # Yield at most one chunk for fake responses
-            yield self.content
-        # If there is no content, yield nothing.
-        return
-# --- End of _FakeResponse Definition ---
-
 ENABLE_ZLIB = True  # we still skip most zlib links by default
 
 SAFE_FILENAME_CHARS = (
@@ -365,13 +286,12 @@ class AnnaSource:
 
         # Wire up global concurrency control from constructor argument
         set_download_concurrency(max_concurrent_downloads)
-    def _make_request(self, url: str, stream: bool = False, headers: Optional[Dict] = None) -> Union[requests.Response, _FakeResponse, None]:
+    def _make_request(self, url: str, stream: bool = False, headers: Optional[Dict] = None) -> Optional[requests.Response]:
         """
         Manages the request, including the stealth/browser resolution for slow_download links.
 
         Returns:
             - requests.Response if successful (can be streamed)
-            - _FakeResponse if request failed (prevents AttributeError in download)
             - None if request failed outright
         """
         # Copy the base headers from the underlying requests session. ``self.headers``
@@ -389,30 +309,44 @@ class AnnaSource:
         try:
             # 1. Check for slow_download link (Anna's Archive protection)
             if "/slow_download/" in url:
-                # Use the stealth browser to resolve the challenge and get the *final* download URL
-                final_url = resolve_slow_download_link(url, self.timeout)
-                
-                if final_url is None:
-                    logger.warning("Stealth browser failed to resolve challenge for %s", url)
-                    # Construct a fake response with a reason; avoid passing unknown kwargs
-                    fake_resp = _FakeResponse()
-                    fake_resp.reason = "Stealth resolution failed"
-                    fake_resp.status_code = 0
-                    return fake_resp
-                
-                # The browser succeeded and gave us the final direct URL.
-                # Now, perform a standard requests GET to get the actual file stream.
-                logger.debug("Stealth browser succeeded for %s, now fetching actual file from: %s", url, final_url)
+                # First attempt a direct request; only fall back to Playwright when
+                # the response clearly indicates a Cloudflare / DDoS guard page.
                 resp = self.session.get(
-                    final_url,
+                    url,
                     headers=_headers,
                     timeout=self.timeout,
-                    stream=stream
+                    stream=stream,
                 )
-                resp.raise_for_status() # Raise for HTTP errors on the final download
-                logger.debug("Successfully fetched actual file stream (HTTP %d)", resp.status_code)
+
+                if self._is_cloudflare_challenge(resp):
+                    resp.close()
+                    final_url = resolve_slow_download_link(url, self.timeout)
+
+                    if final_url is None:
+                        logger.warning(
+                            "Stealth browser failed to resolve challenge for %s",
+                            url,
+                        )
+                        return None
+
+                    logger.debug(
+                        "Stealth browser succeeded for %s, now fetching actual file from: %s",
+                        url,
+                        final_url,
+                    )
+                    resp = self.session.get(
+                        final_url,
+                        headers=_headers,
+                        timeout=self.timeout,
+                        stream=stream,
+                    )
+                resp.raise_for_status()  # Raise for HTTP errors on the final download
+                logger.debug(
+                    "Successfully fetched actual file stream (HTTP %d)",
+                    resp.status_code,
+                )
                 return resp
-                
+
             # 2. Standard direct request (used for covers, search, etc.)
             resp = self.session.get(
                 url,
@@ -422,31 +356,17 @@ class AnnaSource:
             )
             resp.raise_for_status()
             return resp
-        
+
         except requests.exceptions.HTTPError as e:
-            if e.response is not None and e.response.status_code in {403, 404, 503}:
-                logger.warning("HTTP error (%d) on URL %s", e.response.status_code, url)
-                fake_resp = _FakeResponse()
-                fake_resp.status_code = e.response.status_code
-                fake_resp.reason = f"HTTP {e.response.status_code}"
-                return fake_resp
-            logger.error("HTTP error fetching %s: %s", url, e)
-            fake_resp = _FakeResponse()
-            fake_resp.status_code = e.response.status_code if e.response is not None else 0
-            fake_resp.reason = "General HTTP Error"
-            return fake_resp
+            status = e.response.status_code if e.response is not None else "?"
+            logger.warning("HTTP error (%s) on URL %s", status, url)
+            return None
         except requests.exceptions.ConnectionError as e:
             logger.error("Connection error fetching %s: %s", url, e)
-            fake_resp = _FakeResponse()
-            fake_resp.reason = "Connection Error"
-            fake_resp.status_code = 0
-            return fake_resp
+            return None
         except Exception:
             logger.exception("Unexpected error during request to %s", url)
-            fake_resp = _FakeResponse()
-            fake_resp.reason = "Unexpected Error"
-            fake_resp.status_code = 0
-            return fake_resp
+            return None
 
     # ------------------------------------------------------------------
     # Internal network helper
@@ -456,11 +376,19 @@ class AnnaSource:
         # ------------------------------
         # Raw GET attempt
         # ------------------------------
+        allow_redirects = True
+        # Avoid following redirects on slow_download pages when we're only trying
+        # to harvest the final URL. This prevents eager fetching of large files
+        # before the caller explicitly requests a download.
+        if (not for_download) and "/slow_download/" in href:
+            allow_redirects = False
+
         try:
             resp = self.session.get(
                 href,
                 timeout=self.timeout,
                 stream=for_download,
+                allow_redirects=allow_redirects,
             )
         except requests.RequestException:
             # Network-level failure: mark host unreachable for the rest of the run
@@ -470,19 +398,37 @@ class AnnaSource:
         # For pure file downloads we do NOT try to run a browser;
         # the slow_download resolver already handles CF for that path.
         if for_download:
+            try:
+                resp.raise_for_status()
+            except requests.RequestException:
+                logger.debug(
+                    "HTTP error status=%s for download href=%s", resp.status_code, href
+                )
+                resp.close()
+                return None
             return resp
 
         # ------------------------------
         # Metadata / HTML path: Cloudflare detection
         # ------------------------------
-        try:
-            # This will also read the error page body.
-            text_sample = (resp.text or "")[:4096]
-        except Exception:
-            text_sample = ""
-
         # Use our local Cloudflare heuristic
         if self._is_cloudflare_challenge(resp):
+            # Some AA search pages still render useful HTML even while tripping our
+            # Cloudflare heuristic. Before invoking Playwright, inspect the parsed
+            # tree to see if we already have usable rows.
+            try:
+                parsed_tree = html.fromstring(resp.content)
+                if parsed_tree.xpath("//table//tr[td]"):
+                    logger.debug(
+                        "Cloudflare heuristic triggered for %s but table rows present; "
+                        "using raw response",
+                        href,
+                    )
+                    return resp
+            except Exception:
+                # Fall back to the solver
+                logger.debug("Failed to inspect HTML before Cloudflare bypass", exc_info=True)
+
             logger.warning(
                 "Cloudflare / anti-bot challenge detected at %s (status=%s); "
                 "attempting stealth browser bypass",
@@ -491,7 +437,7 @@ class AnnaSource:
             )
             resp.close()
 
-            # Try to use the shared stealth browser helper
+            # Only invoke the challenge solver when we actually detect Cloudflare
             try:
                 from stealth_browser import solve_cloudflare_challenge
             except Exception as exc:
@@ -508,41 +454,59 @@ class AnnaSource:
                     href,
                 )
                 return None
+
             try:
-        
-                content = solve_cloudflare_challenge(
+                solved = solve_cloudflare_challenge(
                     href, timeout=self.timeout * 2, wait_seconds=60
                 )
             except Exception:
-                logger.debug("stealing failed check logs",exc_info=True)
-                return None
-                
-            if not content:
+                logger.debug("stealing failed check logs", exc_info=True)
+                solved = None
+
+            if not solved:
                 logger.warning(
                     "Stealth browser failed to bypass Cloudflare for %s", href
                 )
                 return None
 
-            # Wrap the HTML content in a tiny Response-like shim
-            class _FakeResponse:
-                def __init__(self, url: str, html_text: str):
-                    self.url = url
-                    self._text = html_text
-                    self.content = html_text.encode("utf-8", errors="ignore")
-                    self.status_code = 200
-                    self.headers: Dict[str, str] = {"Content-Type": "text/html; charset=utf-8"}
-                def iter_content(self, chunk_size=8192):
-                    yield from []
-                def close(self):
-                    pass
-                @property
-                def text(self) -> str:
-                    return self._text
+            # If the solver returned a URL, avoid fetching large payloads unless
+            # this call is explicitly for a download stream.
+            if isinstance(solved, str) and solved.startswith("http"):
+                if not for_download:
+                    proxy = requests.Response()
+                    proxy.status_code = 200
+                    proxy.url = solved
+                    proxy._content = b""
+                    proxy.headers["X-Final-URL"] = solved
+                    proxy.headers["Content-Type"] = "text/plain"
+                    proxy.encoding = "utf-8"
+                    return proxy
+                try:
+                    resp = self.session.get(
+                        solved,
+                        timeout=self.timeout,
+                        stream=for_download,
+                    )
+                    resp.raise_for_status()
+                    return resp
+                except requests.RequestException:
+                    logger.debug(
+                        "HTTP error after browser bypass for %s", solved, exc_info=True
+                    )
+                    return None
 
+            # Otherwise treat the returned HTML as page content (matches the
+            # earlier FakeResponse behavior without the shim class).
             logger.debug(
-                "Stealth browser succeeded for %s, returning synthetic Response", href
+                "Stealth browser succeeded for %s, using rendered HTML content", href
             )
-            return _FakeResponse(href, content)
+            rendered = requests.Response()
+            rendered.status_code = 200
+            rendered._content = str(solved).encode("utf-8", errors="ignore")  # type: ignore[attr-defined]
+            rendered.url = href
+            rendered.headers["Content-Type"] = "text/html; charset=utf-8"
+            rendered.encoding = "utf-8"
+            return rendered
 
         # ------------------------------
         # Non-Cloudflare HTTP status handling
@@ -595,7 +559,6 @@ class AnnaSource:
         opts = options or SearchOptions(query=query)
         if not opts.query:
             opts.query = query
-
         params: List[Tuple[str, str]] = [
             ("q", opts.query),
             ("display", "table"),
@@ -611,8 +574,10 @@ class AnnaSource:
         if opts.autodownload:
             params.append(("autodownload", "1"))
 
-        # Cache lookup: avoid repeated fetches for the same logical query
-        cache_key = (opts.query or query).strip().lower()
+        # Cache lookup: avoid repeated fetches for the same logical query. Keep the
+        # exact query text (including spacing/punctuation) so lookups don't mutate
+        # titles that users or feeds provided.
+        cache_key = opts.query or query
         if cache_key in self.cache:
             logger.debug("Cache hit for query=%r", opts.query)
             cached = self.cache[cache_key]
@@ -983,7 +948,7 @@ class AnnaSource:
             else:
                 secondary_links.append(href)
 
-        ordered_hrefs = primary_links or secondary_links
+        ordered_hrefs = list(dict.fromkeys(primary_links or secondary_links))
 
         debug_log.append(
             f"Found {len(ordered_hrefs)} slow_download links on AA detail page"
@@ -1059,16 +1024,16 @@ class AnnaSource:
         if resp is None:
             return False
 
-        server_header = (resp.headers or {}).get("Server", "").lower()
-        cf_ray = (resp.headers or {}).get("cf-ray") or (resp.headers or {}).get(
-            "CF-RAY"
-        )
+        server_header = (resp.headers.get("Server") or "").lower()
+        cf_ray = resp.headers.get("cf-ray") or resp.headers.get("CF-RAY")
+
         indicators = [
             "cloudflare",
             "just a moment",
             "attention required",
             "checking your browser",
             "verify you are human",
+            "ddos-guard",
         ]
 
         try:
@@ -1076,12 +1041,12 @@ class AnnaSource:
         except Exception:
             lower_text = ""
 
-        return (
-            resp.status_code in {403, 503}
-            or "cloudflare" in server_header
-            or cf_ray is not None
-            or any(indicator in lower_text for indicator in indicators)
-        )
+        # Only treat a page as a challenge when we see either an explicit CF
+        # error status or recognizable challenge text. Header presence alone is
+        # too noisy because Anna's Archive always sits behind Cloudflare.
+        has_challenge_text = any(indicator in lower_text for indicator in indicators)
+
+        return resp.status_code in {403, 503} or has_challenge_text
 
     def _is_html_response(self, url: str) -> bool:
         """Best-effort HEAD check to avoid returning HTML interstitials as downloads."""
@@ -1112,18 +1077,26 @@ class AnnaSource:
         If the response is a Cloudflare challenge page, optionally try
         using Playwright (if available).
         """
-        debug_log.append(f"Resolving AA slow_download link: {slow_href}")
-        logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5)
-
         resp = self._safe_get(slow_href)
         if resp is None:
             return None
 
         content_type = (resp.headers.get("Content-Type") or "").lower()
 
-        # If it's already a non-HTML response, treat slow_href as direct URL.
-        # Try to infer format from Content-Disposition or URL.
+        # If it's already a non-HTML response, treat it as a direct file URL.
+        # Prefer the ultimate URL if the request followed redirects or the
+        # Cloudflare solver handed us the final link via X-Final-URL.
+        if resp.is_redirect or resp.status_code in {301, 302}:
+            final_url = resp.headers.get("Location") or resp.url or slow_href
+            fmt = self._detect_format("", final_url, formats) or "bin"
+            resp.close()
+            debug_log.append(
+                f"AA slow_download returned redirect; using Location {final_url} ({fmt})"
+            )
+            return final_url, fmt
+
         if "text/html" not in content_type:
+            final_url = resp.headers.get("X-Final-URL") or resp.url or slow_href
             cd = resp.headers.get("Content-Disposition") or ""
             filename_match = re.search(r'filename="?([^";]+)"?', cd)
             ext = ""
@@ -1132,12 +1105,12 @@ class AnnaSource:
                 if "." in fname:
                     ext = fname.rsplit(".", 1)[-1].lower()
 
-            fmt = ext or self._detect_format("", slow_href, formats) or "bin"
+            fmt = ext or self._detect_format("", final_url, formats) or "bin"
             resp.close()
             debug_log.append(
-                f"AA slow_download returned non-HTML; using slow_href directly fmt={fmt}"
+                f"AA slow_download returned non-HTML; using resolved URL directly fmt={fmt}"
             )
-            return slow_href, fmt
+            return final_url, fmt
 
         # HTML response – parse and look for a real file URL
         if self._is_cloudflare_challenge(resp):
@@ -1598,21 +1571,18 @@ class AnnaSource:
         if not url or not selected_fmt:
             raise ValueError(f"No DL link available, for any format! Last checked for {fmt}" )
         fmt = selected_fmt
-        logger.debug("Attempting to download %s from %s", result.get("title"), url)
-        
+        logger.info("Downloading %s (%s) from %s", result.get("title"), fmt, url)
+
         # 1. Acquire semaphore for concurrency control
         with _DOWNLOAD_SEMAPHORE:
             # 2. Make the request via the integrated handler
             # It will resolve slow_download using the browser if necessary
             resp = self._make_request(url, stream=True)
-        if resp is None or isinstance(resp, _FakeResponse):
-                logger.error(
-                    "Download failed via _FakeResponse (Status %s, Reason: %s) for title=%s",
-                    getattr(resp, "status_code", None) if resp is not None else "N/A",
-                    getattr(resp, "reason", "") if resp is not None else "N/A",
-                    result.get("title"),
-                )
-                raise ValueError("Failed to GET download URL or resolve stealth challenge")
+        if resp is None:
+            logger.error(
+                "Download failed: no response object for title=%s", result.get("title")
+            )
+            raise ValueError("Failed to GET download URL or resolve stealth challenge")
         
         # 3. Check for failed response object
         if not hasattr(resp, "iter_content"):
@@ -1675,7 +1645,7 @@ class AnnaSource:
             except Exception:
                 pass
 
-        logger.debug("Saved download to %s", final_path)
+        logger.info("Saved download to %s", final_path)
         return final_path
 # ----------------------------------------------------------------------
 # Helper for feeds / auto flows: pick best result given allowed formats

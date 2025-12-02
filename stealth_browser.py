@@ -222,15 +222,16 @@ def resolve_slow_download_link(url: str, timeout: int) -> Optional[str]:
             
 def solve_cloudflare_challenge(
     url: str,
-    timeout: int = 90, 
-    wait_seconds: int = 90, 
+    timeout: int = 90,
+    wait_seconds: int = 90,
     browser_type: str = DEFAULT_BROWSER,
 ) -> Optional[str]:
     """
     Run a stealth Playwright session to wait out Cloudflare/DDoS-Guard pages.
-    
-    Returns the direct download URL (str) on successful link extraction, 
-    the page content (str HTML) if link extraction fails, or None on permanent failure/timeout.
+
+    Returns the direct download URL (str) on successful link extraction for
+    slow_download pages, or the page HTML (str) for non-download pages once the
+    challenge is cleared. None is returned on permanent failure/timeout.
     """
 
     user_agent = _next_user_agent()
@@ -272,43 +273,46 @@ def solve_cloudflare_challenge(
 
             if status == "SUCCESS":
                 logger.info("Challenge solved for %s", url)
-                
+
                 # --- STEP 1: Wait for network activity to settle (Aggressive) ---
                 try:
                     # Wait for network idle state after challenge is solved (up to 5 seconds)
-                    page.wait_for_load_state("networkidle", timeout=5000) 
+                    page.wait_for_load_state("networkidle", timeout=5000)
                     logger.debug("Network settled after challenge resolution.")
                 except TimeoutError:
                     logger.debug("Network did not settle within 5 seconds, proceeding aggressively.")
 
-                # --- STEP 2: Aggressive Wait, Extract, and Return Link ---
-                DOWNLOAD_LINK_SELECTOR = 'xpath=/html/body/main/div/p[3]/a'
-                
-                try:
-                    # Wait for selector and get the element
-                    link_element = page.wait_for_selector(
-                        DOWNLOAD_LINK_SELECTOR, 
-                        timeout=10000, 
-                        state="attached" 
-                    ) 
-                    
-                    # Extract the href attribute
-                    download_link = link_element.get_attribute("href")
-                    
-                    if download_link:
-                        logger.debug("Successfully extracted download link: %s", download_link)
-                        # CRITICAL: Return the final URL string directly
-                        return download_link 
-                    else:
-                        logger.warning("Found anchor element but no href attribute.")
+                is_download_page = "slow_download" in url
 
+                if is_download_page:
+                    # --- STEP 2a: Aggressive Wait, Extract, and Return Link ---
+                    DOWNLOAD_LINK_SELECTOR = 'xpath=/html/body/main/div/p[3]/a'
+
+                    try:
+                        link_element = page.wait_for_selector(
+                            DOWNLOAD_LINK_SELECTOR,
+                            timeout=10000,
+                            state="attached"
+                        )
+                        download_link = link_element.get_attribute("href")
+                        if download_link:
+                            logger.debug("Successfully extracted download link: %s", download_link)
+                            return download_link
+                        logger.warning("Found anchor element but no href attribute.")
+                    except TimeoutError:
+                        logger.warning(
+                            "Timed out waiting (5s) for download link selector. Capturing current content."
+                        )
+
+                    return page.content()
+
+                # --- STEP 2b: Non-download pages (e.g., search) ---
+                try:
+                    page.wait_for_selector("table", timeout=7000)
                 except TimeoutError:
-                    # Log a warning but capture the content anyway, as the page might have loaded
-                    logger.warning(
-                        "Timed out waiting (5s) for download link selector. Capturing current content."
+                    logger.debug(
+                        "Search/result page did not expose a <table> within timeout; returning current content."
                     )
-                
-                # Fallback: Capture and return the HTML content if link extraction fails
                 return page.content()
 
             if status == "BLOCKED":

@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from urllib.parse import urljoin, urlparse, urlencode
@@ -478,6 +479,7 @@ class AnnaSource:
                     proxy.status_code = 200
                     proxy.url = solved
                     proxy._content = b""
+                    proxy.raw = BytesIO()
                     proxy.headers["X-Final-URL"] = solved
                     proxy.headers["Content-Type"] = "text/plain"
                     proxy.encoding = "utf-8"
@@ -504,6 +506,7 @@ class AnnaSource:
             rendered = requests.Response()
             rendered.status_code = 200
             rendered._content = str(solved).encode("utf-8", errors="ignore")  # type: ignore[attr-defined]
+            rendered.raw = BytesIO(rendered._content)
             rendered.url = href
             rendered.headers["Content-Type"] = "text/html; charset=utf-8"
             rendered.encoding = "utf-8"

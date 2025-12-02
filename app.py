@@ -2250,7 +2250,12 @@ def run_feeds():
         local_debug: List[str] = []
         # Preserve the feed-provided query exactly (including spaces/punctuation)
         # so Anna's Archive sees the same text the user curated.
-        query = html.unescape(f"{item.title} {item.author}")
+        # Some feeds provide slug-style titles (no spaces/ punctuation). Restore
+        # human-friendly spacing solely for searching; we still persist the
+        # original text elsewhere so we don't rewrite user data.
+        human_title = _humanize_query_text(item.title)
+        human_author = _humanize_query_text(item.author)
+        query = html.unescape(f"{human_title or item.title} {human_author or item.author}").strip()
         local_debug.append(f"    Searching for {query}")
         logger.info("Searching for item title=%s author=%s", item.title, item.author)
         # First attempt: full title + author

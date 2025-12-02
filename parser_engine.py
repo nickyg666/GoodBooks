@@ -1,7 +1,7 @@
 import re
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from urllib.parse import urlparse
@@ -23,6 +23,16 @@ class ParsedItem:
     link: str = ""
     description: str = ""
     cover: str = ""
+    genres: List[str] = field(default_factory=list)
+    rating: Optional[float] = None
+    rating_count: Optional[int] = None
+    goodreads_url: str = ""
+    publish_date: str = ""
+    language: str = ""
+    edition_format: str = ""
+    edition_published: str = ""
+    edition_language: str = ""
+    reviews_html: str = ""
 
 
 class FeedMetadataStore:
@@ -103,6 +113,16 @@ class FeedMetadataStore:
             "link": item.link,
             "description": item.description,
             "cover": item.cover,
+            "genres": item.genres,
+            "rating": item.rating,
+            "rating_count": item.rating_count,
+            "goodreads_url": item.goodreads_url,
+            "publish_date": item.publish_date,
+            "language": item.language,
+            "edition_format": item.edition_format,
+            "edition_published": item.edition_published,
+            "edition_language": item.edition_language,
+            "reviews_html": item.reviews_html,
         }
         self.save(data)
 class FeedParser:
@@ -232,6 +252,16 @@ class FeedParser:
                     link=link,
                     description=description,
                     cover=cover,
+                    genres=meta.get("genres") or [],
+                    rating=meta.get("rating"),
+                    rating_count=meta.get("rating_count"),
+                    goodreads_url=meta.get("goodreads_url", link),
+                    publish_date=meta.get("edition_published", ""),
+                    language=meta.get("edition_language", ""),
+                    edition_format=meta.get("edition_format", ""),
+                    edition_published=meta.get("edition_published", ""),
+                    edition_language=meta.get("edition_language", ""),
+                    reviews_html=meta.get("reviews_html", ""),
                 )
 
                 # Skip empty titles
@@ -322,6 +352,7 @@ class FeedParser:
                 link=link,
                 description=description,
                 cover=cover,
+                goodreads_url=link,
             )
             items.append(item)
             self.cache.cache_item(url, item)
@@ -441,6 +472,16 @@ class FeedParser:
                     link=link,
                     description=description,
                     cover=cover,
+                    genres=meta.get("genres") or [],
+                    rating=meta.get("rating"),
+                    rating_count=meta.get("rating_count"),
+                    goodreads_url=meta.get("goodreads_url", link),
+                    publish_date=meta.get("edition_published", ""),
+                    language=meta.get("edition_language", ""),
+                    edition_format=meta.get("edition_format", ""),
+                    edition_published=meta.get("edition_published", ""),
+                    edition_language=meta.get("edition_language", ""),
+                    reviews_html=meta.get("reviews_html", ""),
                 )
 
                 # Skip empty titles and duplicates

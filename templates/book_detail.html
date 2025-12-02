@@ -48,8 +48,36 @@
 
             {% if meta.rating %}
             <p>
-                <strong>Rating:</strong> {{ meta.rating }}
+                <strong>Rating:</strong> ⭐ {{ meta.rating }}
+                {% if meta.rating_count %}
+                    ({{ "{:,.0f}".format(meta.rating_count|float) }} ratings)
+                {% endif %}
             </p>
+            {% endif %}
+
+            {% if meta.edition_format or meta.edition_language or meta.edition_published %}
+            <p>
+                {% if meta.edition_format %}
+                <strong>Format:</strong> {{ meta.edition_format }}
+                {% endif %}
+                {% if meta.edition_language %}
+                {% if meta.edition_format %} &middot; {% endif %}
+                <strong>Language (edition):</strong> {{ meta.edition_language }}
+                {% endif %}
+                {% if meta.edition_published %}
+                {% if meta.edition_format or meta.edition_language %} &middot; {% endif %}
+                <strong>Published:</strong> {{ meta.edition_published }}
+                {% endif %}
+            </p>
+            {% endif %}
+
+            {% if meta.reviews_html %}
+            <div class="card" style="margin-top: 1rem;">
+                <h3 style="margin-top: 0;">Goodreads ratings</h3>
+                <div class="goodreads-reviews" style="overflow:auto;">
+                    {{ meta.reviews_html|safe }}
+                </div>
+            </div>
             {% endif %}
 
             <p class="muted">

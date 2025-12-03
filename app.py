@@ -1655,8 +1655,8 @@ def search():
                 kindle_type=kindle_type,
                 # Cheap manual-search mode:
                 resolve_downloads=False,
-                max_rows=45,
-                max_results=45,
+                max_rows=120,
+                max_results=60,
             )
             results, debug_log = source.search(query, options=search_options)
             logger.info(
@@ -2231,6 +2231,7 @@ def run_feeds():
         """Mark the current run as inactive without discarding data."""
         with feed_progress_lock:
             feed_progress_state["active"] = False
+            feed_progress_state["run_id"] = None
             # Mark any still-active feeds as inactive
             feeds = feed_progress_state.get("feeds", {})
             for key, fstate in feeds.items():
@@ -2436,6 +2437,8 @@ def run_feeds():
     # ------------------------------------------------------------------
     futures = []
     run_id = init_progress()
+    # Always parse feeds fresh; do not reuse previous run state
+    feed_parser.reset_run_cache()
     logger.info(
         "Starting feed run %s with global executor (max_workers=%d)",
         run_id,

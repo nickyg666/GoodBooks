@@ -105,7 +105,7 @@ class SearchOptions:
     # - resolve_downloads=False => cheap search, no detail page scraping
     resolve_downloads: bool = True
     # Maximum number of <tr> rows to parse from AA result table
-    max_rows: int = 60
+    max_rows: int = 120
     # Optional override for result limit (default is AnnaSource.max_results)
     max_results: Optional[int] = None
 
@@ -699,12 +699,17 @@ class AnnaSource:
             formats = [f.strip() for f in raw_formats if f.strip()]
 
             # --- MD5 extraction (from row links) ---
-            md5 = ""
+            md5 = row.get("data-md5") or ""
             # Prefer a /md5/ link in the title column
             md5_href_candidates = cols[1].xpath('.//a[contains(@href, "/md5/")]/@href')
             if not md5_href_candidates:
                 # Fallback: any /md5/ link in the row
                 md5_href_candidates = row.xpath('.//a[contains(@href, "/md5/")]/@href')
+
+            if not md5:
+                data_md5 = row.xpath('.//@data-md5')
+                if data_md5:
+                    md5 = (data_md5[0] or "").strip()
 
             if md5_href_candidates:
                 detail_href = md5_href_candidates[0].strip()
@@ -1646,8 +1651,10 @@ class AnnaSource:
             if "." not in filename and fmt:
                 filename = f"{filename}.{fmt}"
 
-        safe_name = sanitize_filename_preserve_ext(filename)
-        final_path = dest_dir / safe_name
+        # Preserve the server-provided filename verbatim (minus any directory
+        # traversal attempts) so we don't rename downloads after streaming.
+        final_name = Path(filename).name or f"download.{fmt or 'bin'}"
+        final_path = dest_dir / final_name
 
         first_chunk: Optional[bytes] = None
         try:
@@ -1723,8 +1730,9 @@ def select_best_result(
         has_allowed = bool(allowed & set(formats)) if allowed else bool(formats)
 
         if not has_allowed:
-            # Still consider it, but with a big penalty.
-            base = r.get("_rank_score", 0.0) - 0.5
+            # Still consider it, but with a light penalty so we don't drop
+            # potentially good matches when AA mislabeled formats.
+            base = r.get("_rank_score", 0.0) - 0.15
         else:
             base = r.get("_rank_score", 0.0)
 

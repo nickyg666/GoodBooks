@@ -83,6 +83,7 @@ _SEARCH_CACHE_LOCK = threading.Lock()
 
 # In-memory mirror of disk-backed search cache
 _SEARCH_CACHE_LOADED = False
+_SEARCH_CACHE_MTIME: float = 0.0
 _SEARCH_CACHE: Dict[str, Dict] = {}
 
 # Configure logging based on settings
@@ -161,9 +162,25 @@ def resolve_download_dir(path_str: str) -> Path:
 
 def _load_search_cache() -> Dict[str, Dict]:
     """Load search cache from disk once into _SEARCH_CACHE."""
-    global _SEARCH_CACHE_LOADED, _SEARCH_CACHE
+    global _SEARCH_CACHE_LOADED, _SEARCH_CACHE, _SEARCH_CACHE_MTIME
+
+    current_mtime = 0.0
+    try:
+        if SEARCH_CACHE_PATH.exists():
+            current_mtime = SEARCH_CACHE_PATH.stat().st_mtime
+    except OSError:
+        current_mtime = 0.0
+
+    # If we already loaded but the on-disk cache was removed or refreshed,
+    # reset the in-memory copy so we don't reuse stale, possibly sanitized
+    # queries after manual cache cleanup.
     if _SEARCH_CACHE_LOADED:
-        return _SEARCH_CACHE
+        if current_mtime != _SEARCH_CACHE_MTIME:
+            _SEARCH_CACHE_LOADED = False
+            _SEARCH_CACHE = {}
+            _SEARCH_CACHE_MTIME = current_mtime
+        else:
+            return _SEARCH_CACHE
 
     if SEARCH_CACHE_PATH.exists():
         try:
@@ -174,6 +191,7 @@ def _load_search_cache() -> Dict[str, Dict]:
     else:
         _SEARCH_CACHE = {}
 
+    _SEARCH_CACHE_MTIME = current_mtime
     _SEARCH_CACHE_LOADED = True
     return _SEARCH_CACHE
 
@@ -185,6 +203,10 @@ def _save_search_cache() -> None:
     try:
         SEARCH_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         SEARCH_CACHE_PATH.write_text(json.dumps(_SEARCH_CACHE, indent=2))
+        try:
+            _SEARCH_CACHE_MTIME = SEARCH_CACHE_PATH.stat().st_mtime
+        except OSError:
+            pass
     except Exception:
         logger.exception("Failed to save search cache to %s", SEARCH_CACHE_PATH)
 
@@ -204,7 +226,9 @@ def search_with_cache(
     - If persist=False (manual UI search):
         * Just call AnnaSource.search; no disk writes/reads.
     """
-    cache_key = (options.query or query or "").strip().lower()
+    # Preserve the exact query text (including whitespace/punctuation) for cache keys
+    # so feed/user-provided titles aren't altered before lookups.
+    cache_key = options.query or query or ""
     debug_log: List[str] = []
 
     if persist:
@@ -390,7 +414,11 @@ def send_notification_email(
     """
     Notify the user that a book was downloaded.
     """
-    if not user.notification_email or not smtp_config.is_configured():
+    if (
+        not user.notification_email
+        or not smtp_config.is_configured()
+        or not settings_manager.settings.notify_library_updates
+    ):
         return
 
     title = result.get("title", "") or (item.title if item else "")
@@ -654,6 +682,10 @@ def build_library_entries() -> List[Dict]:
             is_direct = filetype in DIRECT_DL_EXTENSIONS
 
             genres = meta.get("genres")
+            if isinstance(genres, str):
+                genres = [g.strip() for g in genres.split(",") if g.strip()]
+            elif genres is None:
+                genres = []
             language = meta.get("language")
             publish_date = meta.get("publish_date")
             rating = meta.get("rating")
@@ -675,6 +707,8 @@ def build_library_entries() -> List[Dict]:
                     "publish_date": publish_date,
                     "rating": rating,
                     "goodreads_link": goodreads_link,
+                    # Surface genres as tags for chips/filter UI
+                    "tags": genres,
                 }
             )
 
@@ -815,6 +849,11 @@ def upsert_library_metadata_for_download(
         or best.get("goodreads_rating")
         or getattr(item, "rating", None)
     )
+    rating_count = best.get("rating_count") or getattr(item, "rating_count", None)
+    edition_format = best.get("edition_format") or getattr(item, "edition_format", None)
+    edition_published = best.get("edition_published") or getattr(item, "edition_published", None)
+    edition_language = best.get("edition_language") or getattr(item, "edition_language", None)
+    reviews_html = best.get("reviews_html") or getattr(item, "reviews_html", "")
     filetype = best.get("selected_format") or file_path.suffix.lstrip(".").lower()
 
     with library_metadata_lock:
@@ -843,6 +882,11 @@ def upsert_library_metadata_for_download(
             set_if_value(entry, "language", language)
             set_if_value(entry, "publish_date", publish_date)
             set_if_value(entry, "rating", rating)
+            set_if_value(entry, "rating_count", rating_count)
+            set_if_value(entry, "edition_format", edition_format)
+            set_if_value(entry, "edition_published", edition_published)
+            set_if_value(entry, "edition_language", edition_language)
+            set_if_value(entry, "reviews_html", reviews_html)
             set_if_value(entry, "filetype", filetype)
             metadata[key] = entry
 
@@ -874,11 +918,19 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
 
     # ---------- 1) Always make sure basics are set ----------
     meta.setdefault("id", library_id)
-    meta.setdefault("title", entry.get("title", ""))
-    meta.setdefault("author", entry.get("author", ""))
+    raw_title = entry.get("title", "")
+    raw_author = entry.get("author", "")
+
+    meta.setdefault("title", raw_title)
+    meta.setdefault("author", raw_author)
     meta.setdefault("path", entry.get("path", ""))
     meta.setdefault("filetype", entry.get("filetype", ""))
     meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
+    meta.setdefault("rating_count", entry.get("rating_count"))
+    meta.setdefault("edition_format", entry.get("edition_format", ""))
+    meta.setdefault("edition_published", entry.get("edition_published", ""))
+    meta.setdefault("edition_language", entry.get("edition_language", ""))
+    meta.setdefault("reviews_html", entry.get("reviews_html", ""))
 
     # ---------- 2) Decide if we need enrichment ----------
     needs_rich_fields = (
@@ -892,7 +944,7 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
 
     if needs_rich_fields:
         try:
-            query = f"{entry.get('title', '')} {entry.get('author', '')}".strip()
+            query = f"{raw_title} {raw_author}".strip()
             if query:
                 # Make a small, format-aware search
                 allowed_formats = [entry.get("filetype", "epub") or "epub"]
@@ -966,6 +1018,24 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
                             meta["rating"] = float(rating)
                         except (TypeError, ValueError):
                             pass
+
+                    # Rating count
+                    r_count = best.get("rating_count")
+                    if r_count is not None:
+                        try:
+                            meta["rating_count"] = int(r_count)
+                        except (TypeError, ValueError):
+                            pass
+
+                    # Edition + reviews
+                    for field in (
+                        "edition_format",
+                        "edition_published",
+                        "edition_language",
+                        "reviews_html",
+                    ):
+                        if best.get(field):
+                            meta[field] = best[field]
 
         except Exception:
             logger.exception(
@@ -1500,7 +1570,8 @@ def search():
           - Optionally send Kindle + notification emails.
     """
     # Basic inputs
-    query = request.args.get("q", "").strip()
+    # Preserve user-entered spacing; avoid trimming so AA sees the exact text.
+    query = request.args.get("q", "")
     user_id = request.args.get("user", "").strip()
     selected_language = request.args.get("lang", "en").strip() or "en"
     selected_ext = request.args.getlist("ext")
@@ -1566,8 +1637,8 @@ def search():
                 kindle_type=kindle_type,
                 # Cheap manual-search mode:
                 resolve_downloads=False,
-                max_rows=45,
-                max_results=45,
+                max_rows=120,
+                max_results=60,
             )
             results, debug_log = source.search(query, options=search_options)
             logger.info(
@@ -1661,28 +1732,12 @@ def search():
 
     # Pagination over returned results (up to 45)
     total_results = len(results)
+    total_pages = max(1, math.ceil(total_results / page_size) if total_results else 1)
     if total_results:
-        total_pages = math.ceil(total_results / page_size)
         page = min(page, total_pages)
         start = (page - 1) * page_size
         end = start + page_size
         display_results = results[start:end]
-
-    # Opportunistically hydrate covers/downloads for the current page of results
-    try:
-        hydrated: List[Dict] = []
-        for r in (display_results or []):
-            try:
-                hydrated.append(source.resolve_downloads_for_result(r))
-            except Exception:
-                hydrated.append(r)
-        display_results = hydrated
-    except Exception:
-        logger.exception("Failed to hydrate search results with download metadata")
-    else:
-        total_pages = 0
-        page = 1
-        display_results = results
 
     return render_template(
         "index.html",
@@ -2158,6 +2213,7 @@ def run_feeds():
         """Mark the current run as inactive without discarding data."""
         with feed_progress_lock:
             feed_progress_state["active"] = False
+            feed_progress_state["run_id"] = None
             # Mark any still-active feeds as inactive
             feeds = feed_progress_state.get("feeds", {})
             for key, fstate in feeds.items():
@@ -2174,7 +2230,7 @@ def run_feeds():
             1 if a book was successfully downloaded, 0 otherwise.
         """
         local_debug: List[str] = []
-        query = f"{item.title} {item.author}".strip()
+        query = html.unescape(f"{item.title} {item.author}").strip()
         local_debug.append(f"    Searching for {query}")
         logger.info("Searching for item title=%s author=%s", item.title, item.author)
         # First attempt: full title + author
@@ -2183,9 +2239,10 @@ def run_feeds():
                 query=query,
                 language="en",
                 extensions=feed.filetypes,
-                autodownload=False,
+                autodownload=True,
                 preferred_formats=feed.filetypes,
                 kindle_type=user.kindle_type,
+                resolve_downloads=False,
             )
             results, search_debug = search_with_cache(
                 query,
@@ -2206,9 +2263,10 @@ def run_feeds():
                     query=item.title,
                     language="en",
                     extensions=feed.filetypes,
-                    autodownload=False,
+                    autodownload=True,
                     preferred_formats=feed.filetypes,
                     kindle_type=user.kindle_type,
+                    resolve_downloads=False,
                 )
                 results, search_debug = search_with_cache(
                     item.title,
@@ -2235,6 +2293,17 @@ def run_feeds():
             expected_title=item.title,
             expected_author=item.author,
         )
+        # Resolve downloads now that we know which match to grab. This also
+        # ensures we persist the final resolved URL so later stages don't need
+        # to fall back to FakeResponse-style shims.
+        try:
+            best = source.resolve_downloads_for_result(best)
+        except Exception as exc:
+            local_debug.append(f"      Failed to resolve downloads: {exc}")
+            logger.exception("Failed to resolve downloads for feed item")
+            append_debug(local_debug)
+            return 0
+
         # Determine the desired file format once we have the best match.  We don't
         # attempt to download here because the destination directory (dest_dir)
         # depends on the user and feed.
@@ -2350,6 +2419,8 @@ def run_feeds():
     # ------------------------------------------------------------------
     futures = []
     run_id = init_progress()
+    # Always parse feeds fresh; do not reuse previous run state
+    feed_parser.reset_run_cache()
     logger.info(
         "Starting feed run %s with global executor (max_workers=%d)",
         run_id,

@@ -105,7 +105,7 @@ class SearchOptions:
     # - resolve_downloads=False => cheap search, no detail page scraping
     resolve_downloads: bool = True
     # Maximum number of <tr> rows to parse from AA result table
-    max_rows: int = 120
+    max_rows: int = 180
     # Optional override for result limit (default is AnnaSource.max_results)
     max_results: Optional[int] = None
 
@@ -235,7 +235,7 @@ class AnnaSource:
         self,
         timeout: int = 30,
         base_url: str = "https://annas-archive.org",
-        max_results: int = 10,
+        max_results: int = 80,
         max_concurrent_downloads: int = 2,
         enable_zlib: Optional[bool] = None,
         host_throttle_seconds: Optional[float] = None,
@@ -624,25 +624,48 @@ class AnnaSource:
         tree = html.fromstring(resp.content)
         logger.debug("Search page fetched (%d bytes)", len(resp.content))
 
-        # All table rows that actually contain <td> cells
-        all_rows = tree.xpath("//table//tr[td]")
-        logger.debug("Found %d raw table rows with <td>", len(all_rows))
+        def parse_rows(content: bytes) -> List[html.HtmlElement]:
+            tree_local = html.fromstring(content)
+            all_rows_local = tree_local.xpath("//table//tr[td]")
+            logger.debug("Found %d raw table rows with <td>", len(all_rows_local))
 
-        # Be more forgiving: AA changes column counts sometimes.
-        # We treat any row with >=3 <td> as a "result row".
-        rows: List[html.HtmlElement] = []
-        for r in all_rows:
-            cols = r.findall("td")
-            if len(cols) >= 3:
-                rows.append(r)
+            parsed_rows: List[html.HtmlElement] = []
+            for r in all_rows_local:
+                cols = r.findall("td")
+                if len(cols) >= 3:
+                    parsed_rows.append(r)
 
-        max_rows = opts.max_rows or 60
-        rows = rows[:max_rows]
-        logger.debug(
-            "Filtered to %d rows with >= 3 <td> cells (max_rows=%d)",
-            len(rows),
-            max_rows,
-        )
+            max_rows_local = opts.max_rows or 60
+            parsed_rows = parsed_rows[:max_rows_local]
+            logger.debug(
+                "Filtered to %d rows with >= 3 <td> cells (max_rows=%d)",
+                len(parsed_rows),
+                max_rows_local,
+            )
+            return parsed_rows
+
+        rows: List[html.HtmlElement] = parse_rows(resp.content)
+
+        # If the initial fetch returned no table rows, retry once via the
+        # Cloudflare solver to grab the rendered HTML instead of giving up.
+        if not rows and sync_playwright is not None:
+            try:
+                from stealth_browser import solve_cloudflare_challenge
+
+                solved_html = solve_cloudflare_challenge(
+                    url, timeout=self.timeout * 2, wait_seconds=40
+                )
+                if solved_html:
+                    logger.debug(
+                        "Retrying search parse for %s using Cloudflare solver HTML", url
+                    )
+                    if isinstance(solved_html, str):
+                        solved_bytes = solved_html.encode("utf-8", errors="ignore")
+                    else:
+                        solved_bytes = bytes(str(solved_html), "utf-8")
+                    rows = parse_rows(solved_bytes)
+            except Exception:
+                logger.debug("Fallback Cloudflare parse attempt failed", exc_info=True)
 
         results: List[Dict] = []
 
@@ -1729,12 +1752,9 @@ def select_best_result(
         formats = [(_normalize_fmt(f)) for f in (r.get("formats") or []) if f]
         has_allowed = bool(allowed & set(formats)) if allowed else bool(formats)
 
-        if not has_allowed:
-            # Still consider it, but with a light penalty so we don't drop
-            # potentially good matches when AA mislabeled formats.
-            base = r.get("_rank_score", 0.0) - 0.15
-        else:
-            base = r.get("_rank_score", 0.0)
+        # Keep every candidate's base rank so we don't discard viable matches
+        # when AA omits or mislabels the format column.
+        base = r.get("_rank_score", 0.0)
 
         fmt_score = _format_preference_score(r.get("formats", []), opts)
         total = base + fmt_score

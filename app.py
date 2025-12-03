@@ -432,7 +432,11 @@ def send_notification_email(
     """
     Notify the user that a book was downloaded.
     """
-    if not user.notification_email or not smtp_config.is_configured():
+    if (
+        not user.notification_email
+        or not smtp_config.is_configured()
+        or not settings_manager.settings.notify_library_updates
+    ):
         return
 
     title = result.get("title", "") or (item.title if item else "")

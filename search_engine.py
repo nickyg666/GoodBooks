@@ -105,7 +105,7 @@ class SearchOptions:
     # - resolve_downloads=False => cheap search, no detail page scraping
     resolve_downloads: bool = True
     # Maximum number of <tr> rows to parse from AA result table
-    max_rows: int = 15
+    max_rows: int = 60
     # Optional override for result limit (default is AnnaSource.max_results)
     max_results: Optional[int] = None
 
@@ -411,6 +411,20 @@ class AnnaSource:
             return resp
 
         # ------------------------------
+        # Metadata / HTML path: try to reuse useful HTML first
+        # ------------------------------
+        try:
+            parsed_tree = html.fromstring(resp.content)
+            if parsed_tree.xpath("//table//tr[td]"):
+                logger.debug(
+                    "Search/detail page already contains table rows; using raw response for %s",
+                    href,
+                )
+                return resp
+        except Exception:
+            logger.debug("Failed to inspect HTML for %s", href, exc_info=True)
+
+        # ------------------------------
         # Metadata / HTML path: Cloudflare detection
         # ------------------------------
         # Use our local Cloudflare heuristic
@@ -622,7 +636,7 @@ class AnnaSource:
             if len(cols) >= 3:
                 rows.append(r)
 
-        max_rows = opts.max_rows or 15
+        max_rows = opts.max_rows or 60
         rows = rows[:max_rows]
         logger.debug(
             "Filtered to %d rows with >= 3 <td> cells (max_rows=%d)",
@@ -1581,6 +1595,13 @@ class AnnaSource:
             raise ValueError(f"No DL link available, for any format! Last checked for {fmt}" )
         fmt = selected_fmt
         logger.info("Downloading %s (%s) from %s", result.get("title"), fmt, url)
+
+        # Ensure destination directory exists before writing
+        try:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            logger.exception("Failed to create destination directory %s", dest_dir)
+            raise
 
         # 1. Acquire semaphore for concurrency control
         with _DOWNLOAD_SEMAPHORE:

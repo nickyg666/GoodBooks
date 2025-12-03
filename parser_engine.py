@@ -238,6 +238,11 @@ class FeedParser:
                 link = (entry.xpath("string(link)") or "").strip()
                 description = (entry.xpath("string(description)") or "").strip()
 
+                # Optional Goodreads enrichment when a link is present
+                meta: Dict[str, Any] = (
+                    self._scrape_goodreads_book(link, debug) if link else {}
+                )
+
                 # Very loose cover fallbacks, in case your RSS has any of these
                 cover = (
                     entry.xpath("string(image/url)")
@@ -291,12 +296,27 @@ class FeedParser:
                 or entry.get("dc_creator", "")
             )
 
+            link = entry.get("link", "")
+            meta: Dict[str, Any] = (
+                self._scrape_goodreads_book(link, debug) if link else {}
+            )
+
             item = ParsedItem(
                 title=entry.get("title", ""),
                 author=author,
-                link=entry.get("link", ""),
+                link=link,
                 description=entry.get("description", ""),
                 cover=entry.get("image", ""),
+                genres=meta.get("genres") or [],
+                rating=meta.get("rating"),
+                rating_count=meta.get("rating_count"),
+                goodreads_url=meta.get("goodreads_url", link),
+                publish_date=meta.get("edition_published", ""),
+                language=meta.get("edition_language", ""),
+                edition_format=meta.get("edition_format", ""),
+                edition_published=meta.get("edition_published", ""),
+                edition_language=meta.get("edition_language", ""),
+                reviews_html=meta.get("reviews_html", ""),
             )
             items.append(item)
             self.cache.cache_item(url, item)

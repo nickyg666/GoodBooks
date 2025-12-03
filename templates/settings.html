@@ -38,6 +38,14 @@
             <label>Download Directory<input type="text" name="default-download-dir" value="{{ settings.default_download_dir }}"></label>
         </section>
         <section>
+            <h2>Notifications</h2>
+            <p class="muted">Control whether library updates trigger email notifications.</p>
+            <label class="checkbox">
+                <input type="checkbox" name="notify-library-updates" {% if settings.notify_library_updates %}checked{% endif %}>
+                Send email notifications when downloads are added to the library
+            </label>
+        </section>
+        <section>
             <h2>Library defaults</h2>
             <p class="muted">
                 Configure where the Library page scans for books and how it displays them.

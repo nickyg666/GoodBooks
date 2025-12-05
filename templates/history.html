@@ -34,6 +34,22 @@
     </details>
     {% endif %}
 
+    {# Per-page selector #}
+    <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Items per page:</span>
+            <form method="get" action="{{ url_for('history') }}" style="display: inline;">
+                <select name="per_page" onchange="this.form.submit()" style="padding: 0.5rem;">
+                    <option value="15" {% if request.args.get('per_page', '50') == '15' %}selected{% endif %}>15</option>
+                    <option value="25" {% if request.args.get('per_page', '50') == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if request.args.get('per_page', '50') == '50' or not request.args.get('per_page') %}selected{% endif %}>50</option>
+                    <option value="100" {% if request.args.get('per_page', '50') == '100' %}selected{% endif %}>100</option>
+                </select>
+            </form>
+        </label>
+        <span style="color: var(--muted); font-size: 0.9rem;">Total: {{ total_items }} items</span>
+    </div>
+
     {% if entries %}
     <div class="grid history-grid">
         {% for entry in entries|reverse %}
@@ -68,11 +84,11 @@
 
                 <div class="history-chips library-chips">
                     {% if entry.has_path %}
-                        <a href="{{ url_for('history_direct_download', index=entry.index) }}" class="library-status-chip chip chip-compact">
+                        <a href="{{ url_for('history_direct_download', index=entry.index) }}" class="chip">
                             Direct DL
                         </a>
                         <button type="button"
-                                class="library-status-chip chip chip-compact"
+                                class="chip"
                                 data-action="history-send-kindle"
                                 data-index="{{ entry.index }}">
                             Send to Kindle

@@ -29982,3 +29982,1015 @@ ValueError: Failed to GET download URL or resolve stealth challenge
 2025-12-05 18:37:56,450 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
 2025-12-05 18:37:56,807 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
 2025-12-05 18:38:06,846 [WARNING] [ThreadPoolExecutor-0_7] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:38:16,333 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=nGIVeHak1g&rank=1: 1777 chars
+2025-12-05 18:38:26,862 [WARNING] [ThreadPoolExecutor-0_5] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:38:27,411 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:38:28,415 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:38:39,643 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243983379-five-survive---holly-jackson?from_search=true&from_srp=true&qid=VV3xrPl1Mc&rank=1: 18 chars
+2025-12-05 18:38:44,568 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:38:46,000 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:38:46,870 [ERROR] [ThreadPoolExecutor-0_7] search_engine: Download failed via _FakeResponse (Status 403, Reason: Failed after 3 attempts: HTTP 429 (rate limited) after 3 attempts) for title=The Miniature World of Marvin & James
+2025-12-05 18:38:46,871 [ERROR] [ThreadPoolExecutor-0_7] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1929, in download
+    raise ValueError("Failed to GET download URL or resolve stealth challenge")
+ValueError: Failed to GET download URL or resolve stealth challenge
+2025-12-05 18:38:47,033 [INFO] [ThreadPoolExecutor-0_7] logging_config: Searching for item title=Sylva and the Fairy Ball author=Margaret McNamara
+2025-12-05 18:38:49,099 [WARNING] [ThreadPoolExecutor-0_7] search_engine: Cloudflare / anti-bot challenge detected at https://annas-archive.org/slow_download/bec97caa261b65256ed975b7cffd3bb4/0/4 (status=403); attempting stealth browser bypass
+2025-12-05 18:38:49,100 [INFO] [ThreadPoolExecutor-0_7] stealth_browser: Attempting Cloudflare bypass for https://annas-archive.org/slow_download/bec97caa261b65256ed975b7cffd3bb4/0/4 with user agent Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+2025-12-05 18:38:51,089 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244170910-ninja-luxe-cafe-coffee-recipe-book-for-beginners?from_search=true&from_srp=true&qid=8xIrEZlHV0&rank=1: 2761 chars
+2025-12-05 18:38:57,643 [INFO] [ThreadPoolExecutor-0_7] stealth_browser: Challenge solved for https://annas-archive.org/slow_download/bec97caa261b65256ed975b7cffd3bb4/0/4
+2025-12-05 18:38:57,838 [INFO] [ThreadPoolExecutor-0_7] logging_config: Downloading title=Sylva and the Fairy Ball format=epub
+2025-12-05 18:38:57,838 [INFO] [ThreadPoolExecutor-0_7] logging_config: Resolving downloads for result title=Sylva and the Fairy Ball md5=bec97caa261b65256ed975b7cffd3bb4
+2025-12-05 18:38:57,838 [INFO] [ThreadPoolExecutor-0_7] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:38:57,838 [INFO] [ThreadPoolExecutor-0_7] logging_config: Starting download: title=Sylva and the Fairy Ball format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:39:06,890 [ERROR] [ThreadPoolExecutor-0_5] search_engine: Download failed via _FakeResponse (Status 403, Reason: Failed after 3 attempts: HTTP 429 (rate limited) after 3 attempts) for title=The Cottage on Winter Moss
+2025-12-05 18:39:06,890 [ERROR] [ThreadPoolExecutor-0_5] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1929, in download
+    raise ValueError("Failed to GET download URL or resolve stealth challenge")
+ValueError: Failed to GET download URL or resolve stealth challenge
+2025-12-05 18:39:06,895 [INFO] [ThreadPoolExecutor-0_5] logging_config: Searching for item title=Iris And Walter (Iris and Walter, 1) author=Elissa Haden Guest
+2025-12-05 18:39:09,856 [WARNING] [ThreadPoolExecutor-0_5] search_engine: Cloudflare / anti-bot challenge detected at https://annas-archive.org/slow_download/9bf0eea25107a1fd1291c5b0c9ceb8a8/0/4 (status=403); attempting stealth browser bypass
+2025-12-05 18:39:09,856 [INFO] [ThreadPoolExecutor-0_5] stealth_browser: Attempting Cloudflare bypass for https://annas-archive.org/slow_download/9bf0eea25107a1fd1291c5b0c9ceb8a8/0/4 with user agent Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+2025-12-05 18:39:18,518 [INFO] [ThreadPoolExecutor-0_5] stealth_browser: Challenge solved for https://annas-archive.org/slow_download/9bf0eea25107a1fd1291c5b0c9ceb8a8/0/4
+2025-12-05 18:39:18,711 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloading title=Iris and Walter, Lost and Found (Iris And Walter) format=pdf
+2025-12-05 18:39:18,711 [INFO] [ThreadPoolExecutor-0_5] logging_config: Resolving downloads for result title=Iris and Walter, Lost and Found (Iris And Walter) md5=9bf0eea25107a1fd1291c5b0c9ceb8a8
+2025-12-05 18:39:18,711 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:39:18,711 [INFO] [ThreadPoolExecutor-0_5] logging_config: Starting download: title=Iris and Walter, Lost and Found (Iris And Walter) format=pdf dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:39:26,897 [WARNING] [ThreadPoolExecutor-0_3] search_engine: HTTP 429 on attempt 1/3, waiting 0.5s before retry
+2025-12-05 18:39:46,906 [WARNING] [ThreadPoolExecutor-0_4] search_engine: HTTP 429 on attempt 1/3, waiting 0.5s before retry
+2025-12-05 18:39:54,663 [INFO] [library-genres-enrich] logging_config: Scraped rating for https://www.goodreads.com/book/show/15793700-the-secret-of-whale-island?from_search=true&from_srp=true&qid=8h2bafn2On&rank=1: 4.14
+2025-12-05 18:39:54,663 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/15793700-the-secret-of-whale-island?from_search=true&from_srp=true&qid=8h2bafn2On&rank=1: 642 chars
+2025-12-05 18:40:01,183 [INFO] [library-genres-enrich] logging_config: Scraped rating for https://www.goodreads.com/book/show/39987.Nanny_Mcphee?from_search=true&from_srp=true&qid=Q6FbtGXdxx&rank=1: 3.84
+2025-12-05 18:40:01,184 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/39987.Nanny_Mcphee?from_search=true&from_srp=true&qid=Q6FbtGXdxx&rank=1: 697 chars
+2025-12-05 18:40:06,924 [WARNING] [ThreadPoolExecutor-0_3] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:40:17,422 [INFO] [background-maintenance] logging_config: Background maintenance: enriched 66 entries, persisted metadata
+2025-12-05 18:40:23,342 [INFO] [background-maintenance] logging_config: Background maintenance: starting automatic feed run
+2025-12-05 18:40:23,342 [INFO] [background-maintenance] logging_config: Starting feed run 2ce1a56929e845d98e5ae69fffd4f5b6 with global executor (max_workers=8)
+2025-12-05 18:40:23,342 [INFO] [background-maintenance] logging_config: Processing feeds for user=nick
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Fetching feed url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read mode=rss
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read has 11 total items
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read: 11 items to process (filtered from 11 total)
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Processing feeds for user=HTML fetch test
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Fetching feed url=https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ mode=html
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ has 150 total items
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_: 150 items to process (filtered from 150 total)
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Processing feeds for user=Sagey-mini
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Fetching feed url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read mode=rss
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/183591818?shelf=to-read has 71 total items
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/183591818?shelf=to-read: 71 items to process (filtered from 71 total)
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Feed parsing complete: feed_items has 3 feed groups total
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config:   Feed group: user=nick feed_url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read items_count=11
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config:   Feed group: user=HTML fetch test feed_url=https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ items_count=150
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config:   Feed group: user=Sagey-mini feed_url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read items_count=71
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Starting sequential feed processing for 3 feed groups (smallest first)
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Processing feed: user=nick feed_url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read items=11
+2025-12-05 18:40:23,343 [INFO] [background-maintenance] logging_config: Queueing job 1: user=nick item_title=Keep It in the Family
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 2: user=nick item_title=The Silent Patient
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 3: user=nick item_title=Never Lie
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 4: user=nick item_title=Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5)
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 5: user=nick item_title=The LEGO® Ideas Book New Edition: You Can Build Anything!
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 6: user=nick item_title=The Stand
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 7: user=nick item_title=Fear and Loathing in Las Vegas: A Savage Journey to the Heart of the American Dream
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 8: user=nick item_title=Donnie Brasco: Unfinished Business (Donnie Brasco #2)
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 9: user=nick item_title=Donnie Brasco
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 10: user=nick item_title=The Alchemist
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Queueing job 11: user=nick item_title=A Clockwork Orange
+2025-12-05 18:40:23,344 [INFO] [background-maintenance] logging_config: Waiting for all 11 items in this feed to complete
+2025-12-05 18:40:26,940 [WARNING] [ThreadPoolExecutor-0_4] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:40:46,956 [ERROR] [ThreadPoolExecutor-0_3] search_engine: Download failed via _FakeResponse (Status 403, Reason: Failed after 3 attempts: HTTP 429 (rate limited) after 3 attempts) for title=Space Taxi : Archie Takes Flight
+2025-12-05 18:40:46,956 [ERROR] [ThreadPoolExecutor-0_3] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1929, in download
+    raise ValueError("Failed to GET download URL or resolve stealth challenge")
+ValueError: Failed to GET download URL or resolve stealth challenge
+2025-12-05 18:40:47,065 [INFO] [ThreadPoolExecutor-0_3] logging_config: Searching for item title=Horrid Henry (Horrid Henry, #1) author=Francesca Simon
+2025-12-05 18:40:49,129 [WARNING] [ThreadPoolExecutor-0_3] search_engine: Cloudflare / anti-bot challenge detected at https://annas-archive.org/slow_download/5210c4fd379ec9848a236c45558265cd/0/4 (status=403); attempting stealth browser bypass
+2025-12-05 18:40:49,130 [INFO] [ThreadPoolExecutor-0_3] stealth_browser: Attempting Cloudflare bypass for https://annas-archive.org/slow_download/5210c4fd379ec9848a236c45558265cd/0/4 with user agent Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+2025-12-05 18:40:57,662 [INFO] [ThreadPoolExecutor-0_3] stealth_browser: Challenge solved for https://annas-archive.org/slow_download/5210c4fd379ec9848a236c45558265cd/0/4
+2025-12-05 18:40:57,891 [INFO] [ThreadPoolExecutor-0_3] logging_config: Downloading title=Horrid Henry format=epub
+2025-12-05 18:40:57,891 [INFO] [ThreadPoolExecutor-0_3] logging_config: Resolving downloads for result title=Horrid Henry md5=5210c4fd379ec9848a236c45558265cd
+2025-12-05 18:40:57,891 [INFO] [ThreadPoolExecutor-0_3] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:40:57,892 [INFO] [ThreadPoolExecutor-0_3] logging_config: Starting download: title=Horrid Henry format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:41:06,961 [ERROR] [ThreadPoolExecutor-0_4] search_engine: Download failed via _FakeResponse (Status 403, Reason: Failed after 3 attempts: HTTP 429 (rate limited) after 3 attempts) for title=The Adventures of Caveboy
+2025-12-05 18:41:06,962 [ERROR] [ThreadPoolExecutor-0_4] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1929, in download
+    raise ValueError("Failed to GET download URL or resolve stealth challenge")
+ValueError: Failed to GET download URL or resolve stealth challenge
+2025-12-05 18:41:06,967 [INFO] [ThreadPoolExecutor-0_4] logging_config: Searching for item title=Bink & Gollie author=Kate DiCamillo
+2025-12-05 18:41:09,029 [WARNING] [ThreadPoolExecutor-0_4] search_engine: Cloudflare / anti-bot challenge detected at https://annas-archive.org/slow_download/9f133ea0d6baff263f94ac7331805e62/0/4 (status=403); attempting stealth browser bypass
+2025-12-05 18:41:09,029 [INFO] [ThreadPoolExecutor-0_4] stealth_browser: Attempting Cloudflare bypass for https://annas-archive.org/slow_download/9f133ea0d6baff263f94ac7331805e62/0/4 with user agent Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+2025-12-05 18:41:17,575 [INFO] [ThreadPoolExecutor-0_4] stealth_browser: Challenge solved for https://annas-archive.org/slow_download/9f133ea0d6baff263f94ac7331805e62/0/4
+2025-12-05 18:41:17,782 [INFO] [ThreadPoolExecutor-0_4] logging_config: Downloading title=Bink & Gollie format=epub
+2025-12-05 18:41:17,782 [INFO] [ThreadPoolExecutor-0_4] logging_config: Resolving downloads for result title=Bink & Gollie md5=9f133ea0d6baff263f94ac7331805e62
+2025-12-05 18:41:17,782 [INFO] [ThreadPoolExecutor-0_4] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:41:17,782 [INFO] [ThreadPoolExecutor-0_4] logging_config: Starting download: title=Bink & Gollie format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:41:26,962 [WARNING] [ThreadPoolExecutor-0_1] search_engine: HTTP 429 on attempt 1/3, waiting 0.5s before retry
+2025-12-05 18:41:46,979 [WARNING] [ThreadPoolExecutor-0_6] search_engine: HTTP 429 on attempt 1/3, waiting 0.5s before retry
+2025-12-05 18:42:06,991 [WARNING] [ThreadPoolExecutor-0_1] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:42:27,000 [WARNING] [ThreadPoolExecutor-0_6] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:42:47,012 [ERROR] [ThreadPoolExecutor-0_1] search_engine: Download failed via _FakeResponse (Status 403, Reason: Failed after 3 attempts: HTTP 429 (rate limited) after 3 attempts) for title=Babymouse 1 Queen of the World!
+2025-12-05 18:42:47,012 [ERROR] [ThreadPoolExecutor-0_1] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1929, in download
+ValueError: Failed to GET download URL or resolve stealth challenge
+2025-12-05 18:42:47,189 [INFO] [ThreadPoolExecutor-0_1] logging_config: Searching for item title=Horrid Henry's Bodies (A Horrid Factbook) author=Francesca Simon
+2025-12-05 18:42:49,346 [WARNING] [ThreadPoolExecutor-0_1] search_engine: Cloudflare / anti-bot challenge detected at https://annas-archive.org/slow_download/4f3e81184a405c4494b2802a6eae54ff/0/4 (status=403); attempting stealth browser bypass
+2025-12-05 18:42:49,347 [INFO] [ThreadPoolExecutor-0_1] stealth_browser: Attempting Cloudflare bypass for https://annas-archive.org/slow_download/4f3e81184a405c4494b2802a6eae54ff/0/4 with user agent Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+2025-12-05 18:42:57,944 [INFO] [ThreadPoolExecutor-0_1] stealth_browser: Challenge solved for https://annas-archive.org/slow_download/4f3e81184a405c4494b2802a6eae54ff/0/4
+2025-12-05 18:43:03,226 [INFO] [ThreadPoolExecutor-0_1] logging_config: Downloading title=Horrid Henry's Stinkbomb format=mobi
+2025-12-05 18:43:03,226 [INFO] [ThreadPoolExecutor-0_1] logging_config: Resolving downloads for result title=Horrid Henry's Stinkbomb md5=4f3e81184a405c4494b2802a6eae54ff
+2025-12-05 18:43:03,226 [INFO] [ThreadPoolExecutor-0_1] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:43:03,226 [INFO] [ThreadPoolExecutor-0_1] logging_config: Starting download: title=Horrid Henry's Stinkbomb format=mobi dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:43:07,017 [ERROR] [ThreadPoolExecutor-0_6] search_engine: Download failed via _FakeResponse (Status 403, Reason: Failed after 3 attempts: HTTP 429 (rate limited) after 3 attempts) for title=Stinky Spike and the Royal Rescue
+2025-12-05 18:43:07,018 [ERROR] [ThreadPoolExecutor-0_6] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1929, in download
+ValueError: Failed to GET download URL or resolve stealth challenge
+2025-12-05 18:43:07,021 [INFO] [ThreadPoolExecutor-0_6] logging_config: Searching for item title=Monkey Me and the Golden Monkey: A Branches Book (Monkey Me #1) (1) author=Timothy Roland
+2025-12-05 18:43:09,090 [WARNING] [ThreadPoolExecutor-0_6] search_engine: Cloudflare / anti-bot challenge detected at https://annas-archive.org/slow_download/32429be2f3a1b192426428543c56a942/0/4 (status=403); attempting stealth browser bypass
+2025-12-05 18:43:09,091 [INFO] [ThreadPoolExecutor-0_6] stealth_browser: Attempting Cloudflare bypass for https://annas-archive.org/slow_download/32429be2f3a1b192426428543c56a942/0/4 with user agent Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+2025-12-05 18:43:17,570 [INFO] [ThreadPoolExecutor-0_6] stealth_browser: Challenge solved for https://annas-archive.org/slow_download/32429be2f3a1b192426428543c56a942/0/4
+2025-12-05 18:43:17,829 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloading title=Monkey Me and the New Neighbor: A Branches Book (Monkey Me #3) (3) format=pdf
+2025-12-05 18:43:17,829 [INFO] [ThreadPoolExecutor-0_6] logging_config: Resolving downloads for result title=Monkey Me and the New Neighbor: A Branches Book (Monkey Me #3) (3) md5=32429be2f3a1b192426428543c56a942
+2025-12-05 18:43:17,829 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:43:17,829 [INFO] [ThreadPoolExecutor-0_6] logging_config: Starting download: title=Monkey Me and the New Neighbor: A Branches Book (Monkey Me #3) (3) format=pdf dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:43:27,016 [WARNING] [ThreadPoolExecutor-0_7] search_engine: HTTP 429 on attempt 1/3, waiting 0.5s before retry
+2025-12-05 18:43:47,029 [WARNING] [ThreadPoolExecutor-0_5] search_engine: HTTP 429 on attempt 1/3, waiting 0.5s before retry
+2025-12-05 18:44:07,051 [WARNING] [ThreadPoolExecutor-0_7] search_engine: HTTP 429 on attempt 2/3, waiting 1.0s before retry
+2025-12-05 18:44:17,893 [INFO] [MainThread] logging_config: Logging configured: level=DEBUG
+2025-12-05 18:44:17,894 [INFO] [MainThread] search_engine: Download concurrency set to 2
+2025-12-05 18:44:17,903 [INFO] [background-maintenance] logging_config: Background maintenance: cycle start
+2025-12-05 18:44:17,903 [INFO] [MainThread] search_engine: Download concurrency set to 2
+2025-12-05 18:44:17,942 [INFO] [MainThread] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.9:5000
+2025-12-05 18:44:17,943 [INFO] [MainThread] werkzeug: [33mPress CTRL+C to quit[0m
+2025-12-05 18:44:18,041 [INFO] [background-maintenance] logging_config: Background maintenance: library scan returned 931 entries
+2025-12-05 18:44:20,521 [INFO] [Thread-1 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:20] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:44:23,385 [INFO] [Thread-2 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:23] "GET / HTTP/1.1" 200 -
+2025-12-05 18:44:23,501 [INFO] [Thread-3 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:23] "GET /static/style.css HTTP/1.1" 200 -
+2025-12-05 18:44:23,590 [INFO] [Thread-4 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:23] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:44:24,892 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=J0IeZJr88K&rank=1: 763 chars
+2025-12-05 18:44:27,812 [INFO] [Thread-5 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:27] "GET / HTTP/1.1" 200 -
+2025-12-05 18:44:27,930 [INFO] [Thread-6 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:27] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:44:28,005 [INFO] [Thread-7 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:28] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:44:29,500 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=hhW1oYWJi2&rank=2: 414 chars
+2025-12-05 18:44:29,851 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=J0IeZJr88K&rank=1: 763 chars
+2025-12-05 18:44:30,380 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=yvuJj7tWoh&rank=2: 444 chars
+2025-12-05 18:44:34,316 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=xoIdL5PDBs&rank=2: 414 chars
+2025-12-05 18:44:34,935 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=L3IbYWjqQO&rank=2: 444 chars
+2025-12-05 18:44:35,676 [INFO] [Thread-8 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:35] "GET /?prefix=&sort=date_newest&genre=&author=&per_page=500 HTTP/1.1" 200 -
+2025-12-05 18:44:35,815 [INFO] [Thread-9 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:35] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:44:35,880 [INFO] [Thread-10 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:35] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:44:36,797 [INFO] [Thread-11 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:36] "GET /?sort=date_newest&genre=&author=&per_page=500&view=collection HTTP/1.1" 200 -
+2025-12-05 18:44:36,874 [INFO] [Thread-12 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:36] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:44:37,058 [INFO] [Thread-13 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:44:37] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:44:37,301 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=J0IeZJr88K&rank=1: 763 chars
+2025-12-05 18:44:38,529 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=J0IeZJr88K&rank=1: 763 chars
+2025-12-05 18:44:43,036 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=xoIdL5PDBs&rank=2: 414 chars
+2025-12-05 18:44:43,749 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=xoIdL5PDBs&rank=2: 414 chars
+2025-12-05 18:44:44,022 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=L3IbYWjqQO&rank=2: 444 chars
+2025-12-05 18:44:44,226 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:44:44,624 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=L3IbYWjqQO&rank=2: 444 chars
+2025-12-05 18:44:49,525 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:44:58,787 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=Acs5eSsykv&rank=1: 440 chars
+2025-12-05 18:44:58,885 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:02,967 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:05,197 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=QCCA1FOuWk&rank=1: 2253 chars
+2025-12-05 18:45:05,909 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=Acs5eSsykv&rank=1: 440 chars
+2025-12-05 18:45:07,055 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=uEw8VDs5Se&rank=1: 2442 chars
+2025-12-05 18:45:08,573 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:10,945 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=QCCA1FOuWk&rank=1: 2253 chars
+2025-12-05 18:45:11,872 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:12,330 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=uEw8VDs5Se&rank=1: 2442 chars
+2025-12-05 18:45:16,125 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=Acs5eSsykv&rank=1: 440 chars
+2025-12-05 18:45:18,701 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:21,562 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=QCCA1FOuWk&rank=1: 2253 chars
+2025-12-05 18:45:22,827 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=uEw8VDs5Se&rank=1: 2442 chars
+2025-12-05 18:45:23,540 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=17BZaHPj2R&rank=1: 440 chars
+2025-12-05 18:45:28,350 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:28,860 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=NhmxRIoXV0&rank=1: 2253 chars
+2025-12-05 18:45:29,229 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:30,325 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=aMsy3yF6wb&rank=1: 2442 chars
+2025-12-05 18:45:36,129 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:36,860 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:38,113 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:38,890 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:39,906 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:43,138 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:44,606 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:45,683 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=3WjieDFhSa&rank=1: 14 chars
+2025-12-05 18:45:47,162 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:47,844 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:49,408 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:51,050 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:53,809 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:54,219 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=3WjieDFhSa&rank=1: 14 chars
+2025-12-05 18:45:55,480 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:56,396 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:58,231 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:45:59,711 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:04,169 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=3WjieDFhSa&rank=1: 14 chars
+2025-12-05 18:46:04,989 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:15,823 [INFO] [MainThread] logging_config: Logging configured: level=DEBUG
+2025-12-05 18:46:15,824 [INFO] [MainThread] search_engine: Download concurrency set to 2
+2025-12-05 18:46:15,834 [INFO] [background-maintenance] logging_config: Background maintenance: cycle start
+2025-12-05 18:46:15,834 [INFO] [MainThread] search_engine: Download concurrency set to 2
+2025-12-05 18:46:16,577 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:17,958 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:19,282 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:21,152 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:23,831 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:24,712 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:25,753 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:28,382 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:30,958 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=3WjieDFhSa&rank=1: 14 chars
+2025-12-05 18:46:34,974 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:39,682 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:40,814 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:41,470 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:46:57,687 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:01,729 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:07,321 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=KRFsnvV1eD&rank=1: 1777 chars
+2025-12-05 18:47:15,252 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:15,994 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=KRFsnvV1eD&rank=1: 1777 chars
+2025-12-05 18:47:16,181 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=KRFsnvV1eD&rank=1: 1777 chars
+2025-12-05 18:47:16,758 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:24,529 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:25,295 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:26,600 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:27,655 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:32,733 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=KRFsnvV1eD&rank=1: 1777 chars
+2025-12-05 18:47:35,708 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244376013-five-survive-by-holly-jackson?from_search=true&from_srp=true&qid=RCsCUCMdxi&rank=2: 30 chars
+2025-12-05 18:47:36,774 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244376013-five-survive-by-holly-jackson?from_search=true&from_srp=true&qid=RCsCUCMdxi&rank=2: 30 chars
+2025-12-05 18:47:37,066 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244376013-five-survive-by-holly-jackson?from_search=true&from_srp=true&qid=RCsCUCMdxi&rank=2: 30 chars
+2025-12-05 18:47:40,705 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:41,674 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:42,191 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:42,392 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:42,733 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:43,660 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:43,752 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:44,668 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:47:46,702 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244170910-ninja-luxe-cafe-coffee-recipe-book-for-beginners?from_search=true&from_srp=true&qid=s8kAw3Hbc7&rank=1: 2761 chars
+2025-12-05 18:47:47,404 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244170910-ninja-luxe-cafe-coffee-recipe-book-for-beginners?from_search=true&from_srp=true&qid=s8kAw3Hbc7&rank=1: 2761 chars
+2025-12-05 18:47:48,952 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244170910-ninja-luxe-cafe-coffee-recipe-book-for-beginners?from_search=true&from_srp=true&qid=s8kAw3Hbc7&rank=1: 2761 chars
+2025-12-05 18:47:54,456 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244376013-five-survive-by-holly-jackson?from_search=true&from_srp=true&qid=RCsCUCMdxi&rank=2: 30 chars
+2025-12-05 18:47:59,613 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:48:00,776 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:48:01,519 [INFO] [library-genres-enrich] logging_config: Scraped rating for https://www.goodreads.com/book/show/7788902-princess-posey-and-the-first-grade-parade?from_search=true&from_srp=true&qid=IPBM58L9RW&rank=1: 4.06
+2025-12-05 18:48:01,520 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/7788902-princess-posey-and-the-first-grade-parade?from_search=true&from_srp=true&qid=IPBM58L9RW&rank=1: 735 chars
+2025-12-05 18:48:01,674 [INFO] [library-genres-enrich] logging_config: Scraped rating for https://www.goodreads.com/book/show/7788902-princess-posey-and-the-first-grade-parade?from_search=true&from_srp=true&qid=ppMWEn7E3g&rank=1: 4.06
+2025-12-05 18:48:01,674 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/7788902-princess-posey-and-the-first-grade-parade?from_search=true&from_srp=true&qid=ppMWEn7E3g&rank=1: 735 chars
+2025-12-05 18:48:03,396 [INFO] [library-genres-enrich] logging_config: Scraped rating for https://www.goodreads.com/book/show/7788902-princess-posey-and-the-first-grade-parade?from_search=true&from_srp=true&qid=IvNikXy3Se&rank=1: 4.06
+2025-12-05 18:48:03,396 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/7788902-princess-posey-and-the-first-grade-parade?from_search=true&from_srp=true&qid=IvNikXy3Se&rank=1: 735 chars
+2025-12-05 18:48:06,535 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244170910-ninja-luxe-cafe-coffee-recipe-book-for-beginners?from_search=true&from_srp=true&qid=s8kAw3Hbc7&rank=1: 2761 chars
+2025-12-05 18:48:06,937 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:48:07,843 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:48:28,829 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:48:29,651 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:49:25,083 [INFO] [background-maintenance] logging_config: Background maintenance: enriched 60 entries, persisted metadata
+2025-12-05 18:49:30,521 [INFO] [background-maintenance] logging_config: Background maintenance: starting automatic feed run
+2025-12-05 18:49:30,522 [INFO] [background-maintenance] logging_config: Starting feed run 27735519a0664bebaa5a6e383f0992c5 with global executor (max_workers=8)
+2025-12-05 18:49:30,522 [INFO] [background-maintenance] logging_config: Processing feeds for user=nick
+2025-12-05 18:49:30,522 [INFO] [background-maintenance] logging_config: Fetching feed url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read mode=rss
+2025-12-05 18:49:30,522 [INFO] [background-maintenance] parser_engine: Parsing RSS feed url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read
+2025-12-05 18:49:30,989 [INFO] [background-maintenance] parser_engine: Parsed 11 items from Goodreads RSS
+2025-12-05 18:49:30,990 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read has 11 total items
+2025-12-05 18:49:30,990 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read: 11 items to process (filtered from 11 total)
+2025-12-05 18:49:30,990 [INFO] [background-maintenance] logging_config: Processing feeds for user=HTML fetch test
+2025-12-05 18:49:30,990 [INFO] [background-maintenance] logging_config: Fetching feed url=https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ mode=html
+2025-12-05 18:49:30,990 [INFO] [background-maintenance] parser_engine: Parsing HTML feed url=https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_
+2025-12-05 18:49:30,990 [INFO] [background-maintenance] parser_engine: Fetching Listopia page https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_?page=1
+2025-12-05 18:49:32,505 [INFO] [background-maintenance] parser_engine: Listopia page https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_?page=1 has new content, parsing
+2025-12-05 18:49:32,810 [INFO] [background-maintenance] parser_engine: Fetching Listopia page https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_?page=2
+2025-12-05 18:49:33,933 [INFO] [background-maintenance] parser_engine: Listopia page https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_?page=2 has new content, parsing
+2025-12-05 18:49:34,100 [INFO] [background-maintenance] parser_engine: Fetching Listopia page https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_?page=3
+2025-12-05 18:49:34,645 [INFO] [background-maintenance] parser_engine: Listopia page https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_?page=3 has new content, parsing
+2025-12-05 18:49:34,657 [INFO] [background-maintenance] parser_engine: Parsed 150 items from Goodreads Listopia
+2025-12-05 18:49:34,662 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ has 150 total items
+2025-12-05 18:49:34,665 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_: 150 items to process (filtered from 150 total)
+2025-12-05 18:49:34,665 [INFO] [background-maintenance] logging_config: Processing feeds for user=Sagey-mini
+2025-12-05 18:49:34,665 [INFO] [background-maintenance] logging_config: Fetching feed url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read mode=rss
+2025-12-05 18:49:34,666 [INFO] [background-maintenance] parser_engine: Parsing RSS feed url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read
+2025-12-05 18:49:35,334 [INFO] [background-maintenance] parser_engine: Parsed 71 items from Goodreads RSS
+2025-12-05 18:49:35,334 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/183591818?shelf=to-read has 71 total items
+2025-12-05 18:49:35,334 [INFO] [background-maintenance] logging_config: Feed https://www.goodreads.com/review/list_rss/183591818?shelf=to-read: 71 items to process (filtered from 71 total)
+2025-12-05 18:49:35,334 [INFO] [background-maintenance] logging_config: Feed parsing complete: feed_items has 3 feed groups total
+2025-12-05 18:49:35,334 [INFO] [background-maintenance] logging_config:   Feed group: user=nick feed_url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read items_count=11
+2025-12-05 18:49:35,334 [INFO] [background-maintenance] logging_config:   Feed group: user=HTML fetch test feed_url=https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ items_count=150
+2025-12-05 18:49:35,335 [INFO] [background-maintenance] logging_config:   Feed group: user=Sagey-mini feed_url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read items_count=71
+2025-12-05 18:49:35,335 [INFO] [background-maintenance] logging_config: Starting sequential feed processing for 3 feed groups (smallest first)
+2025-12-05 18:49:35,335 [INFO] [background-maintenance] logging_config: Processing feed: user=nick feed_url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read items=11
+2025-12-05 18:49:35,335 [INFO] [background-maintenance] logging_config: Queueing job 1: user=nick item_title=Keep It in the Family
+2025-12-05 18:49:35,335 [INFO] [background-maintenance] logging_config: Queueing job 2: user=nick item_title=The Silent Patient
+2025-12-05 18:49:35,336 [INFO] [background-maintenance] logging_config: Queueing job 3: user=nick item_title=Never Lie
+2025-12-05 18:49:35,336 [INFO] [background-maintenance] logging_config: Queueing job 4: user=nick item_title=Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5)
+2025-12-05 18:49:35,337 [INFO] [background-maintenance] logging_config: Queueing job 5: user=nick item_title=The LEGO® Ideas Book New Edition: You Can Build Anything!
+2025-12-05 18:49:35,337 [INFO] [background-maintenance] logging_config: Queueing job 6: user=nick item_title=The Stand
+2025-12-05 18:49:35,338 [INFO] [background-maintenance] logging_config: Queueing job 7: user=nick item_title=Fear and Loathing in Las Vegas: A Savage Journey to the Heart of the American Dream
+2025-12-05 18:49:35,339 [INFO] [background-maintenance] logging_config: Queueing job 8: user=nick item_title=Donnie Brasco: Unfinished Business (Donnie Brasco #2)
+2025-12-05 18:49:35,341 [INFO] [background-maintenance] logging_config: Queueing job 9: user=nick item_title=Donnie Brasco
+2025-12-05 18:49:35,341 [INFO] [background-maintenance] logging_config: Queueing job 10: user=nick item_title=The Alchemist
+2025-12-05 18:49:35,343 [INFO] [background-maintenance] logging_config: Queueing job 11: user=nick item_title=A Clockwork Orange
+2025-12-05 18:49:35,343 [INFO] [background-maintenance] logging_config: Waiting for all 11 items in this feed to complete
+2025-12-05 18:49:36,563 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=Donnie Brasco: Unfinished Business (Donnie Brasco #2) author=Joseph D. Pistone
+2025-12-05 18:49:36,564 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Donnie Brasco author=Joseph D. Pistone
+2025-12-05 18:49:36,565 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=The Alchemist author=Paulo Coelho
+2025-12-05 18:49:36,567 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=A Clockwork Orange author=Anthony Burgess
+2025-12-05 18:49:36,567 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Never Lie author=Freida McFadden
+2025-12-05 18:49:36,568 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=Fear and Loathing in Las Vegas: A Savage Journey to the Heart of the American Dream author=Hunter S. Thompson
+2025-12-05 18:49:36,571 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The LEGO® Ideas Book New Edition: You Can Build Anything! author=Simon Hugo
+2025-12-05 18:49:36,573 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=Keep It in the Family author=John Marrs
+2025-12-05 18:49:36,575 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5) author=Barbara Park
+2025-12-05 18:49:36,580 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=The Silent Patient author=Alex Michaelides
+2025-12-05 18:49:36,581 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=The Stand author=Stephen        King
+2025-12-05 18:49:36,581 [INFO] [background-maintenance] logging_config: Completed feed: user=nick feed_url=https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read
+2025-12-05 18:49:36,581 [INFO] [background-maintenance] logging_config: Processing feed: user=Sagey-mini feed_url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read items=71
+2025-12-05 18:49:36,581 [INFO] [background-maintenance] logging_config: Queueing job 12: user=Sagey-mini item_title=Saving Noah
+2025-12-05 18:49:36,581 [INFO] [background-maintenance] logging_config: Queueing job 13: user=Sagey-mini item_title=Tender Is the Flesh
+2025-12-05 18:49:36,581 [INFO] [background-maintenance] logging_config: Queueing job 14: user=Sagey-mini item_title=Butcher & Blackbird (The Ruinous Love Trilogy, #1)
+2025-12-05 18:49:36,581 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Saving Noah author=Lucinda Berry
+2025-12-05 18:49:36,582 [INFO] [background-maintenance] logging_config: Queueing job 15: user=Sagey-mini item_title=The Butcher
+2025-12-05 18:49:36,582 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=Tender Is the Flesh author=Agustina Bazterrica
+2025-12-05 18:49:36,582 [INFO] [background-maintenance] logging_config: Queueing job 16: user=Sagey-mini item_title=Jar of Hearts
+2025-12-05 18:49:36,582 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=Butcher & Blackbird (The Ruinous Love Trilogy, #1) author=Brynne Weaver
+2025-12-05 18:49:36,582 [INFO] [background-maintenance] logging_config: Queueing job 17: user=Sagey-mini item_title=The Last Party
+2025-12-05 18:49:36,582 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=The Butcher author=Jennifer Hillier
+2025-12-05 18:49:36,583 [INFO] [background-maintenance] logging_config: Queueing job 18: user=Sagey-mini item_title=The Push
+2025-12-05 18:49:36,583 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Jar of Hearts author=Jennifer Hillier
+2025-12-05 18:49:36,583 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=The Last Party author=A.R. Torre
+2025-12-05 18:49:36,583 [INFO] [background-maintenance] logging_config: Queueing job 19: user=Sagey-mini item_title=The House Across the Lake
+2025-12-05 18:49:36,584 [INFO] [background-maintenance] logging_config: Queueing job 20: user=Sagey-mini item_title=Local Girl Missing
+2025-12-05 18:49:36,584 [INFO] [ThreadPoolExecutor-0_5] logging_config: Book already in library: title=The Push author=Ashley Audrain
+2025-12-05 18:49:36,584 [INFO] [ThreadPoolExecutor-0_4] logging_config: Book already in library: title=The House Across the Lake author=Riley Sager
+2025-12-05 18:49:36,584 [INFO] [background-maintenance] logging_config: Queueing job 21: user=Sagey-mini item_title=We Used to Live Here
+2025-12-05 18:49:36,584 [INFO] [background-maintenance] logging_config: Queueing job 22: user=Sagey-mini item_title=Brother
+2025-12-05 18:49:36,584 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=Local Girl Missing author=Claire Douglas
+2025-12-05 18:49:36,585 [INFO] [background-maintenance] logging_config: Queueing job 23: user=Sagey-mini item_title=The Last House on Needless Street
+2025-12-05 18:49:36,585 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=We Used to Live Here author=Marcus Kliewer
+2025-12-05 18:49:36,585 [INFO] [background-maintenance] logging_config: Queueing job 24: user=Sagey-mini item_title=A Head Full of Ghosts
+2025-12-05 18:49:36,585 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Brother author=Ania Ahlborn
+2025-12-05 18:49:36,585 [INFO] [background-maintenance] logging_config: Queueing job 25: user=Sagey-mini item_title=Bunny (Bunny, #1)
+2025-12-05 18:49:36,585 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=The Last House on Needless Street author=Catriona Ward
+2025-12-05 18:49:36,586 [INFO] [background-maintenance] logging_config: Queueing job 26: user=Sagey-mini item_title=Nowhere
+2025-12-05 18:49:36,586 [INFO] [ThreadPoolExecutor-0_4] logging_config: Book already in library: title=A Head Full of Ghosts author=Paul Tremblay
+2025-12-05 18:49:36,586 [INFO] [background-maintenance] logging_config: Queueing job 27: user=Sagey-mini item_title=The Last Housewife
+2025-12-05 18:49:36,586 [INFO] [ThreadPoolExecutor-0_0] logging_config: Item already in history: title=Bunny (Bunny, #1) author=Mona Awad
+2025-12-05 18:49:36,586 [INFO] [background-maintenance] logging_config: Queueing job 28: user=Sagey-mini item_title=The Butterfly Garden  (The Collector, #1)
+2025-12-05 18:49:36,587 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Nowhere author=Allison  Gunn
+2025-12-05 18:49:36,587 [INFO] [background-maintenance] logging_config: Queueing job 29: user=Sagey-mini item_title=Mary
+2025-12-05 18:49:36,587 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=The Last Housewife author=Ashley Winstead
+2025-12-05 18:49:36,587 [INFO] [background-maintenance] logging_config: Queueing job 30: user=Sagey-mini item_title=Dark Matter
+2025-12-05 18:49:36,588 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=The Butterfly Garden  (The Collector, #1) author=Dot Hutchison
+2025-12-05 18:49:36,588 [INFO] [background-maintenance] logging_config: Queueing job 31: user=Sagey-mini item_title=Room for Rent
+2025-12-05 18:49:36,588 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Mary author=Nat Cassidy
+2025-12-05 18:49:36,588 [INFO] [background-maintenance] logging_config: Queueing job 32: user=Sagey-mini item_title=Dead in the Water
+2025-12-05 18:49:36,588 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Dark Matter author=Blake Crouch
+2025-12-05 18:49:36,589 [INFO] [background-maintenance] logging_config: Queueing job 33: user=Sagey-mini item_title=What Lies Between Us
+2025-12-05 18:49:36,589 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=Room for Rent author=Noelle W. Ihli
+2025-12-05 18:49:36,589 [INFO] [background-maintenance] logging_config: Queueing job 34: user=Sagey-mini item_title=Still Missing
+2025-12-05 18:49:36,589 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Dead in the Water author=John Marrs
+2025-12-05 18:49:36,590 [INFO] [background-maintenance] logging_config: Queueing job 35: user=Sagey-mini item_title=Don't Let Her Stay
+2025-12-05 18:49:36,590 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=What Lies Between Us author=John Marrs
+2025-12-05 18:49:36,590 [INFO] [background-maintenance] logging_config: Queueing job 36: user=Sagey-mini item_title=If You Lie
+2025-12-05 18:49:36,590 [INFO] [background-maintenance] logging_config: Queueing job 37: user=Sagey-mini item_title=Parallel (Parallel, #1)
+2025-12-05 18:49:36,590 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=Don't Let Her Stay author=Nicola Sanders
+2025-12-05 18:49:36,591 [INFO] [ThreadPoolExecutor-0_5] logging_config: Searching for item title=Still Missing author=Chevy Stevens
+2025-12-05 18:49:36,591 [INFO] [background-maintenance] logging_config: Queueing job 38: user=Sagey-mini item_title=The Things We Leave Unfinished
+2025-12-05 18:49:36,591 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=If You Lie author=Caleb  Stephens
+2025-12-05 18:49:36,591 [INFO] [background-maintenance] logging_config: Queueing job 39: user=Sagey-mini item_title=The Last Letter
+2025-12-05 18:49:36,592 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloading title=Still Missing format=mobi
+2025-12-05 18:49:36,592 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Parallel (Parallel, #1) author=Elle O'Roark
+2025-12-05 18:49:36,592 [INFO] [background-maintenance] logging_config: Queueing job 40: user=Sagey-mini item_title=Caraval (Caraval, #1)
+2025-12-05 18:49:36,592 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=The Things We Leave Unfinished author=Rebecca Yarros
+2025-12-05 18:49:36,592 [INFO] [ThreadPoolExecutor-0_5] logging_config: Resolving downloads for result title=Still Missing md5=87ac6dd0b23879f1228e6e13c6a2b978
+2025-12-05 18:49:36,592 [INFO] [background-maintenance] logging_config: Queueing job 41: user=Sagey-mini item_title=My Absolute Darling
+2025-12-05 18:49:36,592 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=The Last Letter author=Rebecca Yarros
+2025-12-05 18:49:36,593 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:36,593 [INFO] [background-maintenance] logging_config: Queueing job 42: user=Sagey-mini item_title=All the Ugly and Wonderful Things
+2025-12-05 18:49:36,593 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=Caraval (Caraval, #1) author=Stephanie Garber
+2025-12-05 18:49:36,593 [INFO] [background-maintenance] logging_config: Queueing job 43: user=Sagey-mini item_title=In the Likely Event
+2025-12-05 18:49:36,593 [INFO] [ThreadPoolExecutor-0_5] logging_config: Starting download: title=Still Missing format=mobi dest_dir=/mnt/8tbdas/GoodBooks/sagey
+2025-12-05 18:49:36,593 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=My Absolute Darling author=Gabriel Tallent
+2025-12-05 18:49:36,593 [INFO] [background-maintenance] logging_config: Queueing job 44: user=Sagey-mini item_title=Rock Paper Scissors
+2025-12-05 18:49:36,594 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=All the Ugly and Wonderful Things author=Bryn Greenwood
+2025-12-05 18:49:36,594 [INFO] [background-maintenance] logging_config: Queueing job 45: user=Sagey-mini item_title=The Psyching
+2025-12-05 18:49:36,594 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=In the Likely Event author=Rebecca Yarros
+2025-12-05 18:49:36,594 [INFO] [background-maintenance] logging_config: Queueing job 46: user=Sagey-mini item_title=Dear Debbie
+2025-12-05 18:49:36,594 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Rock Paper Scissors author=Alice Feeney
+2025-12-05 18:49:36,595 [INFO] [background-maintenance] logging_config: Queueing job 47: user=Sagey-mini item_title=Baby City
+2025-12-05 18:49:36,596 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=The Psyching author=Freida McFadden
+2025-12-05 18:49:36,596 [INFO] [background-maintenance] logging_config: Queueing job 48: user=Sagey-mini item_title=Suicide Med
+2025-12-05 18:49:36,596 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Dear Debbie author=Freida McFadden
+2025-12-05 18:49:36,597 [INFO] [background-maintenance] logging_config: Queueing job 49: user=Sagey-mini item_title=Dead Med
+2025-12-05 18:49:36,597 [INFO] [background-maintenance] logging_config: Queueing job 50: user=Sagey-mini item_title=The Devil Wears Scrubs (Dr. Jane McGill, #1)
+2025-12-05 18:49:36,597 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Suicide Med author=Freida McFadden
+2025-12-05 18:49:36,597 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=Baby City author=Freida McFadden
+2025-12-05 18:49:36,597 [INFO] [background-maintenance] logging_config: Queueing job 51: user=Sagey-mini item_title=The Devil You Know (Dr. Jane McGill, #2)
+2025-12-05 18:49:36,597 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Dead Med author=Freida McFadden
+2025-12-05 18:49:36,598 [INFO] [background-maintenance] logging_config: Queueing job 52: user=Sagey-mini item_title=The Widow's Husband's Secret Lie
+2025-12-05 18:49:36,598 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The Devil Wears Scrubs (Dr. Jane McGill, #1) author=Freida McFadden
+2025-12-05 18:49:36,598 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=The Devil You Know (Dr. Jane McGill, #2) author=Freida McFadden
+2025-12-05 18:49:36,598 [INFO] [background-maintenance] logging_config: Queueing job 53: user=Sagey-mini item_title=The Gift
+2025-12-05 18:49:36,599 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=The Widow's Husband's Secret Lie author=Freida McFadden
+2025-12-05 18:49:36,599 [INFO] [background-maintenance] logging_config: Queueing job 54: user=Sagey-mini item_title=Do You Remember?
+2025-12-05 18:49:36,599 [INFO] [background-maintenance] logging_config: Queueing job 55: user=Sagey-mini item_title=The Intruder
+2025-12-05 18:49:36,599 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=The Gift author=Freida McFadden
+2025-12-05 18:49:36,599 [INFO] [background-maintenance] logging_config: Queueing job 56: user=Sagey-mini item_title=The Ex
+2025-12-05 18:49:36,599 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=Do You Remember? author=Freida McFadden
+2025-12-05 18:49:36,599 [INFO] [background-maintenance] logging_config: Queueing job 57: user=Sagey-mini item_title=Want to Know a Secret?
+2025-12-05 18:49:36,600 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=The Intruder author=Freida McFadden
+2025-12-05 18:49:36,600 [INFO] [background-maintenance] logging_config: Queueing job 58: user=Sagey-mini item_title=Death Row (Alibis Collection, #1)
+2025-12-05 18:49:36,600 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=The Ex author=Freida McFadden
+2025-12-05 18:49:36,600 [INFO] [background-maintenance] logging_config: Queueing job 59: user=Sagey-mini item_title=The Surrogate Mother
+2025-12-05 18:49:36,600 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Want to Know a Secret? author=Freida McFadden
+2025-12-05 18:49:36,600 [INFO] [background-maintenance] logging_config: Queueing job 60: user=Sagey-mini item_title=Do Not Disturb
+2025-12-05 18:49:36,600 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=Death Row (Alibis Collection, #1) author=Freida McFadden
+2025-12-05 18:49:36,601 [INFO] [background-maintenance] logging_config: Queueing job 61: user=Sagey-mini item_title=The Crash
+2025-12-05 18:49:36,601 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=The Surrogate Mother author=Freida McFadden
+2025-12-05 18:49:36,601 [INFO] [background-maintenance] logging_config: Queueing job 62: user=Sagey-mini item_title=The Wife Upstairs
+2025-12-05 18:49:36,601 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Do Not Disturb author=Freida McFadden
+2025-12-05 18:49:36,601 [INFO] [background-maintenance] logging_config: Queueing job 63: user=Sagey-mini item_title=The Coworker
+2025-12-05 18:49:36,601 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=The Crash author=Freida McFadden
+2025-12-05 18:49:36,602 [INFO] [background-maintenance] logging_config: Queueing job 64: user=Sagey-mini item_title=One by One
+2025-12-05 18:49:36,602 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=The Wife Upstairs author=Freida McFadden
+2025-12-05 18:49:36,602 [INFO] [background-maintenance] logging_config: Queueing job 65: user=Sagey-mini item_title=The Locked Door
+2025-12-05 18:49:36,602 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=The Coworker author=Freida McFadden
+2025-12-05 18:49:36,602 [INFO] [background-maintenance] logging_config: Queueing job 66: user=Sagey-mini item_title=The Inmate
+2025-12-05 18:49:36,603 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=One by One author=Freida McFadden
+2025-12-05 18:49:36,603 [INFO] [background-maintenance] logging_config: Queueing job 67: user=Sagey-mini item_title=My Husband's Wife
+2025-12-05 18:49:36,603 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=The Locked Door author=Freida McFadden
+2025-12-05 18:49:36,603 [INFO] [background-maintenance] logging_config: Queueing job 68: user=Sagey-mini item_title=Ruthless Fae (Zodiac Academy, #2)
+2025-12-05 18:49:36,604 [INFO] [background-maintenance] logging_config: Queueing job 69: user=Sagey-mini item_title=The Handmaid's Tale
+2025-12-05 18:49:36,604 [INFO] [ThreadPoolExecutor-0_6] logging_config: Searching for item title=The Inmate author=Freida McFadden
+2025-12-05 18:49:36,604 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=My Husband's Wife author=Alice Feeney
+2025-12-05 18:49:36,605 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Ruthless Fae (Zodiac Academy, #2) author=Caroline Peckham
+2025-12-05 18:49:36,605 [INFO] [background-maintenance] logging_config: Queueing job 70: user=Sagey-mini item_title=The Sleep Experiment (World's Scariest Legends, #2)
+2025-12-05 18:49:36,605 [INFO] [background-maintenance] logging_config: Queueing job 71: user=Sagey-mini item_title=The Tenant
+2025-12-05 18:49:36,605 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloading title=The Inmate format=azw3
+2025-12-05 18:49:36,605 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=The Handmaid's Tale author=Margaret Atwood
+2025-12-05 18:49:36,605 [INFO] [background-maintenance] logging_config: Queueing job 72: user=Sagey-mini item_title=Mistborn: The Final Empire (Mistborn, #1)
+2025-12-05 18:49:36,606 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=The Sleep Experiment (World's Scariest Legends, #2) author=Jeremy Bates
+2025-12-05 18:49:36,606 [INFO] [ThreadPoolExecutor-0_6] logging_config: Resolving downloads for result title=The Inmate md5=e110c56cbc1c9132bb1d3ad1e2a4149b
+2025-12-05 18:49:36,606 [INFO] [background-maintenance] logging_config: Queueing job 73: user=Sagey-mini item_title=Beautiful Ugly
+2025-12-05 18:49:36,606 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=The Tenant author=Freida McFadden
+2025-12-05 18:49:36,606 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:36,606 [INFO] [background-maintenance] logging_config: Queueing job 74: user=Sagey-mini item_title=Ward D
+2025-12-05 18:49:36,607 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Mistborn: The Final Empire (Mistborn, #1) author=Brandon Sanderson
+2025-12-05 18:49:36,607 [INFO] [background-maintenance] logging_config: Queueing job 75: user=Sagey-mini item_title=The One
+2025-12-05 18:49:36,607 [INFO] [ThreadPoolExecutor-0_0] logging_config: Book already in library: title=Beautiful Ugly author=Alice Feeney
+2025-12-05 18:49:36,607 [INFO] [ThreadPoolExecutor-0_6] logging_config: Starting download: title=The Inmate format=azw3 dest_dir=/mnt/8tbdas/GoodBooks/sagey
+2025-12-05 18:49:36,607 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Ward D author=Freida McFadden
+2025-12-05 18:49:36,607 [INFO] [background-maintenance] logging_config: Queueing job 76: user=Sagey-mini item_title=The Bone Collector (Lincoln Rhyme, #1)
+2025-12-05 18:49:36,608 [INFO] [background-maintenance] logging_config: Queueing job 77: user=Sagey-mini item_title=A Child Called "It" (Dave Pelzer, #1)
+2025-12-05 18:49:36,608 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=The One author=John Marrs
+2025-12-05 18:49:36,608 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=The Bone Collector (Lincoln Rhyme, #1) author=Jeffery Deaver
+2025-12-05 18:49:36,609 [INFO] [background-maintenance] logging_config: Queueing job 78: user=Sagey-mini item_title=The Stand
+2025-12-05 18:49:36,610 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=A Child Called "It" (Dave Pelzer, #1) author=Dave Pelzer
+2025-12-05 18:49:36,610 [INFO] [background-maintenance] logging_config: Queueing job 79: user=Sagey-mini item_title=The Mist
+2025-12-05 18:49:36,611 [INFO] [background-maintenance] logging_config: Queueing job 80: user=Sagey-mini item_title=Woom
+2025-12-05 18:49:36,611 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=The Stand author=Stephen        King
+2025-12-05 18:49:36,611 [INFO] [background-maintenance] logging_config: Queueing job 81: user=Sagey-mini item_title=MrBallen Presents: Strange, Dark & Mysterious: The Graphic Stories (MrBallen Graphic Stories)
+2025-12-05 18:49:36,611 [INFO] [background-maintenance] logging_config: Queueing job 82: user=Sagey-mini item_title=Alice (The Chronicles of Alice, #1)
+2025-12-05 18:49:36,612 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The Mist author=Stephen        King
+2025-12-05 18:49:36,612 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Woom author=Duncan Ralston
+2025-12-05 18:49:36,612 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=MrBallen Presents: Strange, Dark & Mysterious: The Graphic Stories (MrBallen Graphic Stories) author=MrBallen
+2025-12-05 18:49:36,612 [INFO] [background-maintenance] logging_config: Waiting for all 71 items in this feed to complete
+2025-12-05 18:49:36,613 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=Alice (The Chronicles of Alice, #1) author=Christina Henry
+2025-12-05 18:49:37,290 [ERROR] [ThreadPoolExecutor-0_5] search_engine: Download URL returned HTML payload for title=Still Missing; aborting
+2025-12-05 18:49:37,293 [ERROR] [ThreadPoolExecutor-0_5] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1895, in download
+    raise ValueError(
+ValueError: Download URL returned HTML payload instead of ebook
+2025-12-05 18:49:57,380 [ERROR] [ThreadPoolExecutor-0_6] search_engine: Download URL returned HTML payload for title=The Inmate; aborting
+2025-12-05 18:49:57,383 [ERROR] [ThreadPoolExecutor-0_6] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1895, in download
+    raise ValueError(
+ValueError: Download URL returned HTML payload instead of ebook
+2025-12-05 18:49:57,387 [INFO] [background-maintenance] logging_config: Completed feed: user=Sagey-mini feed_url=https://www.goodreads.com/review/list_rss/183591818?shelf=to-read
+2025-12-05 18:49:57,387 [INFO] [background-maintenance] logging_config: Processing feed: user=HTML fetch test feed_url=https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ items=150
+2025-12-05 18:49:57,387 [INFO] [background-maintenance] logging_config: Queueing job 83: user=HTML fetch test item_title=The Princess in Black (The Princess in Black, #1)
+2025-12-05 18:49:57,388 [INFO] [background-maintenance] logging_config: Queueing job 84: user=HTML fetch test item_title=Dinosaurs Before Dark (Magic Tree House, #1)
+2025-12-05 18:49:57,389 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=The Princess in Black (The Princess in Black, #1) author=Shannon Hale
+2025-12-05 18:49:57,390 [INFO] [background-maintenance] logging_config: Queueing job 85: user=HTML fetch test item_title=My Father's Dragon (My Father's Dragon, #1)
+2025-12-05 18:49:57,392 [INFO] [ThreadPoolExecutor-0_0] logging_config: Searching for item title=Dinosaurs Before Dark (Magic Tree House, #1) author=Mary Pope Osborne
+2025-12-05 18:49:57,393 [INFO] [background-maintenance] logging_config: Queueing job 86: user=HTML fetch test item_title=Dory Fantasmagory
+2025-12-05 18:49:57,395 [INFO] [background-maintenance] logging_config: Queueing job 87: user=HTML fetch test item_title=Mercy Watson to the Rescue
+2025-12-05 18:49:57,396 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=My Father's Dragon (My Father's Dragon, #1) author=Ruth Stiles Gannett
+2025-12-05 18:49:57,396 [INFO] [ThreadPoolExecutor-0_0] logging_config: Downloading title=Dinosaurs Before Dark - Magic Tree House 1 format=mobi
+2025-12-05 18:49:57,397 [INFO] [background-maintenance] logging_config: Queueing job 88: user=HTML fetch test item_title=Junie B. Jones and the  Stupid Smelly Bus (Junie B. Jones, #1)
+2025-12-05 18:49:57,398 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Dory Fantasmagory author=Abby Hanlon
+2025-12-05 18:49:57,399 [INFO] [ThreadPoolExecutor-0_0] logging_config: Resolving downloads for result title=Dinosaurs Before Dark - Magic Tree House 1 md5=31ebab953693c5db226a513ba5c6574e
+2025-12-05 18:49:57,400 [INFO] [background-maintenance] logging_config: Queueing job 89: user=HTML fetch test item_title=Rise of the Earth Dragon (Dragon Masters, #1)
+2025-12-05 18:49:57,401 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Mercy Watson to the Rescue author=Kate DiCamillo
+2025-12-05 18:49:57,402 [INFO] [ThreadPoolExecutor-0_0] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,402 [INFO] [background-maintenance] logging_config: Queueing job 90: user=HTML fetch test item_title=The Lost Stone (The Kingdom of Wrenly, #1)
+2025-12-05 18:49:57,404 [INFO] [ThreadPoolExecutor-0_0] logging_config: Starting download: title=Dinosaurs Before Dark - Magic Tree House 1 format=mobi dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,405 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=Junie B. Jones and the  Stupid Smelly Bus (Junie B. Jones, #1) author=Barbara Park
+2025-12-05 18:49:57,405 [INFO] [background-maintenance] logging_config: Queueing job 91: user=HTML fetch test item_title=Dragons and Marshmallows (Zoey and Sassafras, #1)
+2025-12-05 18:49:57,406 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Rise of the Earth Dragon (Dragon Masters, #1) author=Tracey West
+2025-12-05 18:49:57,408 [INFO] [background-maintenance] logging_config: Queueing job 92: user=HTML fetch test item_title=Eva's Treetop Festival (Owl Diaries, #1)
+2025-12-05 18:49:57,411 [INFO] [background-maintenance] logging_config: Queueing job 93: user=HTML fetch test item_title=Anna Hibiscus (Anna Hibiscus, #1)
+2025-12-05 18:49:57,412 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Dragons and Marshmallows (Zoey and Sassafras, #1) author=Asia Citro
+2025-12-05 18:49:57,416 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=The Lost Stone (The Kingdom of Wrenly, #1) author=Jordan Quinn
+2025-12-05 18:49:57,419 [INFO] [ThreadPoolExecutor-0_5] logging_config: Book already in library: title=Eva's Treetop Festival (Owl Diaries, #1) author=Rebecca Elliott
+2025-12-05 18:49:57,419 [INFO] [background-maintenance] logging_config: Queueing job 94: user=HTML fetch test item_title=Clementine (Clementine, #1)
+2025-12-05 18:49:57,422 [INFO] [background-maintenance] logging_config: Queueing job 95: user=HTML fetch test item_title=Nancy Clancy, Super Sleuth (Nancy Clancy Chapter Books #1)
+2025-12-05 18:49:57,423 [INFO] [ThreadPoolExecutor-0_1] logging_config: Book already in library: title=Anna Hibiscus (Anna Hibiscus, #1) author=Atinuke
+2025-12-05 18:49:57,424 [INFO] [background-maintenance] logging_config: Queueing job 96: user=HTML fetch test item_title=Encyclopedia Brown, Boy Detective (Encyclopedia Brown, #1)
+2025-12-05 18:49:57,426 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=Clementine (Clementine, #1) author=Sara Pennypacker
+2025-12-05 18:49:57,426 [INFO] [background-maintenance] logging_config: Queueing job 97: user=HTML fetch test item_title=Henry Huggins (Henry Huggins, #1)
+2025-12-05 18:49:57,429 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Nancy Clancy, Super Sleuth (Nancy Clancy Chapter Books #1) author=Jane O'Connor
+2025-12-05 18:49:57,429 [INFO] [background-maintenance] logging_config: Queueing job 98: user=HTML fetch test item_title=Leroy Ninker Saddles Up
+2025-12-05 18:49:57,431 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Encyclopedia Brown, Boy Detective (Encyclopedia Brown, #1) author=Donald J. Sobol
+2025-12-05 18:49:57,432 [INFO] [background-maintenance] logging_config: Queueing job 99: user=HTML fetch test item_title=The Ember Stone (The Last Firehawk, #1)
+2025-12-05 18:49:57,434 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Henry Huggins (Henry Huggins, #1) author=Beverly Cleary
+2025-12-05 18:49:57,434 [INFO] [background-maintenance] logging_config: Queueing job 100: user=HTML fetch test item_title=The Boxcar Children (The Boxcar Children, #1)
+2025-12-05 18:49:57,436 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Leroy Ninker Saddles Up author=Kate DiCamillo
+2025-12-05 18:49:57,437 [INFO] [background-maintenance] logging_config: Queueing job 101: user=HTML fetch test item_title=The Boxcar Children
+2025-12-05 18:49:57,439 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=The Ember Stone (The Last Firehawk, #1) author=Katrina Charman
+2025-12-05 18:49:57,439 [INFO] [background-maintenance] logging_config: Queueing job 102: user=HTML fetch test item_title=Ottoline and the Yellow Cat (Ottoline, #1)
+2025-12-05 18:49:57,440 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=The Boxcar Children (The Boxcar Children, #1) author=Gertrude Chandler Warner
+2025-12-05 18:49:57,441 [INFO] [background-maintenance] logging_config: Queueing job 103: user=HTML fetch test item_title=Daisy Dawson Is on Her Way! (Daisy Dawson, #1)
+2025-12-05 18:49:57,443 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=The Boxcar Children author=Shannon Eric Denton
+2025-12-05 18:49:57,444 [INFO] [background-maintenance] logging_config: Queueing job 104: user=HTML fetch test item_title=Judy Moody Was in a Mood. Not a Good Mood. A Bad Mood. (Judy Moody ,#1)
+2025-12-05 18:49:57,446 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Ottoline and the Yellow Cat (Ottoline, #1) author=Chris Riddell
+2025-12-05 18:49:57,446 [INFO] [background-maintenance] logging_config: Queueing job 105: user=HTML fetch test item_title=The Bad Beginning (A Series of Unfortunate Events, #1)
+2025-12-05 18:49:57,449 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=Daisy Dawson Is on Her Way! (Daisy Dawson, #1) author=Steve Voake
+2025-12-05 18:49:57,451 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Judy Moody Was in a Mood. Not a Good Mood. A Bad Mood. (Judy Moody ,#1) author=Megan McDonald
+2025-12-05 18:49:57,451 [INFO] [background-maintenance] logging_config: Queueing job 106: user=HTML fetch test item_title=Lost Treasure of the Emerald Eye (Geronimo Stilton, #1)
+2025-12-05 18:49:57,453 [INFO] [background-maintenance] logging_config: Queueing job 107: user=HTML fetch test item_title=The Absent Author (A to Z Mysteries, #1)
+2025-12-05 18:49:57,454 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=The Bad Beginning (A Series of Unfortunate Events, #1) author=Lemony Snicket
+2025-12-05 18:49:57,455 [INFO] [background-maintenance] logging_config: Queueing job 108: user=HTML fetch test item_title=The 13-Story Treehouse: Monkey Mayhem! (The Treehouse Books, 1)
+2025-12-05 18:49:57,457 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Lost Treasure of the Emerald Eye (Geronimo Stilton, #1) author=Geronimo Stilton
+2025-12-05 18:49:57,457 [INFO] [background-maintenance] logging_config: Queueing job 109: user=HTML fetch test item_title=The Bad Guys: Episode 1
+2025-12-05 18:49:57,459 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=The Absent Author (A to Z Mysteries, #1) author=Ron Roy
+2025-12-05 18:49:57,460 [INFO] [background-maintenance] logging_config: Queueing job 110: user=HTML fetch test item_title=Digby O'Day in the Fast Lane
+2025-12-05 18:49:57,461 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=The 13-Story Treehouse: Monkey Mayhem! (The Treehouse Books, 1) author=Andy Griffiths
+2025-12-05 18:49:57,462 [INFO] [background-maintenance] logging_config: Queueing job 111: user=HTML fetch test item_title=The New Kid at School (Dragon Slayers' Academy, #1)
+2025-12-05 18:49:57,465 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=The Bad Guys: Episode 1 author=Aaron Blabey
+2025-12-05 18:49:57,465 [INFO] [background-maintenance] logging_config: Queueing job 112: user=HTML fetch test item_title=In Aunt Lucy's Kitchen (Cobble Street Cousins, #1)
+2025-12-05 18:49:57,466 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Digby O'Day in the Fast Lane author=Shirley Hughes
+2025-12-05 18:49:57,467 [INFO] [background-maintenance] logging_config: Queueing job 113: user=HTML fetch test item_title=The Mystery of the Stolen Diamonds (Cam Jansen Mysteries, #1)
+2025-12-05 18:49:57,470 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=The New Kid at School (Dragon Slayers' Academy, #1) author=Kate McMullan
+2025-12-05 18:49:57,471 [INFO] [ThreadPoolExecutor-0_5] logging_config: Book already in library: title=In Aunt Lucy's Kitchen (Cobble Street Cousins, #1) author=Cynthia Rylant
+2025-12-05 18:49:57,472 [INFO] [background-maintenance] logging_config: Queueing job 114: user=HTML fetch test item_title=The Saturdays (The Melendy Family, #1)
+2025-12-05 18:49:57,473 [INFO] [background-maintenance] logging_config: Queueing job 115: user=HTML fetch test item_title=Kidnapped at Birth? (Marvin Redpost, #1)
+2025-12-05 18:49:57,475 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=The Mystery of the Stolen Diamonds (Cam Jansen Mysteries, #1) author=David A. Adler
+2025-12-05 18:49:57,476 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The Saturdays (The Melendy Family, #1) author=Elizabeth Enright
+2025-12-05 18:49:57,477 [INFO] [background-maintenance] logging_config: Queueing job 116: user=HTML fetch test item_title=Dragonbreath (Dragonbreath, #1)
+2025-12-05 18:49:57,478 [INFO] [background-maintenance] logging_config: Queueing job 117: user=HTML fetch test item_title=Harriet the Invincible (Hamster Princess, #1)
+2025-12-05 18:49:57,480 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Kidnapped at Birth? (Marvin Redpost, #1) author=Louis Sachar
+2025-12-05 18:49:57,481 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Dragonbreath (Dragonbreath, #1) author=Ursula Vernon
+2025-12-05 18:49:57,481 [INFO] [background-maintenance] logging_config: Queueing job 118: user=HTML fetch test item_title=Amy and the Missing Puppy (The Critter Club, #1)
+2025-12-05 18:49:57,483 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Harriet the Invincible (Hamster Princess, #1) author=Ursula Vernon
+2025-12-05 18:49:57,484 [INFO] [background-maintenance] logging_config: Queueing job 119: user=HTML fetch test item_title=The Riddle of the Robin
+2025-12-05 18:49:57,485 [INFO] [background-maintenance] logging_config: Queueing job 120: user=HTML fetch test item_title=Ivy and Bean (Ivy & Bean, #1)
+2025-12-05 18:49:57,487 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Amy and the Missing Puppy (The Critter Club, #1) author=Callie Barkley
+2025-12-05 18:49:57,487 [INFO] [background-maintenance] logging_config: Queueing job 121: user=HTML fetch test item_title=My Happy Life
+2025-12-05 18:49:57,488 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=The Riddle of the Robin author=Valerie Tripp
+2025-12-05 18:49:57,490 [INFO] [background-maintenance] logging_config: Queueing job 122: user=HTML fetch test item_title=Captain Awesome to the Rescue! (1)
+2025-12-05 18:49:57,492 [INFO] [background-maintenance] logging_config: Queueing job 123: user=HTML fetch test item_title=Bad Kitty School Daze
+2025-12-05 18:49:57,492 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=Ivy and Bean (Ivy & Bean, #1) author=Annie Barrows
+2025-12-05 18:49:57,494 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=My Happy Life author=Rose Lagercrantz
+2025-12-05 18:49:57,494 [INFO] [background-maintenance] logging_config: Queueing job 124: user=HTML fetch test item_title=The Mystery of the Gold Coin (Greetings from Somewhere #1)
+2025-12-05 18:49:57,496 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Captain Awesome to the Rescue! (1) author=Stan Kirby
+2025-12-05 18:49:57,498 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=Bad Kitty School Daze author=Nick Bruel
+2025-12-05 18:49:57,499 [INFO] [background-maintenance] logging_config: Queueing job 125: user=HTML fetch test item_title=The Beast in Ms. Rooney's Room (The Kids of the Polk Street School #1)
+2025-12-05 18:49:57,501 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=The Mystery of the Gold Coin (Greetings from Somewhere #1) author=Harper Paris
+2025-12-05 18:49:57,502 [INFO] [background-maintenance] logging_config: Queueing job 126: user=HTML fetch test item_title=Allergic to Girls, School, and Other Scary Things (Alvin Ho, #1)
+2025-12-05 18:49:57,503 [INFO] [background-maintenance] logging_config: Queueing job 127: user=HTML fetch test item_title=Lunch Walks Among Us (Franny K. Stein Mad Scientist, 1)
+2025-12-05 18:49:57,505 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=The Beast in Ms. Rooney's Room (The Kids of the Polk Street School #1) author=Patricia Reilly Giff
+2025-12-05 18:49:57,505 [INFO] [background-maintenance] logging_config: Queueing job 128: user=HTML fetch test item_title=The Show Must Go On! (Three-Ring Rascals, #1)
+2025-12-05 18:49:57,507 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=Allergic to Girls, School, and Other Scary Things (Alvin Ho, #1) author=Lenore Look
+2025-12-05 18:49:57,508 [INFO] [background-maintenance] logging_config: Queueing job 129: user=HTML fetch test item_title=Flat Stanley (Flat Stanley, #1)
+2025-12-05 18:49:57,509 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=Lunch Walks Among Us (Franny K. Stein Mad Scientist, 1) author=Jim Benton
+2025-12-05 18:49:57,510 [INFO] [background-maintenance] logging_config: Queueing job 130: user=HTML fetch test item_title=Amber Brown Is Not a Crayon
+2025-12-05 18:49:57,512 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=The Show Must Go On! (Three-Ring Rascals, #1) author=Kate Klise
+2025-12-05 18:49:57,513 [INFO] [background-maintenance] logging_config: Queueing job 131: user=HTML fetch test item_title=Kelsey Green, Reading Queen
+2025-12-05 18:49:57,514 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Flat Stanley (Flat Stanley, #1) author=Jeff Brown
+2025-12-05 18:49:57,515 [INFO] [background-maintenance] logging_config: Queueing job 132: user=HTML fetch test item_title=Star Wars: Jedi Academy (Jedi Academy, #1)
+2025-12-05 18:49:57,517 [INFO] [background-maintenance] logging_config: Queueing job 133: user=HTML fetch test item_title=Miss Moss: The Long Winter (Book 2) Decodable Chapter Book
+2025-12-05 18:49:57,518 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Kelsey Green, Reading Queen author=Claudia Mills
+2025-12-05 18:49:57,519 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Amber Brown Is Not a Crayon author=Paula Danziger
+2025-12-05 18:49:57,519 [INFO] [background-maintenance] logging_config: Queueing job 134: user=HTML fetch test item_title=Francine Poulet Meets the Ghost Raccoon
+2025-12-05 18:49:57,521 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=Star Wars: Jedi Academy (Jedi Academy, #1) author=Jeffrey   Brown
+2025-12-05 18:49:57,523 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=Miss Moss: The Long Winter (Book 2) Decodable Chapter Book author=M. Mott
+2025-12-05 18:49:57,524 [INFO] [background-maintenance] logging_config: Queueing job 135: user=HTML fetch test item_title=Miss Moss (Book 1) Decodable Chapter Book
+2025-12-05 18:49:57,526 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=Francine Poulet Meets the Ghost Raccoon author=Kate DiCamillo
+2025-12-05 18:49:57,527 [INFO] [background-maintenance] logging_config: Queueing job 136: user=HTML fetch test item_title=Miss Moss: Spring Has Sprung (Book 3) Decodable Chapter Book
+2025-12-05 18:49:57,528 [INFO] [background-maintenance] logging_config: Queueing job 137: user=HTML fetch test item_title=Poppy
+2025-12-05 18:49:57,529 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Miss Moss (Book 1) Decodable Chapter Book author=M. Mott
+2025-12-05 18:49:57,530 [INFO] [background-maintenance] logging_config: Queueing job 138: user=HTML fetch test item_title=Horrible Harry in Room 2B (Horrible Harry, #1)
+2025-12-05 18:49:57,532 [INFO] [background-maintenance] logging_config: Queueing job 139: user=HTML fetch test item_title=Wallace and Grace Take the Case
+2025-12-05 18:49:57,533 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Poppy author=Avi
+2025-12-05 18:49:57,534 [INFO] [background-maintenance] logging_config: Queueing job 140: user=HTML fetch test item_title=The Crazy Cousins (Hey Jack! #1)
+2025-12-05 18:49:57,535 [INFO] [ThreadPoolExecutor-0_6] logging_config: Item already in history: title=Miss Moss: Spring Has Sprung (Book 3) Decodable Chapter Book author=M. Mott
+2025-12-05 18:49:57,537 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Horrible Harry in Room 2B (Horrible Harry, #1) author=Suzy Kline
+2025-12-05 18:49:57,537 [INFO] [background-maintenance] logging_config: Queueing job 141: user=HTML fetch test item_title=Let's Get Cracking! (Kung Pow Chicken #1)
+2025-12-05 18:49:57,539 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Wallace and Grace Take the Case author=Heather  Alexander
+2025-12-05 18:49:57,541 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=The Crazy Cousins (Hey Jack! #1) author=Sally Rippin
+2025-12-05 18:49:57,541 [INFO] [background-maintenance] logging_config: Queueing job 142: user=HTML fetch test item_title=Henry Heckelbeck Gets a Dragon
+2025-12-05 18:49:57,543 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Let's Get Cracking! (Kung Pow Chicken #1) author=Cyndi Marko
+2025-12-05 18:49:57,544 [INFO] [background-maintenance] logging_config: Queueing job 143: user=HTML fetch test item_title=Just Annoying
+2025-12-05 18:49:57,545 [INFO] [ThreadPoolExecutor-0_2] logging_config: Book already in library: title=Henry Heckelbeck Gets a Dragon author=Wanda Coven
+2025-12-05 18:49:57,547 [INFO] [background-maintenance] logging_config: Queueing job 144: user=HTML fetch test item_title=Louise Trapeze Is Totally 100% Fearless (Louise Trapeze, #1)
+2025-12-05 18:49:57,548 [INFO] [background-maintenance] logging_config: Queueing job 145: user=HTML fetch test item_title=Sam and Charlie
+2025-12-05 18:49:57,549 [INFO] [ThreadPoolExecutor-0_7] logging_config: Book already in library: title=Just Annoying author=Andy Griffiths
+2025-12-05 18:49:57,550 [INFO] [background-maintenance] logging_config: Queueing job 146: user=HTML fetch test item_title=Lunch Will Never Be the Same! (Phoebe G. Green, #1)
+2025-12-05 18:49:57,551 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Louise Trapeze Is Totally 100% Fearless (Louise Trapeze, #1) author=Micol Ostow
+2025-12-05 18:49:57,552 [INFO] [background-maintenance] logging_config: Queueing job 147: user=HTML fetch test item_title=Picture Day (Missy's Super Duper Royal Deluxe, #1)
+2025-12-05 18:49:57,553 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=Sam and Charlie author=Leslie Kimmelman
+2025-12-05 18:49:57,554 [INFO] [background-maintenance] logging_config: Queueing job 148: user=HTML fetch test item_title=The Hidden Stairs and the Magic Carpet (The Secrets of Droon, #1)
+2025-12-05 18:49:57,555 [INFO] [ThreadPoolExecutor-0_1] logging_config: Item already in history: title=Lunch Will Never Be the Same! (Phoebe G. Green, #1) author=Veera Hiranandani
+2025-12-05 18:49:57,555 [INFO] [background-maintenance] logging_config: Queueing job 149: user=HTML fetch test item_title=January Joker (Calendar Mysteries, #1)
+2025-12-05 18:49:57,557 [INFO] [background-maintenance] logging_config: Queueing job 150: user=HTML fetch test item_title=Giants Beware! (Chronicles of Claudette, #1)
+2025-12-05 18:49:57,558 [INFO] [ThreadPoolExecutor-0_6] logging_config: Searching for item title=Picture Day (Missy's Super Duper Royal Deluxe, #1) author=Susan Nees
+2025-12-05 18:49:57,559 [INFO] [background-maintenance] logging_config: Queueing job 151: user=HTML fetch test item_title=The Man Who Wore All His Clothes
+2025-12-05 18:49:57,560 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=January Joker (Calendar Mysteries, #1) author=Ron Roy
+2025-12-05 18:49:57,561 [INFO] [ThreadPoolExecutor-0_1] logging_config: Searching for item title=The Hidden Stairs and the Magic Carpet (The Secrets of Droon, #1) author=Tony  Abbott
+2025-12-05 18:49:57,562 [INFO] [background-maintenance] logging_config: Queueing job 152: user=HTML fetch test item_title=The Pizza Monster (Olivia Sharp, Agent for Secrets #1)
+2025-12-05 18:49:57,564 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloading title=Midnight (Missy's Super Duper Royal Deluxe) format=mobi
+2025-12-05 18:49:57,565 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Giants Beware! (Chronicles of Claudette, #1) author=Jorge Aguirre
+2025-12-05 18:49:57,565 [INFO] [background-maintenance] logging_config: Queueing job 153: user=HTML fetch test item_title=Claude At the Beach
+2025-12-05 18:49:57,566 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The Man Who Wore All His Clothes author=Allan Ahlberg
+2025-12-05 18:49:57,567 [INFO] [ThreadPoolExecutor-0_6] logging_config: Resolving downloads for result title=Midnight (Missy's Super Duper Royal Deluxe) md5=55a833fd55eb4d524e521a200d0a594b
+2025-12-05 18:49:57,567 [INFO] [ThreadPoolExecutor-0_1] logging_config: Downloading title=The Hidden Stairs and the Magic Carpet (The Secrets of Droon #1) format=epub
+2025-12-05 18:49:57,568 [INFO] [background-maintenance] logging_config: Queueing job 154: user=HTML fetch test item_title=Tide Pool Trouble (My First Graphic Novel)
+2025-12-05 18:49:57,569 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=The Pizza Monster (Olivia Sharp, Agent for Secrets #1) author=Marjorie Weinman Sharmat
+2025-12-05 18:49:57,570 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,570 [INFO] [ThreadPoolExecutor-0_1] logging_config: Resolving downloads for result title=The Hidden Stairs and the Magic Carpet (The Secrets of Droon #1) md5=52d38adf31774764f29058dd752a06a9
+2025-12-05 18:49:57,571 [INFO] [background-maintenance] logging_config: Queueing job 155: user=HTML fetch test item_title=The Ball Hogs (Kickers, #1)
+2025-12-05 18:49:57,572 [INFO] [ThreadPoolExecutor-0_6] logging_config: Starting download: title=Midnight (Missy's Super Duper Royal Deluxe) format=mobi dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,573 [INFO] [ThreadPoolExecutor-0_1] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,573 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Claude At the Beach author=Alex T. Smith
+2025-12-05 18:49:57,574 [INFO] [background-maintenance] logging_config: Queueing job 156: user=HTML fetch test item_title=The Mystery of the Stolen Painting (Greetings from Somewhere #3)
+2025-12-05 18:49:57,575 [INFO] [ThreadPoolExecutor-0_5] logging_config: Item already in history: title=Tide Pool Trouble (My First Graphic Novel) author=Michelle   Lord
+2025-12-05 18:49:57,576 [INFO] [ThreadPoolExecutor-0_1] logging_config: Starting download: title=The Hidden Stairs and the Magic Carpet (The Secrets of Droon #1) format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,576 [INFO] [background-maintenance] logging_config: Queueing job 157: user=HTML fetch test item_title=The Adventures of Laura & Jack (Little House Chapter Books: Laura, #1)
+2025-12-05 18:49:57,578 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=The Ball Hogs (Kickers, #1) author=Rich Wallace
+2025-12-05 18:49:57,580 [INFO] [background-maintenance] logging_config: Queueing job 158: user=HTML fetch test item_title=Tooth Trouble (Ready, Freddy! #1)
+2025-12-05 18:49:57,586 [INFO] [background-maintenance] logging_config: Queueing job 159: user=HTML fetch test item_title=The Secret of Whale Island (Thea Stilton Graphic Novels #1)
+2025-12-05 18:49:57,587 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=The Adventures of Laura & Jack (Little House Chapter Books: Laura, #1) author=Laura Ingalls Wilder
+2025-12-05 18:49:57,588 [INFO] [ThreadPoolExecutor-0_5] logging_config: Searching for item title=The Mystery of the Stolen Painting (Greetings from Somewhere #3) author=Harper Paris
+2025-12-05 18:49:57,589 [INFO] [background-maintenance] logging_config: Queueing job 160: user=HTML fetch test item_title=Little Shaq
+2025-12-05 18:49:57,590 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Tooth Trouble (Ready, Freddy! #1) author=Abby Klein
+2025-12-05 18:49:57,592 [INFO] [background-maintenance] logging_config: Queueing job 161: user=HTML fetch test item_title=Liberty Porter, First Daughter (1)
+2025-12-05 18:49:57,594 [INFO] [ThreadPoolExecutor-0_3] logging_config: Book already in library: title=The Secret of Whale Island (Thea Stilton Graphic Novels #1) author=Thea Stilton
+2025-12-05 18:49:57,594 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloading title=The Mystery of the Stolen Painting (Greetings from Somewhere Book 3) format=epub
+2025-12-05 18:49:57,595 [INFO] [background-maintenance] logging_config: Queueing job 162: user=HTML fetch test item_title=The All-Powerful Ring: A Primo Story (Witches of Benevento, #2)
+2025-12-05 18:49:57,596 [INFO] [ThreadPoolExecutor-0_7] logging_config: Item already in history: title=Little Shaq author=Shaquille O'Neal
+2025-12-05 18:49:57,597 [INFO] [ThreadPoolExecutor-0_5] logging_config: Resolving downloads for result title=The Mystery of the Stolen Painting (Greetings from Somewhere Book 3) md5=0f5b0262c61b80f95403aa2617231273
+2025-12-05 18:49:57,597 [INFO] [background-maintenance] logging_config: Queueing job 163: user=HTML fetch test item_title=Nanny Matilda
+2025-12-05 18:49:57,599 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Liberty Porter, First Daughter (1) author=Julia DeVillers
+2025-12-05 18:49:57,603 [INFO] [ThreadPoolExecutor-0_7] logging_config: Searching for item title=The All-Powerful Ring: A Primo Story (Witches of Benevento, #2) author=John Bemelmans Marciano
+2025-12-05 18:49:57,604 [INFO] [background-maintenance] logging_config: Queueing job 164: user=HTML fetch test item_title=March of the Mini Beasts (The DATA Set #1)
+2025-12-05 18:49:57,609 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Nanny Matilda author=Christianna Brand
+2025-12-05 18:49:57,610 [INFO] [background-maintenance] logging_config: Queueing job 165: user=HTML fetch test item_title=Thea Stilton and the Dragon's Code (Thea Stilton #1)
+2025-12-05 18:49:57,611 [INFO] [ThreadPoolExecutor-0_7] logging_config: Downloading title=The witches of Benevento. 2, The all-powerful ring : a primo storyThe All-Powerful Ring: A Primo Story (Witches of Benevento, #2)The All-Powerful Ring (The Witches of Benevento) format=mobi
+2025-12-05 18:49:57,612 [INFO] [background-maintenance] logging_config: Queueing job 166: user=HTML fetch test item_title=Paloma (Shelter Pet Squad, #3)
+2025-12-05 18:49:57,613 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=March of the Mini Beasts (The DATA Set #1) author=Ada Hopper
+2025-12-05 18:49:57,613 [INFO] [ThreadPoolExecutor-0_7] logging_config: Resolving downloads for result title=The witches of Benevento. 2, The all-powerful ring : a primo storyThe All-Powerful Ring: A Primo Story (Witches of Benevento, #2)The All-Powerful Ring (The Witches of Benevento) md5=3c2b659304b68efe612cb5ee79ce61fd
+2025-12-05 18:49:57,614 [INFO] [background-maintenance] logging_config: Queueing job 167: user=HTML fetch test item_title=The Frandidate (Franny K. Stein, Mad Scientist, #7)
+2025-12-05 18:49:57,615 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Thea Stilton and the Dragon's Code (Thea Stilton #1) author=Thea Stilton
+2025-12-05 18:49:57,617 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=Paloma (Shelter Pet Squad, #3) author=Cynthia Lord
+2025-12-05 18:49:57,617 [INFO] [ThreadPoolExecutor-0_7] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,618 [INFO] [background-maintenance] logging_config: Queueing job 168: user=HTML fetch test item_title=The Present is a Gift
+2025-12-05 18:49:57,619 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The Frandidate (Franny K. Stein, Mad Scientist, #7) author=Jim Benton
+2025-12-05 18:49:57,621 [INFO] [ThreadPoolExecutor-0_7] logging_config: Starting download: title=The witches of Benevento. 2, The all-powerful ring : a primo storyThe All-Powerful Ring: A Primo Story (Witches of Benevento, #2)The All-Powerful Ring (The Witches of Benevento) format=mobi dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,621 [INFO] [background-maintenance] logging_config: Queueing job 169: user=HTML fetch test item_title=I Turned Into A Zombie: A Zombie Diary for Early Readers
+2025-12-05 18:49:57,622 [INFO] [ThreadPoolExecutor-0_4] logging_config: Book already in library: title=The Present is a Gift author=Elchanan Ogorek
+2025-12-05 18:49:57,623 [INFO] [background-maintenance] logging_config: Queueing job 170: user=HTML fetch test item_title=Kitty and the Moonlight Rescue (Kitty, #1)
+2025-12-05 18:49:57,624 [INFO] [background-maintenance] logging_config: Queueing job 171: user=HTML fetch test item_title=The Invisible Thief (Heromice #5 )
+2025-12-05 18:49:57,625 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=I Turned Into A Zombie: A Zombie Diary for Early Readers author=Wil Zombie
+2025-12-05 18:49:57,625 [INFO] [background-maintenance] logging_config: Queueing job 172: user=HTML fetch test item_title=Gus Makes A Fuss (Pet Sitters: Ready for Anything, #1)
+2025-12-05 18:49:57,627 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=Kitty and the Moonlight Rescue (Kitty, #1) author=Paula Harrison
+2025-12-05 18:49:57,627 [INFO] [background-maintenance] logging_config: Queueing job 173: user=HTML fetch test item_title=The Temples of Malplaquet
+2025-12-05 18:49:57,628 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=The Invisible Thief (Heromice #5 ) author=Geronimo Stilton
+2025-12-05 18:49:57,629 [INFO] [background-maintenance] logging_config: Queueing job 174: user=HTML fetch test item_title=The Bright Bay Mermaids: Anna's Secret
+2025-12-05 18:49:57,631 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Gus Makes A Fuss (Pet Sitters: Ready for Anything, #1) author=Ella Shine
+2025-12-05 18:49:57,631 [INFO] [background-maintenance] logging_config: Queueing job 175: user=HTML fetch test item_title=Tink in a Fairy Fix (Tales of Pixie Hollow, #22)
+2025-12-05 18:49:57,633 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=The Temples of Malplaquet author=Andrew Dalton
+2025-12-05 18:49:57,634 [INFO] [background-maintenance] logging_config: Queueing job 176: user=HTML fetch test item_title=The Fran with Four Brains (Franny K. Stein, Mad Scientist, #6)
+2025-12-05 18:49:57,634 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=The Bright Bay Mermaids: Anna's Secret author=Jamie M. Kaye
+2025-12-05 18:49:57,635 [INFO] [background-maintenance] logging_config: Queueing job 177: user=HTML fetch test item_title=The Storm (The Lighthouse Family, #1)
+2025-12-05 18:49:57,637 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Tink in a Fairy Fix (Tales of Pixie Hollow, #22) author=Kiki Thorpe
+2025-12-05 18:49:57,638 [INFO] [background-maintenance] logging_config: Queueing job 178: user=HTML fetch test item_title=The Bad Butterfly (Billie B Brown #1)
+2025-12-05 18:49:57,639 [INFO] [background-maintenance] logging_config: Queueing job 179: user=HTML fetch test item_title=Frantastic Voyage (Franny K. Stein, Mad Scientist, #5)
+2025-12-05 18:49:57,640 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=The Storm (The Lighthouse Family, #1) author=Cynthia Rylant
+2025-12-05 18:49:57,640 [INFO] [ThreadPoolExecutor-0_3] logging_config: Item already in history: title=The Fran with Four Brains (Franny K. Stein, Mad Scientist, #6) author=Jim Benton
+2025-12-05 18:49:57,641 [INFO] [background-maintenance] logging_config: Queueing job 180: user=HTML fetch test item_title=Princess Posey and the First Grade Parade (Princess Posey, #1)
+2025-12-05 18:49:57,642 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=The Bad Butterfly (Billie B Brown #1) author=Sally Rippin
+2025-12-05 18:49:57,644 [INFO] [ThreadPoolExecutor-0_4] logging_config: Item already in history: title=Frantastic Voyage (Franny K. Stein, Mad Scientist, #5) author=Jim Benton
+2025-12-05 18:49:57,644 [INFO] [background-maintenance] logging_config: Queueing job 181: user=HTML fetch test item_title=Hello, Nebulon! (Galaxy Zack, #1)
+2025-12-05 18:49:57,646 [INFO] [ThreadPoolExecutor-0_2] logging_config: Item already in history: title=Princess Posey and the First Grade Parade (Princess Posey, #1) author=Stephanie Greene
+2025-12-05 18:49:57,647 [INFO] [background-maintenance] logging_config: Queueing job 182: user=HTML fetch test item_title=The Mysterious Moonstone (Key Hunters, 1)
+2025-12-05 18:49:57,647 [INFO] [background-maintenance] logging_config: Queueing job 183: user=HTML fetch test item_title=The Fran That Time Forgot (Franny K. Stein, Mad Scientist, #4)
+2025-12-05 18:49:57,648 [INFO] [ThreadPoolExecutor-0_2] logging_config: Searching for item title=Hello, Nebulon! (Galaxy Zack, #1) author=Ray O'Ryan
+2025-12-05 18:49:57,649 [INFO] [background-maintenance] logging_config: Queueing job 184: user=HTML fetch test item_title=The Miniature World of Marvin & James (The Masterpiece Adventures, #1)
+2025-12-05 18:49:57,650 [INFO] [background-maintenance] logging_config: Queueing job 185: user=HTML fetch test item_title=Miss Moss: The Mild Winter (6) Decodable Chapter Book
+2025-12-05 18:49:57,652 [INFO] [ThreadPoolExecutor-0_2] logging_config: Downloading title=Return to Earth! (Galaxy Zack Book 10) format=epub
+2025-12-05 18:49:57,652 [INFO] [background-maintenance] logging_config: Queueing job 186: user=HTML fetch test item_title=The Pirate Pig
+2025-12-05 18:49:57,652 [INFO] [ThreadPoolExecutor-0_4] logging_config: Searching for item title=The Mysterious Moonstone (Key Hunters, 1) author=Eric Luper
+2025-12-05 18:49:57,652 [INFO] [ThreadPoolExecutor-0_3] logging_config: Searching for item title=The Fran That Time Forgot (Franny K. Stein, Mad Scientist, #4) author=Jim Benton
+2025-12-05 18:49:57,653 [INFO] [ThreadPoolExecutor-0_2] logging_config: Resolving downloads for result title=Return to Earth! (Galaxy Zack Book 10) md5=e2ffb251be7850ff478a8c05b815da8c
+2025-12-05 18:49:57,653 [INFO] [background-maintenance] logging_config: Queueing job 187: user=HTML fetch test item_title=Archie Takes Flight (Space Taxi #1)
+2025-12-05 18:49:57,654 [INFO] [ThreadPoolExecutor-0_2] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,654 [INFO] [background-maintenance] logging_config: Queueing job 188: user=HTML fetch test item_title=The Adventures of Caveboy
+2025-12-05 18:49:57,654 [INFO] [ThreadPoolExecutor-0_4] logging_config: Downloading title=[Key Hunters 01] • The Mysterious MoonstoneThe Mysterious Moonstone (Key Hunters #1), Volume 1 format=epub
+2025-12-05 18:49:57,655 [INFO] [ThreadPoolExecutor-0_3] logging_config: Downloading title=The Fran That Time Forgot (Franny K. Stein, Mad Scientist #4)Fran That Time Forgot #4 Franny K Stein Mad Scientist format=pdf
+2025-12-05 18:49:57,655 [INFO] [ThreadPoolExecutor-0_2] logging_config: Starting download: title=Return to Earth! (Galaxy Zack Book 10) format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,655 [INFO] [background-maintenance] logging_config: Queueing job 189: user=HTML fetch test item_title=Queen of the World! (Babymouse, #1)
+2025-12-05 18:49:57,656 [INFO] [ThreadPoolExecutor-0_4] logging_config: Resolving downloads for result title=[Key Hunters 01] • The Mysterious MoonstoneThe Mysterious Moonstone (Key Hunters #1), Volume 1 md5=14c7ccd7e6f5d84c17fbcabd00167d63
+2025-12-05 18:49:57,656 [INFO] [ThreadPoolExecutor-0_3] logging_config: Resolving downloads for result title=The Fran That Time Forgot (Franny K. Stein, Mad Scientist #4)Fran That Time Forgot #4 Franny K Stein Mad Scientist md5=9c2fc06bdee70eb0055203f0f06d28c1
+2025-12-05 18:49:57,657 [INFO] [background-maintenance] logging_config: Queueing job 190: user=HTML fetch test item_title=Stinky Spike the Pirate Dog
+2025-12-05 18:49:57,657 [INFO] [ThreadPoolExecutor-0_4] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,657 [INFO] [ThreadPoolExecutor-0_3] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:57,658 [INFO] [background-maintenance] logging_config: Queueing job 191: user=HTML fetch test item_title=Sylva and the Fairy Ball
+2025-12-05 18:49:57,658 [INFO] [ThreadPoolExecutor-0_4] logging_config: Starting download: title=[Key Hunters 01] • The Mysterious MoonstoneThe Mysterious Moonstone (Key Hunters #1), Volume 1 format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,658 [INFO] [background-maintenance] logging_config: Queueing job 192: user=HTML fetch test item_title=Iris And Walter (Iris and Walter, 1)
+2025-12-05 18:49:57,658 [INFO] [ThreadPoolExecutor-0_3] logging_config: Starting download: title=The Fran That Time Forgot (Franny K. Stein, Mad Scientist #4)Fran That Time Forgot #4 Franny K Stein Mad Scientist format=pdf dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:57,659 [INFO] [background-maintenance] logging_config: Queueing job 193: user=HTML fetch test item_title=Horrid Henry (Horrid Henry, #1)
+2025-12-05 18:49:57,660 [INFO] [background-maintenance] logging_config: Queueing job 194: user=HTML fetch test item_title=Bink & Gollie
+2025-12-05 18:49:57,660 [INFO] [background-maintenance] logging_config: Queueing job 195: user=HTML fetch test item_title=Horrid Henry's Bodies (A Horrid Factbook)
+2025-12-05 18:49:57,660 [INFO] [background-maintenance] logging_config: Queueing job 196: user=HTML fetch test item_title=Monkey Me and the Golden Monkey: A Branches Book (Monkey Me #1) (1)
+2025-12-05 18:49:57,661 [INFO] [background-maintenance] logging_config: Queueing job 197: user=HTML fetch test item_title=My Explosive Diary (Eliza Boom's Diary #1)
+2025-12-05 18:49:57,661 [INFO] [background-maintenance] logging_config: Queueing job 198: user=HTML fetch test item_title=Gus & Gertie and The Missing Pearl
+2025-12-05 18:49:57,661 [INFO] [background-maintenance] logging_config: Queueing job 199: user=HTML fetch test item_title=The School Is Alive! (Eerie Elementary, #1)
+2025-12-05 18:49:57,661 [INFO] [background-maintenance] logging_config: Queueing job 200: user=HTML fetch test item_title=The Clue of the Left-Handed Envelope (Third-Grade Detectives, No. 1)
+2025-12-05 18:49:57,661 [INFO] [background-maintenance] logging_config: Queueing job 201: user=HTML fetch test item_title=Anyone But Me (Katie Kazoo, Switcheroo, #1)
+2025-12-05 18:49:57,661 [INFO] [background-maintenance] logging_config: Queueing job 202: user=HTML fetch test item_title=Stick Dog (Stick Dog, #1)
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 203: user=HTML fetch test item_title=The Class Trip from the Black Lagoon (Black Lagoon Adventures, #1)
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 204: user=HTML fetch test item_title=Justin and the Bully: Ready-to-Read Level 2
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 205: user=HTML fetch test item_title=Bone, Vol. 1: Out from Boneville (Bone, #1)
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 206: user=HTML fetch test item_title=Stuart's Cape
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 207: user=HTML fetch test item_title=The Fenway Foul-Up (Ballpark Mysteries, #1)
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 208: user=HTML fetch test item_title=Trouble at the Arcade (The Hardy Boys: Secret Files, #1)
+2025-12-05 18:49:57,662 [INFO] [background-maintenance] logging_config: Queueing job 209: user=HTML fetch test item_title=The Mystery of the Clockwork Sparrow (The Sinclairâs Mysteries #1)
+2025-12-05 18:49:57,663 [INFO] [background-maintenance] logging_config: Queueing job 210: user=HTML fetch test item_title=Sleepover Sleuths (Nancy Drew and the Clue Crew, #1)
+2025-12-05 18:49:57,663 [INFO] [background-maintenance] logging_config: Queueing job 211: user=HTML fetch test item_title=Ghosts Do Splash in Puddles (The Bailey School Kids Jr. Chapter Book, #1)
+2025-12-05 18:49:57,663 [INFO] [background-maintenance] logging_config: Queueing job 212: user=HTML fetch test item_title=Ruby Lu, Brave and True
+2025-12-05 18:49:57,663 [INFO] [background-maintenance] logging_config: Queueing job 213: user=HTML fetch test item_title=Stella Batts Needs a New Name (Stella Batts, #1)
+2025-12-05 18:49:57,663 [INFO] [background-maintenance] logging_config: Queueing job 214: user=HTML fetch test item_title=Fractions = Trouble!
+2025-12-05 18:49:57,663 [INFO] [background-maintenance] logging_config: Queueing job 215: user=HTML fetch test item_title=Frankly, Frannie (Frankly, Frannie #1)
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 216: user=HTML fetch test item_title=Sophie the Awesome (Sophie, #1)
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 217: user=HTML fetch test item_title=Stranger Things (Looniverse, #1)
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 218: user=HTML fetch test item_title=The Classroom at the End of the Hall
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 219: user=HTML fetch test item_title=The Cave of Time (Choose Your Own Adventure, #1)
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 220: user=HTML fetch test item_title=The Sasquatch Escape (The Imaginary Veterinary, #1)
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 221: user=HTML fetch test item_title=Like Pickle Juice on a Cookie (Eleanor, #1)
+2025-12-05 18:49:57,664 [INFO] [background-maintenance] logging_config: Queueing job 222: user=HTML fetch test item_title=Wonkenstein (The Creature from My Closet, #1)
+2025-12-05 18:49:57,665 [INFO] [background-maintenance] logging_config: Queueing job 223: user=HTML fetch test item_title=Precious and the Monkeys (Precious Ramotswe's Very First Cases, #1)
+2025-12-05 18:49:57,665 [INFO] [background-maintenance] logging_config: Queueing job 224: user=HTML fetch test item_title=Sprouting Wings (Korgi, #1)
+2025-12-05 18:49:57,665 [INFO] [background-maintenance] logging_config: Queueing job 225: user=HTML fetch test item_title=The One and Only Stuey Lewis: Stories from the Second Grade
+2025-12-05 18:49:57,665 [INFO] [background-maintenance] logging_config: Queueing job 226: user=HTML fetch test item_title=The Discovery of America (Geronimo Stilton Graphic Novels, #1)
+2025-12-05 18:49:57,665 [INFO] [background-maintenance] logging_config: Queueing job 227: user=HTML fetch test item_title=Owly, Vol. 1:  The Way Home & The Bittersweet Summer (Owly, #1)
+2025-12-05 18:49:57,665 [INFO] [background-maintenance] logging_config: Queueing job 228: user=HTML fetch test item_title=The Odd Squad: Bully Bait (Odd Squad Book, An)
+2025-12-05 18:49:57,666 [INFO] [background-maintenance] logging_config: Queueing job 229: user=HTML fetch test item_title=Princess Pistachio
+2025-12-05 18:49:57,666 [INFO] [background-maintenance] logging_config: Queueing job 230: user=HTML fetch test item_title=MVP #1: The Gold Medal Mess
+2025-12-05 18:49:57,666 [INFO] [background-maintenance] logging_config: Queueing job 231: user=HTML fetch test item_title=Saving the Team (The Kicks, #1)
+2025-12-05 18:49:57,666 [INFO] [background-maintenance] logging_config: Queueing job 232: user=HTML fetch test item_title=A Dog's Breakfast
+2025-12-05 18:49:57,666 [INFO] [background-maintenance] logging_config: Waiting for all 150 items in this feed to complete
+2025-12-05 18:49:58,339 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloads resolved: found 0 formats after resolution
+2025-12-05 18:49:58,341 [INFO] [ThreadPoolExecutor-0_5] logging_config: Starting download: title=The Mystery of the Stolen Painting (Greetings from Somewhere Book 3) format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:49:58,341 [ERROR] [ThreadPoolExecutor-0_5] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1769, in download
+    raise ValueError(
+ValueError: No download links available for any format (requested=epub)
+2025-12-05 18:49:58,345 [INFO] [ThreadPoolExecutor-0_5] logging_config: Searching for item title=The Miniature World of Marvin & James (The Masterpiece Adventures, #1) author=Elise Broach
+2025-12-05 18:49:58,346 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloading title=The Miniature World of Marvin & James format=epub
+2025-12-05 18:49:58,346 [INFO] [ThreadPoolExecutor-0_5] logging_config: Resolving downloads for result title=The Miniature World of Marvin & James md5=a02454e9bc871d5889914644990fc2a8
+2025-12-05 18:49:58,346 [INFO] [ThreadPoolExecutor-0_5] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:49:58,347 [INFO] [ThreadPoolExecutor-0_5] logging_config: Starting download: title=The Miniature World of Marvin & James format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:50:17,400 [ERROR] [ThreadPoolExecutor-0_0] search_engine: Download URL returned HTML payload for title=Dinosaurs Before Dark - Magic Tree House 1; aborting
+2025-12-05 18:50:17,401 [ERROR] [ThreadPoolExecutor-0_0] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1895, in download
+    raise ValueError(
+ValueError: Download URL returned HTML payload instead of ebook
+2025-12-05 18:50:17,505 [INFO] [ThreadPoolExecutor-0_0] logging_config: Searching for item title=Miss Moss: The Mild Winter (6) Decodable Chapter Book author=M. Mott
+2025-12-05 18:50:17,505 [INFO] [ThreadPoolExecutor-0_0] logging_config: Downloading title=The Cottage on Winter Moss format=mobi
+2025-12-05 18:50:17,505 [INFO] [ThreadPoolExecutor-0_0] logging_config: Resolving downloads for result title=The Cottage on Winter Moss md5=8cc6e667310432b2457976b681306ef3
+2025-12-05 18:50:17,505 [INFO] [ThreadPoolExecutor-0_0] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:50:17,505 [INFO] [ThreadPoolExecutor-0_0] logging_config: Starting download: title=The Cottage on Winter Moss format=mobi dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:50:37,445 [ERROR] [ThreadPoolExecutor-0_6] search_engine: Download URL returned HTML payload for title=Midnight (Missy's Super Duper Royal Deluxe); aborting
+2025-12-05 18:50:37,446 [ERROR] [ThreadPoolExecutor-0_6] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1895, in download
+    raise ValueError(
+ValueError: Download URL returned HTML payload instead of ebook
+2025-12-05 18:50:37,448 [INFO] [ThreadPoolExecutor-0_6] logging_config: Book already in library: title=The Pirate Pig author=Cornelia Funke
+2025-12-05 18:50:37,448 [INFO] [ThreadPoolExecutor-0_6] logging_config: Searching for item title=Archie Takes Flight (Space Taxi #1) author=Wendy Mass
+2025-12-05 18:50:37,449 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloading title=Space Taxi : Archie Takes Flight format=epub
+2025-12-05 18:50:37,449 [INFO] [ThreadPoolExecutor-0_6] logging_config: Resolving downloads for result title=Space Taxi : Archie Takes Flight md5=eada200d87f7a13766db7a01d0abd721
+2025-12-05 18:50:37,449 [INFO] [ThreadPoolExecutor-0_6] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:50:37,449 [INFO] [ThreadPoolExecutor-0_6] logging_config: Starting download: title=Space Taxi : Archie Takes Flight format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:50:57,330 [ERROR] [ThreadPoolExecutor-0_1] search_engine: Download URL returned HTML payload for title=The Hidden Stairs and the Magic Carpet (The Secrets of Droon #1); aborting
+2025-12-05 18:50:57,331 [ERROR] [ThreadPoolExecutor-0_1] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1895, in download
+    raise ValueError(
+ValueError: Download URL returned HTML payload instead of ebook
+2025-12-05 18:50:57,435 [INFO] [ThreadPoolExecutor-0_1] logging_config: Searching for item title=The Adventures of Caveboy author=Sudipta  Bardhan-Quallen
+2025-12-05 18:50:57,435 [INFO] [ThreadPoolExecutor-0_1] logging_config: Downloading title=The Adventures of Caveboy format=pdf
+2025-12-05 18:50:57,435 [INFO] [ThreadPoolExecutor-0_1] logging_config: Resolving downloads for result title=The Adventures of Caveboy md5=88e9d37add4457a5b0dc65930a581535
+2025-12-05 18:50:57,435 [INFO] [ThreadPoolExecutor-0_1] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:50:57,435 [INFO] [ThreadPoolExecutor-0_1] logging_config: Starting download: title=The Adventures of Caveboy format=pdf dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:51:17,328 [ERROR] [ThreadPoolExecutor-0_7] logging_config: Failed to download result
+Traceback (most recent call last):
+  File "/usr/local/bin/GoodBooks/app.py", line 4222, in process_item
+    saved_path = source.download(best, file_format, dest_dir)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/bin/GoodBooks/search_engine.py", line 1884, in download
+    with final_path.open("wb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 36] File name too long: '/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2/The witches of Benevento. 2, The all-powerful ring  a primo storyThe All-Powerful Ring A Primo Story (Witches of Benevento, #2)The All-Powerful Ring (The Witches of Benevento)-John Bemelmans Marciano; illustrated by Sophie BlackallMarciano, John Bemelmans.mobi'
+2025-12-05 18:51:17,330 [INFO] [ThreadPoolExecutor-0_7] logging_config: Searching for item title=Queen of the World! (Babymouse, #1) author=Jennifer L. Holm
+2025-12-05 18:51:17,330 [INFO] [ThreadPoolExecutor-0_7] logging_config: Downloading title=Babymouse 1 Queen of the World! format=epub
+2025-12-05 18:51:17,330 [INFO] [ThreadPoolExecutor-0_7] logging_config: Resolving downloads for result title=Babymouse 1 Queen of the World! md5=209070271a7fa5ada93d49cccda02b9a
+2025-12-05 18:51:17,330 [INFO] [ThreadPoolExecutor-0_7] logging_config: Downloads resolved: found 1 formats after resolution
+2025-12-05 18:51:17,330 [INFO] [ThreadPoolExecutor-0_7] logging_config: Starting download: title=Babymouse 1 Queen of the World! format=epub dest_dir=/mnt/8tbdas/GoodBooks/Listopia/LorenzoGrade2
+2025-12-05 18:51:57,245 [WARNING] [ThreadPoolExecutor-0_4] search_engine: HTTP error on attempt 1/3: 429 Client Error: Too Many Requests for url: https://momot.rs/d3/y/1764984801/10000/g5/upload_files/upload_files_trantor_20240510/annas_archive_data__aacid__upload_files_trantor__20240510T042954Z--20240510T042955Z/aacid__upload_files_trantor__20240510T042954Z__BGgyTbBbRkgPpq5iCQZaJ8~/NS4uvr7J5dO6hecH2qTnoA/%5BKey%20Hunters%2001%5D%20%E2%80%A2%20The%20Mysterious%20Moonstone%20--%20Luper%2C%20Eric%20--%20Key%20hunters%20--%20book%201%2C%20New%20York%20State%2C%202016%20--%20Scholastic%20Paperbacks%20--%209780545822046%20--%2014c7ccd7e6f5d84c17fbcabd00167d63%20--%20Anna%E2%80%99s%20Archive.epub, retrying
+2025-12-05 18:52:17,244 [WARNING] [ThreadPoolExecutor-0_3] search_engine: HTTP error on attempt 1/3: 429 Client Error: Too Many Requests for url: https://momot.rs/d3/y/1764984815/10000/g2/ia1lcpdf/f/franthattimeforg00bent.pdf~/88JYuH_AlYJ3rqCfdHq-XA/The%20Fran%20That%20Time%20Forgot%20%28Franny%20K_%20Stein%2C%20Mad%20Scientist%20--%20Benton%2C%20Jim%20--%20Franny%20K_%20Stein%2C%20mad%20scientist%20--%20%234%2C%20New%20York%2C%20New%20York%20--%20Scholastic%20--%209780439791519%20--%209c2fc06bdee70eb0055203f0f06d28c1%20--%20Anna%E2%80%99s%20Archive.pdf, retrying
+2025-12-05 18:52:37,261 [WARNING] [ThreadPoolExecutor-0_4] search_engine: HTTP error on attempt 2/3: 429 Client Error: Too Many Requests for url: https://momot.rs/d3/y/1764984801/10000/g5/upload_files/upload_files_trantor_20240510/annas_archive_data__aacid__upload_files_trantor__20240510T042954Z--20240510T042955Z/aacid__upload_files_trantor__20240510T042954Z__BGgyTbBbRkgPpq5iCQZaJ8~/NS4uvr7J5dO6hecH2qTnoA/%5BKey%20Hunters%2001%5D%20%E2%80%A2%20The%20Mysterious%20Moonstone%20--%20Luper%2C%20Eric%20--%20Key%20hunters%20--%20book%201%2C%20New%20York%20State%2C%202016%20--%20Scholastic%20Paperbacks%20--%209780545822046%20--%2014c7ccd7e6f5d84c17fbcabd00167d63%20--%20Anna%E2%80%99s%20Archive.epub, retrying
+2025-12-05 18:52:57,261 [WARNING] [ThreadPoolExecutor-0_3] search_engine: HTTP error on attempt 2/3: 429 Client Error: Too Many Requests for url: https://momot.rs/d3/y/1764984815/10000/g2/ia1lcpdf/f/franthattimeforg00bent.pdf~/88JYuH_AlYJ3rqCfdHq-XA/The%20Fran%20That%20Time%20Forgot%20%28Franny%20K_%20Stein%2C%20Mad%20Scientist%20--%20Benton%2C%20Jim%20--%20Franny%20K_%20Stein%2C%20mad%20scientist%20--%20%234%2C%20New%20York%2C%20New%20York%20--%20Scholastic%20--%209780439791519%20--%209c2fc06bdee70eb0055203f0f06d28c1%20--%20Anna%E2%80%99s%20Archive.pdf, retrying
+2025-12-05 18:53:03,698 [INFO] [MainThread] logging_config: Logging configured: level=DEBUG
+2025-12-05 18:53:03,698 [INFO] [MainThread] search_engine: Download concurrency set to 2
+2025-12-05 18:53:03,707 [INFO] [background-maintenance] logging_config: Background maintenance: cycle start
+2025-12-05 18:53:03,707 [INFO] [MainThread] search_engine: Download concurrency set to 2
+2025-12-05 18:53:03,738 [INFO] [MainThread] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.9:5000
+2025-12-05 18:53:03,739 [INFO] [MainThread] werkzeug: [33mPress CTRL+C to quit[0m
+2025-12-05 18:53:03,840 [INFO] [background-maintenance] logging_config: Background maintenance: library scan returned 931 entries
+2025-12-05 18:53:09,432 [INFO] [Thread-1 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:09] "GET / HTTP/1.1" 200 -
+2025-12-05 18:53:09,561 [INFO] [Thread-2 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:09] "GET /static/style.css HTTP/1.1" 200 -
+2025-12-05 18:53:09,607 [INFO] [Thread-3 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:09] "GET /static/cover.png HTTP/1.1" 200 -
+2025-12-05 18:53:09,619 [INFO] [Thread-4 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:09] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:53:11,308 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=oe4W0lgr2i&rank=1: 763 chars
+2025-12-05 18:53:13,011 [INFO] [Thread-5 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:13] "GET /search HTTP/1.1" 200 -
+2025-12-05 18:53:13,097 [INFO] [Thread-6 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:13] "[36mGET /static/cover.png HTTP/1.1[0m" 304 -
+2025-12-05 18:53:13,099 [INFO] [Thread-7 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:13] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:53:13,173 [INFO] [Thread-8 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:13] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:53:15,311 [INFO] [Thread-9 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:15] "GET /history HTTP/1.1" 200 -
+2025-12-05 18:53:15,395 [INFO] [Thread-10 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:15] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:53:15,405 [INFO] [Thread-11 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:15] "[36mGET /static/cover.png HTTP/1.1[0m" 304 -
+2025-12-05 18:53:15,528 [INFO] [Thread-12 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:15] "GET /feeds/stream HTTP/1.1" 200 -
+2025-12-05 18:53:15,538 [INFO] [Thread-13 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:15] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:53:16,141 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=xoIdL5PDBs&rank=2: 414 chars
+2025-12-05 18:53:16,909 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=L3IbYWjqQO&rank=2: 444 chars
+2025-12-05 18:53:38,445 [INFO] [Thread-14 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:38] "GET /history?page=2 HTTP/1.1" 200 -
+2025-12-05 18:53:38,651 [INFO] [Thread-15 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:38] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:53:38,662 [INFO] [Thread-16 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:38] "[36mGET /static/cover.png HTTP/1.1[0m" 304 -
+2025-12-05 18:53:38,763 [INFO] [Thread-17 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:38] "GET /feeds/stream HTTP/1.1" 200 -
+2025-12-05 18:53:38,763 [INFO] [Thread-18 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:53:38] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:53:41,206 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:53:53,868 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=17BZaHPj2R&rank=1: 440 chars
+2025-12-05 18:53:55,093 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:53:58,111 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=NhmxRIoXV0&rank=1: 2253 chars
+2025-12-05 18:53:59,310 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=aMsy3yF6wb&rank=1: 2442 chars
+2025-12-05 18:54:04,116 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:18,330 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:25,713 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:33,432 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:35,544 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:38,120 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:40,618 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=3WjieDFhSa&rank=1: 14 chars
+2025-12-05 18:54:44,001 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:47,153 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:54:54,424 [INFO] [Thread-19 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:54:54] "GET / HTTP/1.1" 200 -
+2025-12-05 18:54:54,504 [INFO] [Thread-20 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:54:54] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:54:54,507 [INFO] [Thread-21 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:54:54] "[36mGET /static/cover.png HTTP/1.1[0m" 304 -
+2025-12-05 18:54:54,563 [INFO] [Thread-22 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:54:54] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:54:56,221 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=oe4W0lgr2i&rank=1: 763 chars
+2025-12-05 18:54:58,784 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:01,972 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:03,139 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=r3qwlPxYW1&rank=2: 414 chars
+2025-12-05 18:55:04,199 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=7eqRAuchPP&rank=2: 444 chars
+2025-12-05 18:55:04,892 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:08,773 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:10,401 [INFO] [Thread-23 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:10] "GET / HTTP/1.1" 200 -
+2025-12-05 18:55:10,611 [INFO] [Thread-24 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:10] "GET /static/style.css HTTP/1.1" 200 -
+2025-12-05 18:55:10,612 [INFO] [Thread-25 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:10] "GET /static/cover.png HTTP/1.1" 200 -
+2025-12-05 18:55:10,760 [INFO] [Thread-26 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:10] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:55:10,769 [INFO] [Thread-27 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:10] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-12-05 18:55:12,202 [INFO] [Thread-28 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:12] "GET / HTTP/1.1" 200 -
+2025-12-05 18:55:12,298 [INFO] [Thread-29 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:12] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:55:12,299 [INFO] [Thread-30 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:12] "[36mGET /static/cover.png HTTP/1.1[0m" 304 -
+2025-12-05 18:55:12,374 [INFO] [Thread-31 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:12] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:55:12,418 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=oe4W0lgr2i&rank=1: 763 chars
+2025-12-05 18:55:14,207 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/121929237-summary-of-the-last-housewife?from_search=true&from_srp=true&qid=oe4W0lgr2i&rank=1: 763 chars
+2025-12-05 18:55:14,378 [INFO] [Thread-32 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:14] "GET /search HTTP/1.1" 200 -
+2025-12-05 18:55:14,503 [INFO] [Thread-33 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:14] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2025-12-05 18:55:14,522 [INFO] [Thread-34 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:14] "[36mGET /static/cover.png HTTP/1.1[0m" 304 -
+2025-12-05 18:55:14,555 [INFO] [Thread-35 (process_request_thread)] werkzeug: 192.168.0.215 - - [05/Dec/2025 18:55:14] "GET /metadata/stream HTTP/1.1" 200 -
+2025-12-05 18:55:17,449 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=r3qwlPxYW1&rank=2: 414 chars
+2025-12-05 18:55:18,345 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=7eqRAuchPP&rank=2: 444 chars
+2025-12-05 18:55:19,494 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244088601-the-last-letter-by-rebecca-yarros?from_search=true&from_srp=true&qid=r3qwlPxYW1&rank=2: 414 chars
+2025-12-05 18:55:20,159 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/120971031-summary-review-on-the-house-across-the-lake?from_search=true&from_srp=true&qid=7eqRAuchPP&rank=2: 444 chars
+2025-12-05 18:55:22,842 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:32,617 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:35,678 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:38,635 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:40,862 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=uZKyY4rDtX&rank=1: 1777 chars
+2025-12-05 18:55:44,241 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:47,744 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=oSVTyHwj3E&rank=1: 440 chars
+2025-12-05 18:55:53,537 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:54,354 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=oSVTyHwj3E&rank=1: 440 chars
+2025-12-05 18:55:54,548 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:55:59,595 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=OwFolpUDLk&rank=1: 2253 chars
+2025-12-05 18:56:00,042 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/118753854-summary-of-broken-in-the-best-possible-way-by-jenny-lawson?from_search=true&from_srp=true&qid=oSVTyHwj3E&rank=1: 440 chars
+2025-12-05 18:56:02,609 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=C0EX07AcUF&rank=1: 2442 chars
+2025-12-05 18:56:03,656 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=OwFolpUDLk&rank=1: 2253 chars
+2025-12-05 18:56:05,364 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=C0EX07AcUF&rank=1: 2442 chars
+2025-12-05 18:56:05,747 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244376013-five-survive-by-holly-jackson?from_search=true&from_srp=true&qid=zCm2av1XpA&rank=2: 30 chars
+2025-12-05 18:56:05,816 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/114325279-summary-of-the-nineties?from_search=true&from_srp=true&qid=OwFolpUDLk&rank=1: 2253 chars
+2025-12-05 18:56:07,259 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/122181627-synopsis-and-outline-of-the-dead-romantics-by-ashley-poston?from_search=true&from_srp=true&qid=C0EX07AcUF&rank=1: 2442 chars
+2025-12-05 18:56:07,449 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:10,653 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:11,663 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:11,794 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:12,760 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:17,144 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/244170910-ninja-luxe-cafe-coffee-recipe-book-for-beginners?from_search=true&from_srp=true&qid=kYEQwL634T&rank=1: 2761 chars
+2025-12-05 18:56:25,532 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:27,805 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:29,904 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:34,432 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:35,938 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:38,355 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:39,015 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:40,150 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:41,361 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:42,339 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:43,256 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:43,837 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=uv0K2MBuaZ&rank=1: 14 chars
+2025-12-05 18:56:45,178 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:45,523 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=uv0K2MBuaZ&rank=1: 14 chars
+2025-12-05 18:56:47,357 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/243989071-the-adventures-of-amina-al-sirafi---shannon-chakraborty?from_search=true&from_srp=true&qid=uv0K2MBuaZ&rank=1: 14 chars
+2025-12-05 18:56:47,482 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:49,811 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:56:50,966 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:03,822 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:04,651 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:07,437 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:10,996 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:21,606 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:25,123 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:26,532 [WARNING] [background-maintenance] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:45,916 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=Wn6jv8GOzu&rank=1: 1777 chars
+2025-12-05 18:57:49,188 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=Wn6jv8GOzu&rank=1: 1777 chars
+2025-12-05 18:57:51,481 [INFO] [library-genres-enrich] logging_config: Scraped description for https://www.goodreads.com/book/show/116961863-summary-of-something-wilder-by-christina-lauren?from_search=true&from_srp=true&qid=Wn6jv8GOzu&rank=1: 1777 chars
+2025-12-05 18:57:53,674 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:54,663 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:57,218 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:57:58,132 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:58:01,377 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)
+2025-12-05 18:58:02,680 [WARNING] [library-genres-enrich] logging_config: All results filtered out (study guides)

@@ -236,16 +236,22 @@ button.secondary {
 
 /* ============= Metadata Progress Bar ============= */
 #metadata-progress-container {
-    position: sticky;
-    top: 60px;
-    z-index: 11;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 999;
     background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    padding: 0.75rem 1rem;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 1rem;
     transition: all 0.3s ease;
+    min-width: 320px;
+    max-width: 500px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 #metadata-progress-container.metadata-progress-hidden {

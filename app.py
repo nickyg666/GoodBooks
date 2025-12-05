@@ -3514,9 +3514,14 @@ def history():
     # slicing from the tail of the list: page 1 shows the newest items.
     # ------------------------------------------------------------------
     total_items = len(entries)
-    per_page = max(
-        1, int(getattr(settings_manager.settings, "library_items_per_page", 50) or 50)
-    )
+    # Allow per-page override via query parameter, otherwise use settings
+    try:
+        per_page = int(request.args.get("per_page", ""))
+        per_page = max(1, min(500, per_page))  # Clamp between 1 and 500
+    except (TypeError, ValueError):
+        per_page = max(
+            1, int(getattr(settings_manager.settings, "library_items_per_page", 50) or 50)
+        )
 
     # Clamp page to a sane integer >= 1
     try:

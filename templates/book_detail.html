@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+    <!-- Cover section -->
+    <div style="flex-shrink: 0; position: relative;">
+        {% if entry.cover %}
+        <img src="{{ entry.cover }}" 
+             alt="{{ entry.title }}" 
+             style="width: 500px; height: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"
+             onerror="this.style.display='none'" 
+             loading="lazy">
+        {% else %}
+        <div style="width: 500px; height: 700px; background: var(--panel); border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span style="text-align: center; padding: 1rem;">{{ entry.title }}</span>
+        </div>
+        {% endif %}
+        
+        <!-- Action Chips (stacked at top-left) -->
+        <div style="position: absolute; top: 0; left: 0; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem;">
+            <a href="{{ url_for('library_direct_download', entry_id=entry.id) }}" class="chip" style="background: var(--primary); color: var(--text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 500;">
+                Direct DL
+            </a>
+            <button type="button" class="chip" data-action="send-kindle" data-entry-id="{{ entry.id }}" style="background: var(--primary); color: var(--text); padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500;">
+                Send to Kindle
+            </button>
+        </div>
+    </div>
+
+    <!-- Metadata section -->
+    <div style="flex: 1;">
+        <h1 style="margin-top: 0; margin-bottom: 0.5rem;">{{ entry.title }}</h1>
+        
+        {% if entry.author or meta.author %}
+        <p style="font-size: 1.1rem; color: var(--muted); margin-bottom: 1rem;">
+            by {{ entry.author or meta.author }}
+        </p>
+        {% endif %}
+
+        <!-- Full Description -->
+        {% set description = meta.description or (meta.goodreads_meta and meta.goodreads_meta.description) %}
+        {% if description %}
+        <div style="margin-bottom: 1.5rem; line-height: 1.6; padding: 1rem; background: var(--panel); border-radius: 6px;">
+            <h3 style="margin-top: 0; margin-bottom: 0.5rem;">Description</h3>
+            <p style="margin: 0; word-wrap: break-word;">{{ description }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Goodreads Rating Section (with link) -->
+        {% set rating_value = meta.rating or (meta.goodreads_meta and meta.goodreads_meta.rating) %}
+        {% set rating_count = meta.goodreads_meta and meta.goodreads_meta.rating_count %}
+        {% set gr_link = meta.goodreads_link or (meta.goodreads_meta and meta.goodreads_meta.goodreads_url) %}
+        {% if rating_value or gr_link %}
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--panel); border-radius: 6px; border-left: 4px solid var(--primary);">
+            <h3 style="margin-top: 0; margin-bottom: 1rem;">Goodreads Rating</h3>
+            <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                {% if rating_value %}
+                <div style="flex: 0 0 auto;">
+                    <div style="font-size: 2.5rem; font-weight: bold; color: var(--primary);">{{ "%.1f"|format(rating_value) }}</div>
+                    <div style="display: flex; gap: 2px; margin-top: 0.25rem; justify-content: center;">
+                        {% for i in range(1, 6) %}
+                            {% if i <= (rating_value|round|int) %}
+                                <span style="color: gold; font-size: 1.5rem;">★</span>
+                            {% elif i - rating_value < 1 %}
+                                <span style="color: gold; font-size: 1.5rem;">✱</span>
+                            {% else %}
+                                <span style="color: #ccc; font-size: 1.5rem;">★</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% if rating_count %}
+                    <div style="font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem;">{{ rating_count|int }} ratings</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if gr_link %}
+                <a href="{{ gr_link }}" target="_blank" rel="noopener" style="padding: 0.75rem 1.5rem; background: var(--primary); color: var(--text); border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-weight: 500; flex: 0 0 auto;">
+                    Read Reviews on Goodreads →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Metadata Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <!-- Publish Date -->
+            {% if meta.publish_date or (meta.goodreads_meta and meta.goodreads_meta.edition_published) %}
+            <div style="padding: 1rem; background: var(--panel); border-radius: 6px;">
+                <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Published</strong>
+                <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ meta.publish_date or meta.goodreads_meta.edition_published }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Language -->
+            {% if meta.language or (meta.goodreads_meta and meta.goodreads_meta.edition_language) %}
+            <div style="padding: 1rem; background: var(--panel); border-radius: 6px;">
+                <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Language</strong>
+                <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ (meta.language or meta.goodreads_meta.edition_language)|title }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Format/Edition Format -->
+            {% if entry.filetype or (meta.goodreads_meta and meta.goodreads_meta.edition_format) %}
+            <div style="padding: 1rem; background: var(--panel); border-radius: 6px;">
+                <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Format</strong>
+                <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ (entry.filetype or meta.goodreads_meta.edition_format)|upper }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Pages -->
+            {% if meta.goodreads_meta and meta.goodreads_meta.pages %}
+            <div style="padding: 1rem; background: var(--panel); border-radius: 6px;">
+                <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Pages</strong>
+                <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ meta.goodreads_meta.pages }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Genres -->
+        {% set display_genres = meta.genres or (meta.goodreads_meta and meta.goodreads_meta.genres) %}
+        {% if display_genres %}
+        <div style="margin-bottom: 1.5rem;">
+            <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Genres</strong>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if display_genres is string %}
+                    <span class="chip chip-compact">{{ display_genres }}</span>
+                {% else %}
+                    {% for genre in display_genres %}
+                    <span class="chip chip-compact">{{ genre }}</span>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Back to Library Link -->
+        <div style="margin-top: 2rem;">
+            <a href="{{ url_for('index') }}" class="secondary" style="padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; display: inline-block;">
+                Back to Library
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Send to Kindle Modal -->
+<div id="send-modal" class="modal hidden">
+    <div class="card">
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('library_send_to_kindle') }}">
+            <input type="hidden" name="entry_id" id="send-entry-id" value="{{ entry.id }}">
+            <label>
+                <span>User</span>
+                <select name="user_name" required>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="primary">Send</button>
+                <button type="button" class="secondary" id="send-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('send-modal');
+    const cancelBtn = document.getElementById('send-cancel');
+    const sendButtons = document.querySelectorAll('[data-action="send-kindle"]');
+
+    sendButtons.forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            modal.classList.remove('hidden');
+        });
+    });
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+        });
+    }
+
+    // Close modal on outside click
+    document.addEventListener('click', function (ev) {
+        if (modal && !modal.classList.contains('hidden')) {
+            if (ev.target === modal) {
+                modal.classList.add('hidden');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

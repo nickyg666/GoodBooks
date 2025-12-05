@@ -1,0 +1,158 @@
+Processing user nick
+  Feed: https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read [rss] for nick
+[CACHE HIT] RSS https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read (11 items from this run)
+Processing user HTML fetch test
+Processing user Sagey-mini
+  Feed: https://www.goodreads.com/review/list_rss/183591818?shelf=to-read [rss] for Sagey-mini
+[CACHE HIT] RSS https://www.goodreads.com/review/list_rss/183591818?shelf=to-read (71 items from this run)
+    Skipping: book already in library (title=Fear and Loathing in Las Vegas: A Savage Journey to the Heart of the American Dream, author=Hunter S. Thompson)
+    Skipping: book already in library (title=Donnie Brasco, author=Joseph D. Pistone)
+    Skipping: book already in library (title=The Silent Patient, author=Alex Michaelides)
+    Skipping: book already in library (title=The Alchemist, author=Paulo Coelho)
+    Skipping: book already in library (title=A Clockwork Orange, author=Anthony Burgess)
+    Skipping: book already in library (title=Keep It in the Family, author=John Marrs)
+    Skipping: book already in library (title=Never Lie, author=Freida McFadden)
+    Searching for Donnie Brasco: Unfinished Business (Donnie Brasco #2) Joseph D. Pistone
+      Disk search cache hit for query: Donnie Brasco: Unfinished Business (Donnie Brasco #2) Joseph D. Pistone
+      Selected best match Donnie Brasco : unfinished business : shocking declassified details from the FBI's greatest undercover operation and a bloody timeline of the fall of the Mafia (azw3) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Stand Stephen        King
+      Disk search cache hit for query: The Stand Stephen        King
+      Selected best match The Stand (azw3) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5) Barbara Park
+      Disk search cache hit for query: Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5) Barbara Park
+      Selected best match Junie B. Jones #5: Junie B. Jones and the Yucky Blucky FruitcakeJunie b. jones and the yucky blucky fruitcake : Junie b. jones series, book 5 (epub) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The LEGO® Ideas Book New Edition: You Can Build Anything! Simon Hugo
+      Disk search cache hit for query: The LEGO® Ideas Book New Edition: You Can Build Anything! Simon Hugo
+      Selected best match The LEGO Ideas Book New Edition: You Can Build Anything! (epub) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=The House Across the Lake, author=Riley Sager)
+    Skipping: book already in library (title=Local Girl Missing, author=Claire Douglas)
+    Skipping: book already in library (title=The Butcher, author=Jennifer Hillier)
+    Skipping: book already in library (title=Brother, author=Ania Ahlborn)
+    Skipping: book already in library (title=Butcher & Blackbird (The Ruinous Love Trilogy, #1), author=Brynne Weaver)
+    Skipping: book already in library (title=The Last House on Needless Street, author=Catriona Ward)
+    Skipping: book already in library (title=A Head Full of Ghosts, author=Paul Tremblay)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=The Last Housewife, author=Ashley Winstead)
+    Skipping: book already in library (title=Jar of Hearts, author=Jennifer Hillier)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Mary, author=Nat Cassidy)
+    Skipping: book already in library (title=Dark Matter, author=Blake Crouch)
+    Skipping: book already in library (title=The Push, author=Ashley Audrain)
+    Skipping: book already in library (title=Room for Rent, author=Noelle W. Ihli)
+    Skipping: book already in library (title=What Lies Between Us, author=John Marrs)
+    Skipping: book already in library (title=Don't Let Her Stay, author=Nicola Sanders)
+    Skipping: book already in library (title=Saving Noah, author=Lucinda Berry)
+    Skipping: book already in library (title=The Things We Leave Unfinished, author=Rebecca Yarros)
+    Skipping: book already in library (title=The Last Letter, author=Rebecca Yarros)
+    Searching for Still Missing Chevy Stevens
+      Disk search cache hit for query: Still Missing Chevy Stevens
+      Selected best match Still Missing (mobi) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Dead in the Water John Marrs
+      Disk search cache hit for query: Dead in the Water John Marrs
+      Selected best match Dead In The Water (mobi) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=All the Ugly and Wonderful Things, author=Bryn Greenwood)
+    Skipping: book already in library (title=In the Likely Event, author=Rebecca Yarros)
+    Skipping: book already in library (title=Rock Paper Scissors, author=Alice Feeney)
+    Skipping: book already in library (title=The Psyching, author=Freida McFadden)
+    Skipping: book already in library (title=Dear Debbie, author=Freida McFadden)
+    Skipping: book already in library (title=Baby City, author=Freida McFadden)
+    Skipping: book already in library (title=Suicide Med, author=Freida McFadden)
+    Skipping: book already in library (title=Dead Med, author=Freida McFadden)
+    Skipping: book already in library (title=The Devil Wears Scrubs (Dr. Jane McGill, #1), author=Freida McFadden)
+    Skipping: book already in library (title=The Devil You Know (Dr. Jane McGill, #2), author=Freida McFadden)
+    Skipping: book already in library (title=The Widow's Husband's Secret Lie, author=Freida McFadden)
+    Skipping: book already in library (title=The Gift, author=Freida McFadden)
+    Skipping: book already in library (title=Do You Remember?, author=Freida McFadden)
+    Skipping: book already in library (title=The Intruder, author=Freida McFadden)
+    Skipping: book already in library (title=The Ex, author=Freida McFadden)
+    Skipping: book already in library (title=Want to Know a Secret?, author=Freida McFadden)
+    Skipping: book already in library (title=Death Row (Alibis Collection, #1), author=Freida McFadden)
+    Skipping: book already in library (title=The Surrogate Mother, author=Freida McFadden)
+    Skipping: book already in library (title=Do Not Disturb, author=Freida McFadden)
+    Skipping: book already in library (title=The Crash, author=Freida McFadden)
+    Skipping: book already in library (title=The Wife Upstairs, author=Freida McFadden)
+    Skipping: book already in library (title=The Coworker, author=Freida McFadden)
+    Skipping: book already in library (title=One by One, author=Freida McFadden)
+    Skipping: book already in library (title=The Locked Door, author=Freida McFadden)
+    Searching for The Last Party A.R. Torre
+      Disk search cache hit for query: The Last Party A.R. Torre
+      Selected best match The Last Party (azw3) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for We Used to Live Here Marcus Kliewer
+      Disk search cache hit for query: We Used to Live Here Marcus Kliewer
+      Selected best match We Used to Live Here (mobi) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for If You Lie Caleb  Stephens
+      Disk search cache hit for query: If You Lie Caleb  Stephens
+      Selected best match If You Lie (epub) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=The Handmaid's Tale, author=Margaret Atwood)
+    Skipping: book already in library (title=The Sleep Experiment (World's Scariest Legends, #2), author=Jeremy Bates)
+    Skipping: book already in library (title=The Tenant, author=Freida McFadden)
+    Searching for Caraval (Caraval, #1) Stephanie Garber
+      Disk search cache hit for query: Caraval (Caraval, #1) Stephanie Garber
+      Selected best match Caraval (Caraval #1) (epub) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=Beautiful Ugly, author=Alice Feeney)
+    Skipping: book already in library (title=Ward D, author=Freida McFadden)
+    Searching for Parallel (Parallel, #1) Elle O'Roark
+      Disk search cache hit for query: Parallel (Parallel, #1) Elle O'Roark
+      Selected best match Parallel (The Parallel Duet Book 1) (epub) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Tender Is the Flesh Agustina Bazterrica
+      Disk search cache hit for query: Tender Is the Flesh Agustina Bazterrica
+      Selected best match Tender Is the Flesh (azw3) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for My Absolute Darling Gabriel Tallent
+      Disk search cache hit for query: My Absolute Darling Gabriel Tallent
+      Selected best match My absolute darling : a novel (azw3) from 10 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for My Husband's Wife Alice Feeney
+      Disk search cache hit for query: My Husband's Wife Alice Feeney
+      Selected best match My Husband's Wife (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Ruthless Fae (Zodiac Academy, #2) Caroline Peckham
+      Disk search cache hit for query: Ruthless Fae (Zodiac Academy, #2) Caroline Peckham
+      Selected best match Ruthless Fae (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=Woom, author=Duncan Ralston)
+    Skipping: book already in library (title=MrBallen Presents: Strange, Dark & Mysterious: The Graphic Stories (MrBallen Graphic Stories), author=MrBallen)
+    Searching for The Inmate Freida McFadden
+      Disk search cache hit for query: The Inmate Freida McFadden
+      Selected best match The Inmate (azw3) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Mistborn: The Final Empire (Mistborn, #1) Brandon Sanderson
+      Disk search cache hit for query: Mistborn: The Final Empire (Mistborn, #1) Brandon Sanderson
+      Selected best match Mistborn: The Final Empire (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Bone Collector (Lincoln Rhyme, #1) Jeffery Deaver
+      Disk search cache hit for query: The Bone Collector (Lincoln Rhyme, #1) Jeffery Deaver
+      Selected best match The Bone Collector: The First Lincoln Rhyme NovelThe Bone Collector (A Lincoln Rhyme Novel)The Bone Collector (Lincoln Rhyme, #1) (azw3) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The One John Marrs
+      Disk search cache hit for query: The One John Marrs
+      Selected best match The One (lit) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for A Child Called "It" (Dave Pelzer, #1) Dave Pelzer
+      Disk search cache hit for query: A Child Called "It" (Dave Pelzer, #1) Dave Pelzer
+      Selected best match A child called "It" : One Child's Courage to Survive (mobi) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Mist Stephen        King
+      Disk search cache hit for query: The Mist Stephen        King
+      Selected best match The Mist (azw3) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Stand Stephen        King
+      Disk search cache hit for query: The Stand Stephen        King
+      Selected best match The Stand (azw3) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Alice (The Chronicles of Alice, #1) Christina Henry
+      Disk search cache hit for query: Alice (The Chronicles of Alice, #1) Christina Henry
+      Selected best match Alice (The Chronicles of Alice, #1) (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge

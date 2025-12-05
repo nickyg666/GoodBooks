@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="white">
+    <title>{{ app_name }} - {{ title if title else 'Home' }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVJkEZSMUkrQ6usKu8zTwT3+UvPqrMAIUapTSc3+dPmYo2Ij31VkQvFmsg+PyHS+uTcDaZ1FDkw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Kindle e-ink specific optimizations */
+        @supports (display: grid) {
+            /* Only use grid on compatible devices */
+        }
+        /* Disable animations on e-ink devices */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="brand">{{ app_name }}</div>
+    <div class="links">
+        <a href="{{ url_for('index')}}">Library</a>
+        <a href="{{ url_for('search') }}">Search</a>
+        <a href="{{ url_for('feed_view') }}">Feeds</a>
+        <a href="{{ url_for('settings') }}">Settings</a>
+        <a href="{{ url_for('history') }}">History</a>
+    </div>
+</nav>
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-wrapper">
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message|safe }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>

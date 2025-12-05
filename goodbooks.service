@@ -1,0 +1,27 @@
+[Unit]
+Description=GoodBooks: Goodreads > Search Anna's Archive > Download > Send to Kindle > Notify Service (with Xvfb)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=das
+Group=1000
+WorkingDirectory=/usr/local/bin/GoodBooks
+
+# Use Xvfb for headless browser rendering (required for Playwright/Calibre)
+ExecStart=/usr/bin/xvfb-run /usr/local/bin/GoodBooks/venv/bin/python3 /usr/local/bin/GoodBooks/app.py
+
+# Service restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=goodbooks
+
+[Install]
+WantedBy=multi-user.target

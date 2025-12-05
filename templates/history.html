@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Download History</h1>
+
+    <form method="post" action="{{ url_for('run_feeds') }}" style="margin-bottom: 1rem;">
+        <button type="submit" class="primary">Run Feeds</button>
+    </form>
+
+    <div id="feed-progress" class="card feed-progress hidden" style="margin-bottom: 1rem;">
+        <h2>Feed Progress</h2>
+        <div id="feed-progress-overall" style="margin-bottom: 0.5rem;">
+            <div id="feed-progress-overall-label" class="feed-progress-label"
+                 style="font-size: 0.9rem; margin-bottom: 0.25rem;">
+                Overall: 0/0 (0%)
+            </div>
+            <div class="feed-progress-bar-outer"
+                 style="position: relative; height: 0.5rem; background: #ddd; border-radius: 999px; overflow: hidden;">
+                <div id="feed-progress-overall-bar"
+                     class="feed-progress-bar"
+                     style="height: 100%; width: 0%; background: #888;"></div>
+            </div>
+        </div>
+        <div id="feed-progress-users" class="feed-progress-users" style="margin-top: 0.75rem;">
+            <!-- Per-user feed progress rows will be populated by SSE client script. -->
+        </div>
+    </div>
+
+
+    {% if feed_debug %}
+    <details class="debug-block">
+        <summary>Last feed run debug log</summary>
+        <pre class="debug">{{ feed_debug|join('\n') }}</pre>
+    </details>
+    {% endif %}
+
+    {% if entries %}
+    <div class="grid history-grid">
+        {% for entry in entries|reverse %}
+        <div class="card library-card history-card">
+            <div class="library-cover">
+                {% if entry.entry_id %}
+                <a href="{{ url_for('book_detail', entry_id=entry.entry_id) }}" class="library-cover-link">
+                    {% if entry.cover %}
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ entry.title }}</span>
+                    </div>
+                    {% endif %}
+                </a>
+                {% else %}
+                {% if entry.cover %}
+                <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+                {% else %}
+                <div class="cover-placeholder">
+                    <span>{{ entry.title }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="library-meta">
+                <div class="library-title">{{ entry.title }}</div>
+                {% if entry.author %}
+                <div class="library-author">{{ entry.author }}</div>
+                {% endif %}
+
+                <div class="history-chips library-chips">
+                    {% if entry.has_path %}
+                        <a href="{{ url_for('history_direct_download', index=entry.index) }}" class="library-status-chip chip chip-compact">
+                            Direct DL
+                        </a>
+                        <button type="button"
+                                class="library-status-chip chip chip-compact"
+                                data-action="history-send-kindle"
+                                data-index="{{ entry.index }}">
+                            Send to Kindle
+                        </button>
+                    {% endif %}
+                </div>
+
+                {% if entry.description %}
+                <p class="muted description">{{ entry.description }}</p>
+                {% endif %}
+                <p class="meta">
+                    User: {{ entry.user }} |
+                    Format: {{ entry.filetype }} |
+                    Source: {{ entry.source }}
+                </p>
+                <p class="meta">{{ entry.timestamp }}</p>
+            </div>
+        </div>
+        {% else %}
+        <p>No history yet.</p>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No history yet.</p>
+    {% endif %}
+    {% if total_pages > 1 %}
+    <div class="pagination" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            {% if page > 1 %}
+            <a href="{{ url_for('history', page=page-1) }}">&laquo; Newer</a>
+            {% endif %}
+        </div>
+        <div>
+            Page {{ page }} of {{ total_pages }}
+        </div>
+        <div>
+            {% if page < total_pages %}
+            <a href="{{ url_for('history', page=page+1) }}">Older &raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# Send-to-Kindle modal for history entries #}
+<div id="history-send-modal" class="modal hidden">
+    <div class="card">
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('history_send_to_kindle') }}">
+            <input type="hidden" name="index" id="history-send-index">
+
+            <label>
+                <span>User</span>
+                <select name="user_name" required>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="primary">Send</button>
+                <button type="button" class="secondary" id="history-send-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('history-send-modal');
+    const indexInput = document.getElementById('history-send-index');
+    const cancelBtn = document.getElementById('history-send-cancel');
+
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="history-send-kindle"]');
+        if (!button) return;
+        const idx = button.getAttribute('data-index');
+        if (!idx) return;
+        indexInput.value = idx;
+        modal.classList.remove('hidden');
+    });
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+        });
+    }
+    // Live feed progress via Server-Sent Events
+    if (!!window.EventSource) {
+        const progressContainer = document.getElementById('feed-progress');
+        const usersContainer = document.getElementById('feed-progress-users');
+        const overallBar = document.getElementById('feed-progress-overall-bar');
+        const overallLabel = document.getElementById('feed-progress-overall-label');
+
+        const es = new EventSource("{{ url_for('feeds_stream') }}");
+
+        es.onmessage = function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                updateFeedProgressUI(data);
+            } catch (e) {
+                console.error('Failed to parse feed progress payload', e);
+            }
+        };
+
+        function updateFeedProgressUI(state) {
+            if (!state || !state.active) {
+                if (progressContainer) {
+                    progressContainer.classList.add('hidden');
+                }
+                return;
+            }
+
+            if (progressContainer) {
+                progressContainer.classList.remove('hidden');
+            }
+
+            const overall = state.overall || {};
+            const feeds = state.feeds || {};
+
+            const total = overall.total_items || 0;
+            const completed = overall.completed_items || 0;
+            let pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            pct = Math.max(0, Math.min(100, pct));
+
+            if (overallBar) {
+                overallBar.style.width = pct + '%';
+            }
+            if (overallLabel) {
+                let text = `Overall: ${completed}/${total} (${pct}%)`;
+                const eta = overall.eta_seconds;
+                if (eta != null && eta >= 0) {
+                    const mins = Math.floor(eta / 60);
+                    const secs = Math.floor(eta % 60);
+                    text += ` – ETA ${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+                overallLabel.textContent = text;
+            }
+
+            // Group feeds by user for per-user progress display
+            const byUser = {};
+            Object.keys(feeds).forEach(function (key) {
+                const f = feeds[key] || {};
+                const uname = f.user || 'Unknown';
+                if (!byUser[uname]) {
+                    byUser[uname] = [];
+                }
+                byUser[uname].push(f);
+            });
+
+            if (!usersContainer) {
+                return;
+            }
+            usersContainer.innerHTML = '';
+
+            Object.keys(byUser).forEach(function (uname) {
+                const group = document.createElement('div');
+                group.className = 'feed-user-group';
+
+                const header = document.createElement('div');
+                header.className = 'feed-user-header';
+                header.textContent = uname;
+                group.appendChild(header);
+
+                byUser[uname].forEach(function (f) {
+                    const row = document.createElement('div');
+                    row.className = 'feed-row';
+
+                    const title = document.createElement('div');
+                    title.className = 'feed-title';
+                    title.textContent = f.label || f.feed_url || '';
+                    row.appendChild(title);
+
+                    const barWrap = document.createElement('div');
+                    barWrap.className = 'feed-bar-wrap';
+
+                    const bar = document.createElement('div');
+                    bar.className = 'feed-bar';
+                    const ftot = f.total_items || 0;
+                    const fcomp = f.completed_items || 0;
+                    let fpct = ftot > 0 ? Math.round((fcomp / ftot) * 100) : 0;
+                    fpct = Math.max(0, Math.min(100, fpct));
+                    bar.style.width = fpct + '%';
+                    barWrap.appendChild(bar);
+
+                    const label = document.createElement('div');
+                    label.className = 'feed-bar-label';
+                    let line = `${fcomp}/${ftot} (${fpct}%)`;
+                    if (f.eta_seconds != null && f.eta_seconds >= 0) {
+                        const mins = Math.floor(f.eta_seconds / 60);
+                        const secs = Math.floor(f.eta_seconds % 60);
+                        line += ` – ETA ${mins}:${secs.toString().padStart(2, '0')}`;
+                    }
+                    label.textContent = line;
+
+                    row.appendChild(barWrap);
+                    row.appendChild(label);
+
+                    group.appendChild(row);
+                });
+
+                usersContainer.appendChild(group);
+            });
+        }
+    }
+});
+
+// Kindle e-ink optimization: Batch DOM updates to minimize redraws
+let scrollTimeout;
+document.addEventListener('scroll', function() {
+    if (scrollTimeout) {
+        cancelAnimationFrame(scrollTimeout);
+    }
+    scrollTimeout = requestAnimationFrame(function() {
+        // Batch any scroll-triggered DOM updates here
+        // This reduces the number of times the e-ink display refreshes
+    });
+}, { passive: true });
+
+// Disable smooth scroll on e-ink devices
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.style.scrollBehavior = 'auto';
+}
+</script>
+{% endblock %}

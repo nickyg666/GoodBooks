@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Search Anna's Archive</h1>
+    <form method="get" class="form-grid">
+        <label>
+            <span>Query</span>
+            <input type="text" name="q" value="{{ query }}" placeholder="Title, author, keyword" required>
+        </label>
+        <label>
+            <span>Language</span>
+            <select name="lang">
+                {% for lang in ['en','es','fr','de','it'] %}
+                <option value="{{ lang }}" {% if lang == selected_language %}selected{% endif %}>{{ lang|upper }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>User</span>
+            <select name="user">
+                <option value="">-- Select user --</option>
+                {% for user in users %}
+                <option value="{{ user.name }}" {% if user.name == user_id %}selected{% endif %}>{{ user.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="filter-group">
+            <span>File types</span>
+            <div class="chip-list">
+                {% for ext in available_ext %}
+                <label class="chip">
+                    <input type="checkbox" name="ext" value="{{ ext }}" {% if ext in selected_ext %}checked{% endif %}>
+                    <span>{{ ext|upper }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <label class="checkbox">
+            <input type="checkbox" name="autodownload" value="1" {% if autodownload %}checked{% endif %}>
+            <span>Autodownload</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="autosend" value="1" {% if autosend %}checked{% endif %}>
+            <span>Auto-send to Kindle</span>
+        </label>
+        <button type="submit" class="primary">Search</button>
+        <button type="reset" class="secondary">Clear</button>
+    </form>
+</div>
+
+{% if results %}
+<div class="card">
+    <h2>Results</h2>
+    <div class="grid results-grid">
+        {% for result in results %}
+        <div class="result">
+            {% if result.cover %}
+            <img src="{{ result.cover }}" alt="{{ result.title }}" loading="lazy" onerror="this.style.display='none'" />
+            {% else %}
+            <div style="width: 100%; min-height: 200px; background: #e5e7eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 0.75rem; font-size: 0.9rem;">
+                No cover
+            </div>
+            {% endif %}
+            <div class="meta">
+                <h3>{{ result.title }}</h3>
+                {% if result.author %}
+                <p class="muted">by {{ result.author }}</p>
+                {% endif %}
+                {% if result.formats %}
+                <p class="muted">{{ result.formats|join(', ')|upper }}</p>
+                {% endif %}
+            </div>
+            <form method="post" action="{{ url_for('manual_download') }}" class="inline">
+                <input type="hidden" name="result_id" value="{{ result.id }}">
+                <label>
+                    <span>Format</span>
+                    <select name="format" required>
+                        {% for fmt in result.formats %}
+                        <option value="{{ fmt }}">{{ fmt|upper }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    <span>User</span>
+                    <select name="user" required>
+                        {% for user in users %}
+                        <option value="{{ user.name }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit" class="primary" style="width: 100%;">Download</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for(
+            'search',
+            q=query,
+            user=user_id or none,
+            lang=selected_language,
+            page=page-1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none,
+            ext=selected_ext
+        ) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for(
+            'search',
+            q=query,
+            user=user_id or none,
+            lang=selected_language,
+            page=page+1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none,
+            ext=selected_ext
+        ) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if debug_log %}
+<div class="card">
+    <h2>Debug</h2>
+    <pre class="debug">{{ debug_log|join('\n') }}</pre>
+</div>
+{% endif %}
+
+<script>
+// Kindle e-ink optimization: Batch DOM updates to minimize redraws
+let scrollTimeout;
+document.addEventListener('scroll', function() {
+    if (scrollTimeout) {
+        cancelAnimationFrame(scrollTimeout);
+    }
+    scrollTimeout = requestAnimationFrame(function() {
+        // Batch any scroll-triggered DOM updates here
+        // This reduces the number of times the e-ink display refreshes
+    });
+}, { passive: true });
+
+// Disable smooth scroll on e-ink devices
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.style.scrollBehavior = 'auto';
+}
+</script>
+{% endblock %}

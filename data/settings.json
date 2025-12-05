@@ -1,0 +1,35 @@
+{
+    "default_download_dir": "/home/das/GoodBooks",
+    "smtp": {
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "username": "server.notifications.home.ubu.lol@gmail.com",
+        "password": "rxda egho mbxq ggyn",
+        "from_email": "server.notifications.home.ubu.lol@gmail.com",
+        "use_tls": true
+    },
+    "log_level": "DEBUG",
+    "server_port": 1234,
+    "request_timeout": 60,
+    "library_root": "/home/das/GoodBooks/",
+    "library_extra_dirs": [],
+    "library_items_per_page": 50,
+    "library_default_sort": "date_newest",
+    "max_feed_workers": 8,
+    "max_concurrent_downloads": 2,
+    "disable_background_jobs": false,
+    "maintenance_interval_seconds": 900,
+    "notification_emails": "",
+    "kindle_emails": "",
+    "users": [
+        {
+            "name": "Default User",
+            "save_dir": "/home/das/GoodBooks/",
+            "kindle_type": "paperwhite",
+            "kindle_email": "sagegelinas_mini@kindle.com",
+            "notification_email": "",
+            "feeds": [],
+            "auto_send_to_kindle": false
+        }
+    ]
+}

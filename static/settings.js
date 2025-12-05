@@ -138,6 +138,9 @@ function buildUser(user, index) {
                value="${(user.feeds || []).length}">
         <div class="actions">
             <button type="button" class="secondary" onclick="addFeed(${index})">Add Feed</button>
+            <button type="button" class="secondary" onclick="sendGoodBooksToKindle('${user.name}', ${index})" id="goodbooks-btn-${index}">
+                Send GoodBooks to Kindle
+            </button>
             <button type="button" class="danger" onclick="removeUser(${index})">Remove User</button>
         </div>
     `;
@@ -269,5 +272,41 @@ function updateCounts() {
     });
 }
 
+async function sendGoodBooksToKindle(userName, userIndex) {
+    const btn = document.getElementById(`goodbooks-btn-${userIndex}`);
+    const originalText = btn.textContent;
+    
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        
+        const response = await fetch('/send-goodbooks-to-kindle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_name: userName })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            btn.textContent = '✓ Sent!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to send GoodBooks'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error sending GoodBooks:', error);
+        alert('Error: ' + error.message);
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
 existingUsers.forEach((user, idx) => buildUser(user, idx));
 updateCounts();

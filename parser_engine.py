@@ -24,6 +24,7 @@ class ParsedItem:
     link: str = ""
     description: str = ""
     cover: str = ""
+    goodreads_url: str = ""  # Goodreads book page URL - should be populated when available
 
 
 class FeedMetadataStore:
@@ -104,6 +105,7 @@ class FeedMetadataStore:
             "link": item.link,
             "description": item.description,
             "cover": item.cover,
+            "goodreads_url": item.goodreads_url,
         }
         self.save(data)
 
@@ -133,9 +135,62 @@ class FeedParser:
         self.timeout = timeout
          # Per-run in-memory cache: (url, mode) -> List[ParsedItem]
         self._run_cache: Dict[Tuple[str, str], List[ParsedItem]] = {}
+        # In-memory cache for Goodreads URL lookups: "title|author" -> goodreads_url
+        self._goodreads_url_cache: Dict[str, str] = {}
+    
     def reset_run_cache(self) -> None:
         """Clear the per-run cache (call at the start of /feeds/run)."""
         self._run_cache.clear()
+    
+    def _resolve_goodreads_url(self, title: str, author: str) -> str:
+        """
+        Try to resolve a Goodreads URL from title and author.
+        Returns empty string if not found (book might not be on Goodreads).
+        
+        Uses simple heuristics: search Goodreads directly and extract book URL.
+        Includes caching to avoid re-searching for the same book.
+        """
+        cache_key = f"{title}|{author}".lower()
+        if cache_key in self._goodreads_url_cache:
+            return self._goodreads_url_cache[cache_key]
+        
+        if not title or not author:
+            return ""
+        
+        try:
+            # Build search URL - Goodreads search for "title author"
+            search_query = f"{title} {author}".strip()
+            search_url = f"https://www.goodreads.com/search?q={requests.utils.quote(search_query)}"
+            
+            response = requests.get(
+                search_url,
+                timeout=self.timeout,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) "
+                        "Gecko/20100101 Firefox/145.0"
+                    )
+                }
+            )
+            response.raise_for_status()
+            
+            # Extract first book result from the HTML
+            # Look for pattern: <a href="/book/show/12345-title" or similar
+            match = re.search(r'href="(/book/show/\d+[^"]*)"', response.text)
+            if match:
+                gr_url = "https://www.goodreads.com" + match.group(1)
+                self._goodreads_url_cache[cache_key] = gr_url
+                logger.debug(f"Resolved Goodreads URL for '{title}': {gr_url}")
+                return gr_url
+            else:
+                # No match found - cache empty result
+                self._goodreads_url_cache[cache_key] = ""
+                logger.debug(f"No Goodreads URL found for '{title}' by '{author}'")
+                return ""
+        
+        except Exception as e:
+            logger.debug(f"Failed to resolve Goodreads URL for '{title}' by '{author}': {e}")
+            return ""
 
     def parse(
         self, feed: FeedSettings, debug: Optional[List[str]] = None
@@ -554,6 +609,9 @@ class FeedParser:
                     if link and not urlparse(link).netloc:
                         link = requests.compat.urljoin(url, link)
 
+                    # For Goodreads Listopia, the link is the Goodreads book page
+                    goodreads_url = link if (link and "goodreads.com" in link) else ""
+
                     # Skip per-book scraping during feed parsing to avoid blocking.
                     # Book metadata (description, cover, etc.) is already extracted from the Listopia page.
                     # If needed, can be fetched later during search phase when items are being processed.
@@ -566,6 +624,7 @@ class FeedParser:
                         link=link,
                         description=description,
                         cover=cover,
+                        goodreads_url=goodreads_url,
                     )
 
                     # Skip empty titles and duplicates
@@ -607,6 +666,11 @@ class FeedParser:
         # Normalize relative URLs to absolute
         if url and not url.startswith("http"):
             url = "https://www.goodreads.com" + url
+        
+        # Ensure we link to /book/ page, not /reviews/ page
+        if "/reviews/" in url.lower():
+            # Convert /reviews/ link to /book/ link
+            url = url.replace("/reviews/", "/book/").split("?")[0]  # Remove query params
         
         meta: Dict[str, Any] = {
             "cover": "",
@@ -657,9 +721,38 @@ class FeedParser:
 
             # --- Cover ---------------------------------------------------------
             try:
+                # Search for all book cover images and pick the highest resolution one
                 img_nodes = tree.cssselect("img.BookCover__image") or tree.cssselect("img[src*='books']")
                 if img_nodes:
-                    meta["cover"] = img_nodes[0].get("src") or meta["cover"]
+                    covers = []
+                    for img_node in img_nodes:
+                        src = img_node.get("src", "").strip()
+                        if src:
+                            covers.append(src)
+                    
+                    # If we have multiple covers, prefer the highest resolution
+                    # Goodreads URLs often have patterns like: url._SX600_SY900_
+                    # We want the largest dimensions
+                    if covers:
+                        def get_cover_dimensions(url: str) -> tuple[int, int]:
+                            """Extract dimensions from Goodreads cover URL."""
+                            # Look for patterns like _SX600_SY900_
+                            match = re.search(r'_SX(\d+)_SY(\d+)_', url)
+                            if match:
+                                return (int(match.group(1)), int(match.group(2)))
+                            return (0, 0)
+                        
+                        # Sort by total pixels (width * height) descending
+                        covers.sort(
+                            key=lambda url: get_cover_dimensions(url)[0] * get_cover_dimensions(url)[1],
+                            reverse=True
+                        )
+                        
+                        # Get the best cover and upgrade to highest resolution (_SX1200_SY1800_)
+                        best_cover = covers[0]
+                        # Upgrade to max Goodreads resolution for better quality in library display
+                        best_cover = re.sub(r'_SX\d+_SY\d+_', '_SX1200_SY1800_', best_cover)
+                        meta["cover"] = best_cover
             except Exception as e:
                 logger.debug("Failed to extract cover: %s", e)
 

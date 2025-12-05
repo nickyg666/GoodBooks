@@ -2,61 +2,51 @@ Processing user nick
   Feed: https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read [rss] for nick
 [CACHE HIT] RSS https://www.goodreads.com/review/list_rss/185259572?key=5ZXPuJbZJ3f4a-1jxI_avNZhhe0O_5Hxhbko5cruBY_OgSIH&shelf=to-read (11 items from this run)
 Processing user HTML fetch test
+  Feed: https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ [html] for HTML fetch test
+[CACHE HIT] HTML https://www.goodreads.com/list/show/92199.Transitional_Chapter_Books_Series_6_8_years_old_ (150 items from this run)
 Processing user Sagey-mini
   Feed: https://www.goodreads.com/review/list_rss/183591818?shelf=to-read [rss] for Sagey-mini
 [CACHE HIT] RSS https://www.goodreads.com/review/list_rss/183591818?shelf=to-read (71 items from this run)
-    Skipping: book already in library (title=Fear and Loathing in Las Vegas: A Savage Journey to the Heart of the American Dream, author=Hunter S. Thompson)
-    Skipping: book already in library (title=Donnie Brasco, author=Joseph D. Pistone)
+    Skipping: book already in library (title=Never Lie, author=Freida McFadden)
     Skipping: book already in library (title=The Silent Patient, author=Alex Michaelides)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Donnie Brasco, author=Joseph D. Pistone)
     Skipping: book already in library (title=The Alchemist, author=Paulo Coelho)
     Skipping: book already in library (title=A Clockwork Orange, author=Anthony Burgess)
     Skipping: book already in library (title=Keep It in the Family, author=John Marrs)
-    Skipping: book already in library (title=Never Lie, author=Freida McFadden)
-    Searching for Donnie Brasco: Unfinished Business (Donnie Brasco #2) Joseph D. Pistone
-      Disk search cache hit for query: Donnie Brasco: Unfinished Business (Donnie Brasco #2) Joseph D. Pistone
-      Selected best match Donnie Brasco : unfinished business : shocking declassified details from the FBI's greatest undercover operation and a bloody timeline of the fall of the Mafia (azw3) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for The Stand Stephen        King
-      Disk search cache hit for query: The Stand Stephen        King
-      Selected best match The Stand (azw3) from 1 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5) Barbara Park
-      Disk search cache hit for query: Junie B. Jones and the Yucky Blucky Fruitcake (Junie B. Jones, #5) Barbara Park
-      Selected best match Junie B. Jones #5: Junie B. Jones and the Yucky Blucky FruitcakeJunie b. jones and the yucky blucky fruitcake : Junie b. jones series, book 5 (epub) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for The LEGO® Ideas Book New Edition: You Can Build Anything! Simon Hugo
-      Disk search cache hit for query: The LEGO® Ideas Book New Edition: You Can Build Anything! Simon Hugo
-      Selected best match The LEGO Ideas Book New Edition: You Can Build Anything! (epub) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Fear and Loathing in Las Vegas: A Savage Journey to the Heart of the American Dream, author=Hunter S. Thompson)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Saving Noah, author=Lucinda Berry)
+    Skipping: book already in library (title=Tender Is the Flesh, author=Agustina Bazterrica)
+    Skipping: book already in library (title=Butcher & Blackbird (The Ruinous Love Trilogy, #1), author=Brynne Weaver)
+    Skipping: book already in library (title=The Butcher, author=Jennifer Hillier)
+    Skipping: book already in library (title=Jar of Hearts, author=Jennifer Hillier)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=The Push, author=Ashley Audrain)
     Skipping: book already in library (title=The House Across the Lake, author=Riley Sager)
     Skipping: book already in library (title=Local Girl Missing, author=Claire Douglas)
-    Skipping: book already in library (title=The Butcher, author=Jennifer Hillier)
+    Skipping: item already processed (history)
     Skipping: book already in library (title=Brother, author=Ania Ahlborn)
-    Skipping: book already in library (title=Butcher & Blackbird (The Ruinous Love Trilogy, #1), author=Brynne Weaver)
     Skipping: book already in library (title=The Last House on Needless Street, author=Catriona Ward)
     Skipping: book already in library (title=A Head Full of Ghosts, author=Paul Tremblay)
     Skipping: item already processed (history)
     Skipping: item already processed (history)
     Skipping: book already in library (title=The Last Housewife, author=Ashley Winstead)
-    Skipping: book already in library (title=Jar of Hearts, author=Jennifer Hillier)
     Skipping: item already processed (history)
     Skipping: book already in library (title=Mary, author=Nat Cassidy)
     Skipping: book already in library (title=Dark Matter, author=Blake Crouch)
-    Skipping: book already in library (title=The Push, author=Ashley Audrain)
     Skipping: book already in library (title=Room for Rent, author=Noelle W. Ihli)
+    Skipping: item already processed (history)
     Skipping: book already in library (title=What Lies Between Us, author=John Marrs)
     Skipping: book already in library (title=Don't Let Her Stay, author=Nicola Sanders)
-    Skipping: book already in library (title=Saving Noah, author=Lucinda Berry)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
     Skipping: book already in library (title=The Things We Leave Unfinished, author=Rebecca Yarros)
     Skipping: book already in library (title=The Last Letter, author=Rebecca Yarros)
-    Searching for Still Missing Chevy Stevens
-      Disk search cache hit for query: Still Missing Chevy Stevens
-      Selected best match Still Missing (mobi) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for Dead in the Water John Marrs
-      Disk search cache hit for query: Dead in the Water John Marrs
-      Selected best match Dead In The Water (mobi) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=Caraval (Caraval, #1), author=Stephanie Garber)
+    Skipping: book already in library (title=My Absolute Darling, author=Gabriel Tallent)
     Skipping: book already in library (title=All the Ugly and Wonderful Things, author=Bryn Greenwood)
     Skipping: book already in library (title=In the Likely Event, author=Rebecca Yarros)
     Skipping: book already in library (title=Rock Paper Scissors, author=Alice Feeney)
@@ -65,7 +55,7 @@ Processing user Sagey-mini
     Skipping: book already in library (title=Baby City, author=Freida McFadden)
     Skipping: book already in library (title=Suicide Med, author=Freida McFadden)
     Skipping: book already in library (title=Dead Med, author=Freida McFadden)
-    Skipping: book already in library (title=The Devil Wears Scrubs (Dr. Jane McGill, #1), author=Freida McFadden)
+    Skipping: item already processed (history)
     Skipping: book already in library (title=The Devil You Know (Dr. Jane McGill, #2), author=Freida McFadden)
     Skipping: book already in library (title=The Widow's Husband's Secret Lie, author=Freida McFadden)
     Skipping: book already in library (title=The Gift, author=Freida McFadden)
@@ -81,78 +71,324 @@ Processing user Sagey-mini
     Skipping: book already in library (title=The Coworker, author=Freida McFadden)
     Skipping: book already in library (title=One by One, author=Freida McFadden)
     Skipping: book already in library (title=The Locked Door, author=Freida McFadden)
-    Searching for The Last Party A.R. Torre
-      Disk search cache hit for query: The Last Party A.R. Torre
-      Selected best match The Last Party (azw3) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for We Used to Live Here Marcus Kliewer
-      Disk search cache hit for query: We Used to Live Here Marcus Kliewer
-      Selected best match We Used to Live Here (mobi) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for If You Lie Caleb  Stephens
-      Disk search cache hit for query: If You Lie Caleb  Stephens
-      Selected best match If You Lie (epub) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
     Skipping: book already in library (title=The Handmaid's Tale, author=Margaret Atwood)
     Skipping: book already in library (title=The Sleep Experiment (World's Scariest Legends, #2), author=Jeremy Bates)
     Skipping: book already in library (title=The Tenant, author=Freida McFadden)
-    Searching for Caraval (Caraval, #1) Stephanie Garber
-      Disk search cache hit for query: Caraval (Caraval, #1) Stephanie Garber
-      Selected best match Caraval (Caraval #1) (epub) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
     Skipping: book already in library (title=Beautiful Ugly, author=Alice Feeney)
     Skipping: book already in library (title=Ward D, author=Freida McFadden)
-    Searching for Parallel (Parallel, #1) Elle O'Roark
-      Disk search cache hit for query: Parallel (Parallel, #1) Elle O'Roark
-      Selected best match Parallel (The Parallel Duet Book 1) (epub) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for Tender Is the Flesh Agustina Bazterrica
-      Disk search cache hit for query: Tender Is the Flesh Agustina Bazterrica
-      Selected best match Tender Is the Flesh (azw3) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for My Absolute Darling Gabriel Tallent
-      Disk search cache hit for query: My Absolute Darling Gabriel Tallent
-      Selected best match My absolute darling : a novel (azw3) from 10 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for My Husband's Wife Alice Feeney
-      Disk search cache hit for query: My Husband's Wife Alice Feeney
-      Selected best match My Husband's Wife (epub) from 1 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for Ruthless Fae (Zodiac Academy, #2) Caroline Peckham
-      Disk search cache hit for query: Ruthless Fae (Zodiac Academy, #2) Caroline Peckham
-      Selected best match Ruthless Fae (epub) from 1 results
-      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
     Skipping: book already in library (title=Woom, author=Duncan Ralston)
     Skipping: book already in library (title=MrBallen Presents: Strange, Dark & Mysterious: The Graphic Stories (MrBallen Graphic Stories), author=MrBallen)
+    Skipping: item already processed (history)
+    Searching for Still Missing Chevy Stevens
+      Disk search cache hit for query: Still Missing Chevy Stevens
+      Selected best match Still Missing (mobi) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
     Searching for The Inmate Freida McFadden
       Disk search cache hit for query: The Inmate Freida McFadden
       Selected best match The Inmate (azw3) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for Mistborn: The Final Empire (Mistborn, #1) Brandon Sanderson
-      Disk search cache hit for query: Mistborn: The Final Empire (Mistborn, #1) Brandon Sanderson
-      Selected best match Mistborn: The Final Empire (epub) from 1 results
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Mercy Watson to the Rescue, author=Kate DiCamillo)
+    Skipping: book already in library (title=Dory Fantasmagory, author=Abby Hanlon)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Eva's Treetop Festival (Owl Diaries, #1), author=Rebecca Elliott)
+    Skipping: book already in library (title=Anna Hibiscus (Anna Hibiscus, #1), author=Atinuke)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Leroy Ninker Saddles Up, author=Kate DiCamillo)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=The Bad Beginning (A Series of Unfortunate Events, #1), author=Lemony Snicket)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=In Aunt Lucy's Kitchen (Cobble Street Cousins, #1), author=Cynthia Rylant)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Kidnapped at Birth? (Marvin Redpost, #1), author=Louis Sachar)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Bad Kitty School Daze, author=Nick Bruel)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=Henry Heckelbeck Gets a Dragon, author=Wanda Coven)
+    Skipping: book already in library (title=Just Annoying, author=Andy Griffiths)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=The Secret of Whale Island (Thea Stilton Graphic Novels #1), author=Thea Stilton)
+    Skipping: item already processed (history)
+    Searching for The Mystery of the Stolen Painting (Greetings from Somewhere #3) Harper Paris
+      Disk search cache hit for query: The Mystery of the Stolen Painting (Greetings from Somewhere #3) Harper Paris
+      Selected best match The Mystery of the Stolen Painting (Greetings from Somewhere Book 3) (epub) from 1 results
+      Failed to download: No download links available for any format (requested=epub)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=The Present is a Gift, author=Elchanan Ogorek)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Searching for Dinosaurs Before Dark (Magic Tree House, #1) Mary Pope Osborne
+      Disk search cache hit for query: Dinosaurs Before Dark (Magic Tree House, #1) Mary Pope Osborne
+      Selected best match Dinosaurs Before Dark - Magic Tree House 1 (mobi) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for The Bone Collector (Lincoln Rhyme, #1) Jeffery Deaver
-      Disk search cache hit for query: The Bone Collector (Lincoln Rhyme, #1) Jeffery Deaver
-      Selected best match The Bone Collector: The First Lincoln Rhyme NovelThe Bone Collector (A Lincoln Rhyme Novel)The Bone Collector (Lincoln Rhyme, #1) (azw3) from 1 results
+    Searching for Picture Day (Missy's Super Duper Royal Deluxe, #1) Susan Nees
+      Disk search cache hit for query: Picture Day (Missy's Super Duper Royal Deluxe, #1) Susan Nees
+      Selected best match Midnight (Missy's Super Duper Royal Deluxe) (mobi) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for The One John Marrs
-      Disk search cache hit for query: The One John Marrs
-      Selected best match The One (lit) from 1 results
+    Searching for The All-Powerful Ring: A Primo Story (Witches of Benevento, #2) John Bemelmans Marciano
+      Disk search cache hit for query: The All-Powerful Ring: A Primo Story (Witches of Benevento, #2) John Bemelmans Marciano
+      Selected best match The witches of Benevento. 2, The all-powerful ring : a primo storyThe All-Powerful Ring: A Primo Story (Witches of Benevento, #2)The All-Powerful Ring (The Witches of Benevento) (mobi) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for A Child Called "It" (Dave Pelzer, #1) Dave Pelzer
-      Disk search cache hit for query: A Child Called "It" (Dave Pelzer, #1) Dave Pelzer
-      Selected best match A child called "It" : One Child's Courage to Survive (mobi) from 1 results
+    Searching for The Hidden Stairs and the Magic Carpet (The Secrets of Droon, #1) Tony  Abbott
+      Disk search cache hit for query: The Hidden Stairs and the Magic Carpet (The Secrets of Droon, #1) Tony  Abbott
+      Selected best match The Hidden Stairs and the Magic Carpet (The Secrets of Droon #1) (epub) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for The Mist Stephen        King
-      Disk search cache hit for query: The Mist Stephen        King
-      Selected best match The Mist (azw3) from 1 results
+    Searching for The Bad Butterfly (Billie B Brown #1) Sally Rippin
+      Disk search cache hit for query: The Bad Butterfly (Billie B Brown #1) Sally Rippin
+      Selected best match The Bad Butterfly (Billie B Brown #1) (epub) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for The Stand Stephen        King
-      Disk search cache hit for query: The Stand Stephen        King
-      Selected best match The Stand (azw3) from 1 results
+    Searching for The Storm (The Lighthouse Family, #1) Cynthia Rylant
+      Disk search cache hit for query: The Storm (The Lighthouse Family, #1) Cynthia Rylant
+      Selected best match The storm. (The lighthouse family, #1.)The lighthouse family. The stormThe Lighthouse family collection (epub) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge
-    Searching for Alice (The Chronicles of Alice, #1) Christina Henry
-      Disk search cache hit for query: Alice (The Chronicles of Alice, #1) Christina Henry
-      Selected best match Alice (The Chronicles of Alice, #1) (epub) from 1 results
+    Skipping: book already in library (title=The Pirate Pig, author=Cornelia Funke)
+    Searching for Princess Posey and the First Grade Parade (Princess Posey, #1) Stephanie Greene
+      Disk search cache hit for query: Princess Posey and the First Grade Parade (Princess Posey, #1) Stephanie Greene
+      Selected best match Princess Posey and the First Grade Parade (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Frantastic Voyage (Franny K. Stein, Mad Scientist, #5) Jim Benton
+      Disk search cache hit for query: Frantastic Voyage (Franny K. Stein, Mad Scientist, #5) Jim Benton
+      Selected best match Frantastic Voyage: #5 (franny K. Stein, Mad Scientist) (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Hello, Nebulon! (Galaxy Zack, #1) Ray O'Ryan
+      Disk search cache hit for query: Hello, Nebulon! (Galaxy Zack, #1) Ray O'Ryan
+      Selected best match Return to Earth! (Galaxy Zack Book 10) (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Mysterious Moonstone (Key Hunters, 1) Eric Luper
+      Disk search cache hit for query: The Mysterious Moonstone (Key Hunters, 1) Eric Luper
+      Selected best match [Key Hunters 01] • The Mysterious MoonstoneThe Mysterious Moonstone (Key Hunters #1), Volume 1 (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Fran That Time Forgot (Franny K. Stein, Mad Scientist, #4) Jim Benton
+      Disk search cache hit for query: The Fran That Time Forgot (Franny K. Stein, Mad Scientist, #4) Jim Benton
+      Selected best match The Fran That Time Forgot (Franny K. Stein, Mad Scientist #4)Fran That Time Forgot #4 Franny K Stein Mad Scientist (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Miniature World of Marvin & James (The Masterpiece Adventures, #1) Elise Broach
+      Disk search cache hit for query: The Miniature World of Marvin & James (The Masterpiece Adventures, #1) Elise Broach
+      Selected best match The Miniature World of Marvin & James (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Archie Takes Flight (Space Taxi #1) Wendy Mass
+      Disk search cache hit for query: Archie Takes Flight (Space Taxi #1) Wendy Mass
+      Selected best match Space Taxi : Archie Takes Flight (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Miss Moss: The Mild Winter (6) Decodable Chapter Book M. Mott
+      Disk search cache hit for query: Miss Moss: The Mild Winter (6) Decodable Chapter Book M. Mott
+      Selected best match The Cottage on Winter Moss (mobi) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Queen of the World! (Babymouse, #1) Jennifer L. Holm
+      Disk search cache hit for query: Queen of the World! (Babymouse, #1) Jennifer L. Holm
+      Selected best match Babymouse 1 Queen of the World! (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Adventures of Caveboy Sudipta  Bardhan-Quallen
+      Disk search cache hit for query: The Adventures of Caveboy Sudipta  Bardhan-Quallen
+      Selected best match The Adventures of Caveboy (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Sylva and the Fairy Ball Margaret McNamara
+      Disk search cache hit for query: Sylva and the Fairy Ball Margaret McNamara
+      Selected best match Sylva and the Fairy Ball (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Stinky Spike the Pirate Dog Peter Meisel
+      Disk search cache hit for query: Stinky Spike the Pirate Dog Peter Meisel
+      Selected best match Stinky Spike and the Royal Rescue (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Iris And Walter (Iris and Walter, 1) Elissa Haden Guest
+      Disk search cache hit for query: Iris And Walter (Iris and Walter, 1) Elissa Haden Guest
+      Selected best match Iris and Walter, Lost and Found (Iris And Walter) (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
+    Searching for Horrid Henry (Horrid Henry, #1) Francesca Simon
+      Disk search cache hit for query: Horrid Henry (Horrid Henry, #1) Francesca Simon
+      Selected best match Horrid Henry (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Bink & Gollie Kate DiCamillo
+      Disk search cache hit for query: Bink & Gollie Kate DiCamillo
+      Selected best match Bink & Gollie (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Horrid Henry's Bodies (A Horrid Factbook) Francesca Simon
+      Disk search cache hit for query: Horrid Henry's Bodies (A Horrid Factbook) Francesca Simon
+      Selected best match Horrid Henry's Stinkbomb (mobi) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Monkey Me and the Golden Monkey: A Branches Book (Monkey Me #1) (1) Timothy Roland
+      Disk search cache hit for query: Monkey Me and the Golden Monkey: A Branches Book (Monkey Me #1) (1) Timothy Roland
+      Selected best match Monkey Me and the New Neighbor: A Branches Book (Monkey Me #3) (3) (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for My Explosive Diary (Eliza Boom's Diary #1) Emily Gale
+      Disk search cache hit for query: My Explosive Diary (Eliza Boom's Diary #1) Emily Gale
+      Selected best match My Explosive Adventure (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Gus & Gertie and The Missing Pearl Joan Lowery Nixon
+      Disk search cache hit for query: Gus & Gertie and The Missing Pearl Joan Lowery Nixon
+      Selected best match Caught in the Act (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The School Is Alive! (Eerie Elementary, #1) Jack Chabert
+      Disk search cache hit for query: The School Is Alive! (Eerie Elementary, #1) Jack Chabert
+      Selected best match The School Is Alive! (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Anyone But Me (Katie Kazoo, Switcheroo, #1) Nancy E. Krulik
+      Disk search cache hit for query: Anyone But Me (Katie Kazoo, Switcheroo, #1) Nancy E. Krulik
+      Selected best match Anyone But Me #1 (promo) (Katie Kazoo, Switcheroo) (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Trouble at the Arcade (The Hardy Boys: Secret Files, #1) Franklin W. Dixon
+      Disk search cache hit for query: Trouble at the Arcade (The Hardy Boys: Secret Files, #1) Franklin W. Dixon
+      Selected best match Training for Trouble (The Hardy Boys #161) (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Class Trip from the Black Lagoon (Black Lagoon Adventures, #1) Mike Thaler
+      Disk search cache hit for query: The Class Trip from the Black Lagoon (Black Lagoon Adventures, #1) Mike Thaler
+      Selected best match The Librarian From the Black Lagoon (azw3) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Justin and the Bully: Ready-to-Read Level 2 Tony Dungy
+      Disk search cache hit for query: Justin and the Bully: Ready-to-Read Level 2 Tony Dungy
+      Selected best match The Mentor Leader: Secrets to Building People and Teams That Win Consistently (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
+    Searching for Bone, Vol. 1: Out from Boneville (Bone, #1) Jeff Smith
+      Disk search cache hit for query: Bone, Vol. 1: Out from Boneville (Bone, #1) Jeff Smith
+      Selected best match Bone Vol. 1: Out From Boneville (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Stuart's Cape Sara Pennypacker
+      Disk search cache hit for query: Stuart's Cape Sara Pennypacker
+      Selected best match Leeva at Last (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Fenway Foul-Up (Ballpark Mysteries, #1) David A. Kelly
+      Disk search cache hit for query: The Fenway Foul-Up (Ballpark Mysteries, #1) David A. Kelly
+      Selected best match The Fenway Foul-up (rar) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Stick Dog (Stick Dog, #1) Tom     Watson
+      Disk search cache hit for query: Stick Dog (Stick Dog, #1) Tom     Watson
+      Selected best match Stick Dog (mobi) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Mystery of the Clockwork Sparrow (The Sinclairâs Mysteries #1) Katherine Woodfine
+      Disk search cache hit for query: The Mystery of the Clockwork Sparrow (The Sinclairâs Mysteries #1) Katherine Woodfine
+      Selected best match The Mystery of the Clockwork Sparrow (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: book already in library (title=The Classroom at the End of the Hall, author=Douglas Evans)
+    Searching for Sleepover Sleuths (Nancy Drew and the Clue Crew, #1) Carolyn Keene
+      Disk search cache hit for query: Sleepover Sleuths (Nancy Drew and the Clue Crew, #1) Carolyn Keene
+      Selected best match sleepover sleuths/scream for ice cream: nancy drew and the clue crew series (book 1 & 2)Sleepover sleuths ; Scream for ice cream (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Ghosts Do Splash in Puddles (The Bailey School Kids Jr. Chapter Book, #1) Marcia Thornton Jones
+      Disk search cache hit for query: Ghosts Do Splash in Puddles (The Bailey School Kids Jr. Chapter Book, #1) Marcia Thornton Jones
+      Selected best match Ghosts Do Splash in Puddles (The Bailey School Kids Jr. Chapter Book, #1)The Bailey School Kids : Ghosts Do Splash in Puddles (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Stella Batts Needs a New Name (Stella Batts, #1) Courtney Sheinmel
+      Disk search cache hit for query: Stella Batts Needs a New Name (Stella Batts, #1) Courtney Sheinmel
+      Selected best match Stella Batts. 01 : Stella Batts needs a new name (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Fractions = Trouble! Claudia Mills
+      Disk search cache hit for query: Fractions = Trouble! Claudia Mills
+      Selected best match Fractions = Trouble! (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Frankly, Frannie (Frankly, Frannie #1) A.J. Stern
+      Disk search cache hit for query: Frankly, Frannie (Frankly, Frannie #1) A.J. Stern
+      Selected best match Frankly Frannie Frankly Frannie (pdf) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Sophie the Awesome (Sophie, #1) Lara Bergen
+      Disk search cache hit for query: Sophie the Awesome (Sophie, #1) Lara Bergen
+      Selected best match [Sophie 01] • Sophie the Awesome (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: item already processed (history)
+    Skipping: book already in library (title=A Dog's Breakfast, author=Annie Graves)
+    Searching for Stranger Things (Looniverse, #1) David Lubar
+      Disk search cache hit for query: Stranger Things (Looniverse, #1) David Lubar
+      Selected best match Looniverse #1: Stranger Things (A Branches Book) (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Cave of Time (Choose Your Own Adventure, #1) Edward Packard
+      Disk search cache hit for query: The Cave of Time (Choose Your Own Adventure, #1) Edward Packard
+      Selected best match The Cave of Time, Choose Your Own Adventure (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for The Sasquatch Escape (The Imaginary Veterinary, #1) Suzanne Selfors
+      Disk search cache hit for query: The Sasquatch Escape (The Imaginary Veterinary, #1) Suzanne Selfors
+      Selected best match The Sasquatch Escape (The Imaginary Veterinary Book 1) (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Like Pickle Juice on a Cookie (Eleanor, #1) Julie  Sternberg
+      Disk search cache hit for query: Like Pickle Juice on a Cookie (Eleanor, #1) Julie  Sternberg
+      Selected best match Like Pickle Juice on a Cookie (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Wonkenstein (The Creature from My Closet, #1) Obert Skye
+      Disk search cache hit for query: Wonkenstein (The Creature from My Closet, #1) Obert Skye
+      Selected best match Wonkenstein (Creature from My Closet Book 1) (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Precious and the Monkeys (Precious Ramotswe's Very First Cases, #1) Alexander McCall Smith
+      Disk search cache hit for query: Precious and the Monkeys (Precious Ramotswe's Very First Cases, #1) Alexander McCall Smith
+      Selected best match Precious and the Monkeys : Precious Ramotswe's Very First Case (epub) from 1 results
+      Failed to download: Failed to GET download URL or resolve stealth challenge
+    Searching for Sprouting Wings (Korgi, #1) Christian Slade
+      Disk search cache hit for query: Sprouting Wings (Korgi, #1) Christian Slade
+      Selected best match Sprouting Wings (cbz) from 1 results
       Failed to download: Failed to GET download URL or resolve stealth challenge

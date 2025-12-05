@@ -268,6 +268,11 @@ def solve_cloudflare_challenge(
     Returns the direct download URL (str) on successful link extraction, 
     the page content (str HTML) if link extraction fails, or None on permanent failure/timeout.
     """
+    
+    # Goodreads doesn't require Cloudflare bypass - skip browser automation
+    if "goodreads.com" in url.lower():
+        logger.debug("Skipping Cloudflare detection for Goodreads URL: %s", url)
+        return None
 
     user_agent = _next_user_agent()
     logger.info(
@@ -387,3 +392,98 @@ def solve_cloudflare_challenge(
         except Exception as e:
             logger.error("Unexpected error during Cloudflare bypass for %s: %s", url, e)
             return None
+
+
+def download_file_with_stealth(url: str, timeout: int = 60) -> Optional[bytes]:
+    """
+    Use stealth browser to solve Cloudflare challenge for a direct file URL,
+    then download the file directly using the browser's session/cookies.
+    
+    Returns:
+        File bytes if successful, None otherwise.
+    """
+    with launch_stealth_browser(DEFAULT_BROWSER) as browser:
+        user_agent = _next_user_agent()
+        context = browser.new_context(
+            user_agent=user_agent,
+            viewport={"width": 1920, "height": 1080}
+        )
+        page = context.new_page()
+
+        try:
+            # Navigate to the URL to solve any Cloudflare challenge
+            logger.debug("Navigating to %s to solve Cloudflare challenge", url)
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
+            
+            # Check if there's a Cloudflare challenge
+            start_time = time.time()
+            try:
+                status = _check_cloudflare_status(page)
+            except Exception:
+                status = "CHALLENGED"
+
+            # Wait for challenge resolution
+            while (time.time() - start_time) < (timeout - 5) and status == "CHALLENGED":
+                time.sleep(3)
+                try:
+                    status = _check_cloudflare_status(page)
+                except Exception:
+                    continue
+                if status in {"SUCCESS", "BLOCKED"}:
+                    break
+            
+            if status == "BLOCKED":
+                logger.warning("Access permanently blocked to %s", url)
+                return None
+            
+            if status == "CHALLENGED":
+                logger.warning("Cloudflare challenge timed out for %s", url)
+                return None
+            
+            # Challenge solved - now download the file using the browser's session
+            logger.info("Challenge solved, downloading file from %s", url)
+            
+            # Use the browser's fetch API to download the file
+            # This preserves cookies and headers from the challenge solution
+            try:
+                with page.expect_download() as download_info:
+                    # Trigger a download by navigating to the URL within the page context
+                    page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
+                
+                download = download_info.value
+                # Read the downloaded file content
+                file_bytes = download.path().read_bytes()
+                logger.info("Successfully downloaded file from %s (%d bytes)", url, len(file_bytes))
+                return file_bytes
+            
+            except Exception as e:
+                logger.debug("Browser download failed, trying direct fetch: %s", e)
+                # Fallback: use the browser's fetch capability through JavaScript
+                try:
+                    response_data = page.evaluate("""
+                        async () => {
+                            const response = await fetch(window.location.href);
+                            const blob = await response.blob();
+                            const arrayBuffer = await blob.arrayBuffer();
+                            return Array.from(new Uint8Array(arrayBuffer));
+                        }
+                    """)
+                    file_bytes = bytes(response_data)
+                    logger.info("Successfully fetched file via JavaScript (%d bytes)", len(file_bytes))
+                    return file_bytes
+                except Exception as e2:
+                    logger.error("Both download methods failed for %s: %s, %s", url, e, e2)
+                    return None
+        
+        except TimeoutError as e:
+            logger.error("Navigation timed out for %s: %s", url, e)
+            return None
+        except Exception as e:
+            logger.error("Unexpected error during stealth download for %s: %s", url, e)
+            return None
+        finally:
+            try:
+                context.close()
+            except Exception:
+                pass
+

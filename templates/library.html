@@ -71,9 +71,16 @@
             </select>
         </label>
 
-        <label class="checkbox">
-            <input type="checkbox" name="direct_only" value="on" {% if direct_only %}checked{% endif %}>
-            <span>Direct download only</span>
+        <label>
+            <span>Per page</span>
+            <select name="per_page">
+                <option value="15" {% if per_page == 15 %}selected{% endif %}>15</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+                <option value="500" {% if per_page == 500 %}selected{% endif %}>500</option>
+            </select>
         </label>
 
         <div style="align-self: flex-end; display: flex; gap: 0.5rem;">
@@ -200,7 +207,7 @@
             prefix=prefix or none,
             genre=genre_filter or none,
             author=author_filter or none,
-            direct_only='on' if direct_only else none
+            per_page=per_page
         ) }}">&laquo; Previous</a>
         {% endif %}
         <span>Page {{ page }} of {{ total_pages }}</span>
@@ -212,7 +219,7 @@
             prefix=prefix or none,
             genre=genre_filter or none,
             author=author_filter or none,
-            direct_only='on' if direct_only else none
+            per_page=per_page
         ) }}">Next &raquo;</a>
         {% endif %}
     </div>

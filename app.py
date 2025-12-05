@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import html
 import math
 import hashlib
+import base64
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from flask import (
     Flask,
@@ -31,11 +33,13 @@ from logging_config import configure_logging
 from parser_engine import FeedParser, ParsedItem
 from search_engine import AnnaSource, SearchOptions, set_download_concurrency
 from settings_manager import HistoryManager, SettingsManager, UserSettings, FeedSettings
+from ebook_metadata_extractor import extract_book_metadata
 import time
 import uuid
 
 from converthelper import convert_to_epub
 feed_progress_lock = Lock()
+metadata_progress_lock = Lock()
 
 feed_progress_state = {
     "run_id": None,            # uuid4 hex string for current run
@@ -64,6 +68,16 @@ feed_progress_state = {
         #     "active": True/False,
         # }
     },
+}
+
+metadata_progress_state = {
+    "active": False,
+    "total_books": 0,
+    "completed_books": 0,
+    "start_time": None,
+    "eta_seconds": None,
+    "percentage": 0,
+    "type": None,  # "manual" or "background"
 }
 
 # ---------------------------------------------------------------------------
@@ -292,12 +306,28 @@ def select_best_result(
     Pick the "best" search result.
 
     Heuristic:
+      * Filter out study guides (case-insensitive "studyguide" or "study guide" in title)
       * Prefer results that have at least one of allowed_formats.
       * Among them, prefer non-PDF for e-ink devices.
       * Prefer results whose title matches the expected title.
       * Strongly prefer results whose author matches the expected author.
       * Fall back to the first result if all else fails.
     """
+    # Filter out study guides first
+    filtered_results = []
+    for result in results:
+        title_lower = (result.get("title") or "").lower()
+        if "studyguide" in title_lower or "study guide" in title_lower:
+            logger.debug("Filtering out study guide: %s", result.get("title"))
+            continue
+        filtered_results.append(result)
+    
+    if not filtered_results:
+        # If all results were filtered, return None
+        logger.warning("All results filtered out (study guides)")
+        return None
+    
+    results = filtered_results
     allowed = [f.lower() for f in (allowed_formats or [])]
 
     def tokens(text: str) -> set[str]:
@@ -404,6 +434,55 @@ def fix_description_spacing(text: str) -> str:
     return text
 
 
+def get_cover_for_email(
+    file_path: Optional[Path] = None,
+    cover_url: Optional[str] = None,
+    title: str = "Book"
+) -> Tuple[Optional[bytes], str]:
+    """
+    Get cover image data for email display, trying multiple sources.
+    
+    Priority:
+    1. Extract from ebook file (if path provided and file exists)
+    2. Download from URL (if cover_url provided)
+    3. Return None if neither available
+    
+    Returns:
+        Tuple of (image_bytes, mime_type) or (None, "image/jpeg") if not found
+    """
+    # Try extracting from ebook file first
+    if file_path and file_path.exists():
+        try:
+            metadata = extract_book_metadata(file_path)
+            if metadata.get('cover_image'):
+                mime = "image/jpeg"
+                if metadata['cover_format'] == 'png':
+                    mime = "image/png"
+                elif metadata['cover_format'] == 'gif':
+                    mime = "image/gif"
+                logger.debug("Using extracted cover from %s for email", file_path.name)
+                return metadata['cover_image'], mime
+        except Exception as e:
+            logger.debug("Failed to extract cover from %s: %s", file_path, e)
+    
+    # Try downloading from URL
+    if cover_url and cover_url.startswith(("http://", "https://")):
+        try:
+            resp = requests.get(cover_url, timeout=10, allow_redirects=True)
+            if resp.status_code == 200 and "image" in resp.headers.get("Content-Type", "").lower():
+                mime = "image/jpeg"
+                if "png" in resp.headers.get("Content-Type", "").lower():
+                    mime = "image/png"
+                elif "webp" in resp.headers.get("Content-Type", "").lower():
+                    mime = "image/webp"
+                logger.debug("Downloaded cover from %s for email", cover_url)
+                return resp.content, mime
+        except Exception as e:
+            logger.debug("Failed to download cover from %s: %s", cover_url, e)
+    
+    return None, "image/jpeg"
+
+
 def queue_library_addition_notification(user: UserSettings, entry: Dict) -> None:
     """
     Queue a library addition for batch notification email.
@@ -505,6 +584,7 @@ def queue_kindle_auto_send(user: UserSettings, file_path: Path, result: Dict) ->
     """
     Queue a file for batch Kindle auto-send (25 files, 24MB limit).
     Ensures file is converted to EPUB before queueing.
+    Checks library and history for duplicates (by filename without extension).
     """
     # Check for Kindle email: global first, then per-user
     kindle_email = None
@@ -518,6 +598,26 @@ def queue_kindle_auto_send(user: UserSettings, file_path: Path, result: Dict) ->
     
     if not kindle_email or not settings_manager.settings.smtp.is_configured():
         return
+    
+    # Check if file already exists in library or history (by filename without extension)
+    base_name = file_path.stem  # filename without extension
+    
+    # Check library entries
+    entries = build_library_entries()
+    for entry in entries:
+        lib_path = Path(entry.get("root", "")) / entry.get("relpath", "")
+        if lib_path.stem.lower() == base_name.lower():
+            logger.info("Skipping Kindle queue: file already in library: %s", file_path.name)
+            return
+    
+    # Check history
+    try:
+        with history_lock:
+            if history_manager.has_file(user.name, base_name):
+                logger.info("Skipping Kindle queue: file already in history: %s", file_path.name)
+                return
+    except Exception:
+        pass  # If history check fails, proceed
     
     # Ensure file is in EPUB format
     fmt = file_path.suffix.lower().lstrip(".")
@@ -554,12 +654,49 @@ def queue_kindle_auto_send(user: UserSettings, file_path: Path, result: Dict) ->
 def flush_kindle_queue(user_name: str) -> None:
     """
     Flush the Kindle auto-send queue for a user if it has items.
+    Deduplicates by filename (without extension) against library and history.
     """
     with kindle_queue_lock:
         if user_name not in kindle_queue or not kindle_queue[user_name]:
             return
         
-        files = kindle_queue[user_name]
+        files_to_send = []
+        skipped = []
+        
+        # Deduplicate against library and history
+        entries = build_library_entries()
+        lib_stems = set((Path(e.get("root", "")) / e.get("relpath", "")).stem.lower() 
+                       for e in entries)
+        
+        for file_path, result in kindle_queue[user_name]:
+            base_name = file_path.stem.lower()
+            
+            # Check if already in library
+            if base_name in lib_stems:
+                logger.debug("Deduplicating: %s already in library", file_path.name)
+                skipped.append(file_path.name)
+                continue
+            
+            # Check history
+            try:
+                with history_lock:
+                    if history_manager.has_file(user_name, file_path.stem):
+                        logger.debug("Deduplicating: %s already in history", file_path.name)
+                        skipped.append(file_path.name)
+                        continue
+            except Exception:
+                pass  # If history check fails, include the file
+            
+            files_to_send.append((file_path, result))
+        
+        if skipped:
+            logger.info("Deduplicating Kindle queue: skipped %d files already in library/history", len(skipped))
+        
+        if not files_to_send:
+            kindle_queue[user_name] = []
+            return
+        
+        files = files_to_send
         kindle_queue[user_name] = []
         
         logger.info("Flushing Kindle queue for user=%s with %d files", user_name, len(files))
@@ -744,7 +881,21 @@ def send_notification_email(
     raw_description = result.get("description") or (item.description if item else "")
     description = strip_html_tags(raw_description).strip()
 
+    # Try to get cover from file first, then URL (same strategy as batch emails)
+    file_path_str = result.get("file_path")
+    file_path = Path(file_path_str) if file_path_str else None
     cover_url = result.get("cover") or (item.cover if item else "") or ""
+    cover_data, mime_type = get_cover_for_email(
+        file_path=file_path,
+        cover_url=cover_url,
+        title=title
+    )
+    
+    # If we got cover data, inline as base64 data URL
+    if cover_data:
+        esc_cover = f"data:{mime_type};base64,{base64.b64encode(cover_data).decode('ascii')}"
+    else:
+        esc_cover = ""
 
     # Chip text: sent vs added
     if sent_to_kindle and user.kindle_email:
@@ -757,7 +908,6 @@ def send_notification_email(
     esc_author = html.escape(author or "")
     esc_fmt = html.escape(fmt or "")
     esc_desc = html.escape(description or "")
-    esc_cover = html.escape(cover_url or "")
 
     msg = EmailMessage()
     msg["From"] = smtp_config.from_email
@@ -902,6 +1052,7 @@ def send_batch_notification_email(
         title = result.get("title", "Unknown")
         author = result.get("author", "Unknown")
         cover = result.get("cover") or ""
+        file_path = result.get("file_path")  # Optional: path to ebook file for cover extraction
         rating = result.get("goodreads_meta", {}).get("rating") or result.get("rating")
         description = result.get("description", "")
         goodreads_url = result.get("goodreads_meta", {}).get("goodreads_url", "")
@@ -911,9 +1062,27 @@ def send_batch_notification_email(
             description = strip_html_tags(description).strip()
         
         # Build cover HTML - try to use cover if available, fallback to placeholder
-        if cover:
-            # Remote URL - directly embed
-            cover_html = f'<img src="{html.escape(cover)}" alt="{html.escape(title or "")}" style="max-width: 100%; max-height: 140px; object-fit: contain; border-radius: 4px;" />'
+        # Try to extract from file first, then download from URL
+        if cover or (file_path and Path(file_path).exists()):
+            try:
+                # Get cover data from file or URL
+                cover_data, cover_mimetype = get_cover_for_email(
+                    file_path=Path(file_path) if file_path else None,
+                    cover_url=cover if cover.startswith(("http://", "https://")) else None,
+                    title=title
+                )
+                
+                if cover_data:
+                    # Inline as base64
+                    b64_data = base64.b64encode(cover_data).decode("utf-8")
+                    cover_html = f'<img src="data:{cover_mimetype};base64,{b64_data}" alt="{html.escape(title or "")}" style="max-width: 100%; max-height: 140px; object-fit: contain; border-radius: 4px;" />'
+                else:
+                    # Fallback: use remote URL if download failed
+                    cover_html = f'<img src="{html.escape(cover)}" alt="{html.escape(title or "")}" style="max-width: 100%; max-height: 140px; object-fit: contain; border-radius: 4px;" />'
+            except Exception as e:
+                logger.debug("Error processing cover for %s: %s", title, e)
+                # Use remote URL as final fallback
+                cover_html = f'<img src="{html.escape(cover)}" alt="{html.escape(title or "")}" style="max-width: 100%; max-height: 140px; object-fit: contain; border-radius: 4px;" />'
         else:
             # No cover - use a light placeholder with first letter of title
             first_letter = (title or "?")[0].upper()
@@ -1670,6 +1839,142 @@ def upsert_library_metadata_for_download(
                 _LIBRARY_METADATA_MTIME = 0.0
         except Exception:
             logger.exception("Failed to save library metadata to %s", LIBRARY_METADATA_PATH)
+def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Fast metadata enrichment from Goodreads only (no Anna's Archive search).
+    Used during background metadata refresh on existing library books.
+    
+    - Searches Goodreads for the book
+    - Extracts cover, rating, description, genres directly from Goodreads
+    - No Anna's Archive searching needed since files already exist
+    """
+    library_id = entry["id"]
+    metadata = load_library_metadata()
+    meta: Dict[str, Any] = dict(metadata.get(library_id) or {})
+
+    # Ensure basics are set
+    meta.setdefault("id", library_id)
+    meta.setdefault("title", entry.get("title", ""))
+    meta.setdefault("author", entry.get("author", ""))
+    meta.setdefault("path", entry.get("path", ""))
+    meta.setdefault("filetype", entry.get("filetype", ""))
+    meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
+
+    try:
+        title = entry.get("title", "").strip()
+        author = (entry.get("author") or "").strip()
+        
+        if not title:
+            return meta
+        
+        # Try to find Goodreads link
+        gr_link = meta.get("goodreads_link")
+        
+        if not gr_link:
+            # Search Goodreads directly for the link
+            try:
+                import requests
+                search_url = f"https://www.goodreads.com/search?q={requests.utils.quote(f'{title} {author}'.strip())}"
+                
+                resp = requests.get(
+                    search_url,
+                    timeout=10,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
+                        "Accept-Language": "en-US,en;q=0.9"
+                    }
+                )
+                if resp.status_code == 200:
+                    from lxml import html as _html
+                    tree = _html.fromstring(resp.text)
+                    links = tree.cssselect("a.bookTitle")
+                    for link in links:
+                        href = link.get("href")
+                        if href:
+                            # Skip study guides and audiobooks
+                            if "study-guide" not in href.lower() and "audiobook" not in href.lower():
+                                gr_link = href
+                                if not gr_link.startswith("http"):
+                                    gr_link = "https://www.goodreads.com" + gr_link
+                                if gr_link:
+                                    meta["goodreads_link"] = gr_link
+                                    logger.debug("Found Goodreads link for %s: %s", title, gr_link)
+                                    break
+            except Exception as e:
+                logger.debug("Failed to search Goodreads for %s: %s", title, e)
+        
+        # If we have a Goodreads link, scrape it for rich metadata
+        if gr_link:
+            try:
+                from parser_engine import FeedParser
+                from pathlib import Path as _Path
+                cache_path = _Path.home() / ".feed_metadata"
+                parser = FeedParser(cache_path)
+                debug_log_scrape = []
+                scraped_meta = parser._scrape_goodreads_book(gr_link, debug_log_scrape)
+                
+                if scraped_meta:
+                    # Update metadata with scraped data
+                    if scraped_meta.get("rating"):
+                        meta["rating"] = scraped_meta["rating"]
+                        logger.debug("Goodreads rating for %s: %s", gr_link, scraped_meta["rating"])
+                    if scraped_meta.get("rating_count"):
+                        meta["rating_count"] = scraped_meta["rating_count"]
+                    if scraped_meta.get("pages"):
+                        meta["pages"] = scraped_meta["pages"]
+                    if scraped_meta.get("genres"):
+                        meta["genres"] = scraped_meta["genres"]
+                    if scraped_meta.get("edition_language"):
+                        meta["language"] = scraped_meta["edition_language"]
+                    if scraped_meta.get("edition_published"):
+                        meta["publish_date"] = scraped_meta["edition_published"]
+                    if scraped_meta.get("edition_format"):
+                        meta["format"] = scraped_meta["edition_format"]
+                    if scraped_meta.get("cover"):
+                        meta["cover"] = scraped_meta["cover"]
+                    if scraped_meta.get("description"):
+                        meta["description"] = fix_description_spacing(scraped_meta["description"])
+            except Exception as e:
+                logger.debug("Failed to scrape Goodreads metadata for %s: %s", gr_link, e)
+    
+    except Exception:
+        logger.exception("Failed to enrich library metadata from Goodreads for %s", library_id)
+    
+    # Build goodreads_meta object
+    goodreads_meta = {
+        "description": meta.get("description", ""),
+        "rating": meta.get("rating"),
+        "rating_count": meta.get("rating_count"),
+        "pages": meta.get("pages"),
+        "genres": meta.get("genres", []),
+        "edition_language": meta.get("language", ""),
+        "edition_published": meta.get("publish_date", ""),
+        "edition_format": meta.get("format", ""),
+        "cover": meta.get("cover", ""),
+        "goodreads_url": meta.get("goodreads_link", ""),
+    }
+    meta["goodreads_meta"] = goodreads_meta
+    
+    # Persist updates
+    metadata[library_id] = meta
+    try:
+        with library_metadata_lock:
+            LIBRARY_METADATA_PATH.write_text(
+                json.dumps(metadata, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
+            _LIBRARY_METADATA_CACHE = metadata
+            try:
+                _LIBRARY_METADATA_MTIME = LIBRARY_METADATA_PATH.stat().st_mtime
+            except OSError:
+                _LIBRARY_METADATA_MTIME = 0.0
+    except Exception:
+        logger.exception("Failed to write library metadata to disk")
+    
+    return meta
+
+
 def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
     """
     Ensure we have a reasonably rich metadata block for a library entry.
@@ -1752,6 +2057,10 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
                         or best.get("goodreads_url")
                         or meta.get("goodreads_link")
                     )
+                    # Filter out study guides and audiobooks from search results
+                    if gr_link and ("study-guide" in gr_link.lower() or "audiobook" in gr_link.lower()):
+                        gr_link = None
+                    
                     # Normalize relative URLs to absolute
                     if gr_link and not gr_link.startswith("http"):
                         gr_link = "https://www.goodreads.com" + gr_link
@@ -1781,16 +2090,21 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
                             if resp.status_code == 200:
                                 from lxml import html as _html
                                 tree = _html.fromstring(resp.text)
-                                # Look for first book result link
+                                # Look for first book result link (exclude study guides)
                                 links = tree.cssselect("a.bookTitle")
-                                if links and links[0].get("href"):
-                                    gr_link = links[0].get("href")
-                                    # Convert relative URLs to absolute
-                                    if gr_link and not gr_link.startswith("http"):
-                                        gr_link = "https://www.goodreads.com" + gr_link
-                                    if gr_link:
-                                        meta["goodreads_link"] = gr_link
-                                        logger.debug("Found Goodreads link for %s: %s", title, gr_link)
+                                for link in links:
+                                    href = link.get("href")
+                                    if href:
+                                        # Skip study guides and other non-book results
+                                        if "study-guide" not in href.lower() and "audiobook" not in href.lower():
+                                            gr_link = href
+                                            # Convert relative URLs to absolute
+                                            if gr_link and not gr_link.startswith("http"):
+                                                gr_link = "https://www.goodreads.com" + gr_link
+                                            if gr_link:
+                                                meta["goodreads_link"] = gr_link
+                                                logger.debug("Found Goodreads link for %s: %s", title, gr_link)
+                                                break
                         except Exception as e:
                             logger.debug("Failed to search for Goodreads link: %s", e)
 
@@ -2042,6 +2356,32 @@ def send_kindle_batch_email(
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@app.route("/cover.png")
+def navbar_cover():
+    """Serve the GoodBooks cover image for navbar branding."""
+    cover_path = BASE_DIR / "GoodBooks.epub"
+    if not cover_path.exists():
+        # Return a placeholder or 404
+        return "", 404
+    
+    # Extract cover image from EPUB
+    try:
+        import zipfile
+        with zipfile.ZipFile(cover_path, 'r') as z:
+            # Try to get the cover image from the EPUB
+            for name in z.namelist():
+                if 'cover' in name.lower() and name.endswith(('.png', '.jpg', '.jpeg')):
+                    return send_file(
+                        z.open(name),
+                        mimetype='image/png' if name.endswith('.png') else 'image/jpeg',
+                        as_attachment=False
+                    )
+    except Exception as e:
+        logger.warning(f"Failed to extract cover from EPUB: {e}")
+    
+    return "", 404
+
 @app.route("/")
 def index():
     """
@@ -2093,7 +2433,7 @@ def index():
         per_page = int(request.args.get("per_page", "").strip() or "0")
     except ValueError:
         per_page = 0
-    if per_page not in {15, 20, 25, 50, 100}:
+    if per_page not in {15, 25, 50, 100, 200, 500}:
         per_page = max(1, int(getattr(settings, "library_items_per_page", 50) or 50))
 
     # Load all entries + narrow to the current prefix subtree (if in folder mode)
@@ -2394,6 +2734,7 @@ def library_send_to_kindle():
         "selected_format": entry.get("filetype"),
         "cover": entry.get("cover") or meta.get("cover", ""),
         "description": meta.get("description", ""),
+        "file_path": str(file_path),
     }
 
     smtp_config = settings_manager.settings.smtp
@@ -2426,6 +2767,59 @@ def library_send_to_kindle():
         flash("Failed to send book to Kindle.", "danger")
 
     return redirect(url_for("index"))
+
+@app.route("/send-goodbooks-to-kindle", methods=["POST"])
+def send_goodbooks_to_kindle():
+    """
+    Send the GoodBooks.epub file (installed in the install directory) 
+    to the specified user's Kindle address.
+    """
+    try:
+        data = request.get_json() or {}
+        user_name = data.get("user_name", "").strip()
+        
+        if not user_name:
+            return jsonify({"error": "User name required"}), 400
+        
+        # Find the user in settings
+        user = None
+        for u in settings.users:
+            if u.name == user_name:
+                user = u
+                break
+        
+        if not user:
+            return jsonify({"error": f"User '{user_name}' not found"}), 404
+        
+        if not user.kindle_email:
+            return jsonify({"error": f"User '{user_name}' has no Kindle email configured"}), 400
+        
+        # Find GoodBooks.epub in the install directory
+        import os
+        goodbooks_path = os.path.join(os.path.dirname(__file__), "GoodBooks.epub")
+        
+        if not os.path.exists(goodbooks_path):
+            return jsonify({"error": "GoodBooks.epub not found in install directory"}), 404
+        
+        # Get SMTP config and send
+        smtp_config = settings.smtp
+        if not smtp_config or not smtp_config.host:
+            return jsonify({"error": "SMTP not configured"}), 400
+        
+        result = {
+            "title": "GoodBooks",
+            "author": "GoodBooks Team",
+            "file_path": goodbooks_path,
+        }
+        
+        send_kindle_email(smtp_config, user, goodbooks_path, result)
+        
+        return jsonify({"success": True, "message": f"GoodBooks sent to {user.kindle_email}"}), 200
+        
+    except Exception as e:
+        logger.exception("Failed to send GoodBooks to Kindle")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/library/send-batch", methods=["POST"])
 def library_send_batch():
     """
@@ -2514,10 +2908,12 @@ def library_send_batch():
                 or meta.get("title")
                 or file_path.stem,
                 "author": entry.get("author") or meta.get("author") or "",
+                "cover": entry.get("cover") or meta.get("cover", ""),
                 "source": "library",
                 "download_url": "",
                 "ext": file_path.suffix.lstrip(".").lower(),
                 "description": meta.get("description", ""),
+                "file_path": str(file_path),
             }
 
             send_kindle_email(smtp_config, user, file_path, result)
@@ -2856,6 +3252,10 @@ def search():
                         str(saved_path),
                     )
                     upsert_library_metadata_for_download(saved_path, best)
+                    
+                    # Add file_path to best dict for notification email cover extraction
+                    best["file_path"] = str(saved_path)
+                    
                     oversize = is_oversize_for_kindle(saved_path)
                     if autosend and user_obj.kindle_email and settings.smtp.is_configured():
                         if oversize:
@@ -3221,6 +3621,7 @@ def history_send_to_kindle():
         "selected_format": entry.get("filetype"),
         "cover": entry.get("cover", ""),
         "description": entry.get("description", ""),
+        "file_path": str(path),
     }
 
     try:
@@ -3337,6 +3738,9 @@ def manual_download():
     )
     # Also upsert metadata for the Library/details page
     upsert_library_metadata_for_download(saved_path, best)
+    
+    # Add file_path to best dict for notification email cover extraction
+    best["file_path"] = str(saved_path)
 
     oversize = is_oversize_for_kindle(saved_path)
     sent_to_kindle = False
@@ -3360,10 +3764,11 @@ def manual_download():
 
 def refresh_library_metadata_background() -> None:
     """
-    Background task to refresh library metadata from Goodreads.
-    Uses book title for queries to fetch missing genres, ratings, and descriptions.
+    Background task to refresh library metadata from Goodreads only.
+    Uses title-based Goodreads search to fetch missing genres, ratings, descriptions, and covers.
     
     Only refreshes entries missing rich metadata (genres, rating, goodreads_link).
+    Does NOT search Anna's Archive - files already exist in library.
     """
     try:
         logger.info("Starting background library metadata refresh from Goodreads...")
@@ -3371,25 +3776,59 @@ def refresh_library_metadata_background() -> None:
         metadata = load_library_metadata()
         updated_count = 0
         
-        for entry in entries:
+        # Initialize progress tracking
+        total_entries = len(entries)
+        with metadata_progress_lock:
+            metadata_progress_state["active"] = True
+            metadata_progress_state["total_books"] = total_entries
+            metadata_progress_state["completed_books"] = 0
+            metadata_progress_state["start_time"] = time.time()
+            metadata_progress_state["percentage"] = 0
+            metadata_progress_state["type"] = "background"
+            metadata_progress_state["eta_seconds"] = None
+        
+        logger.info(f"Metadata refresh starting: {total_entries} books to check")
+        
+        for idx, entry in enumerate(entries):
             entry_id = entry.get("id")
             if not entry_id:
                 continue
             
             # Skip if metadata already rich
             if entry.get("genres") and entry.get("goodreads_link"):
+                # Update progress and continue
+                with metadata_progress_lock:
+                    metadata_progress_state["completed_books"] = idx + 1
+                    if total_entries > 0:
+                        metadata_progress_state["percentage"] = int((idx + 1) / total_entries * 100)
+                        elapsed = time.time() - metadata_progress_state["start_time"]
+                        if idx + 1 > 0:
+                            rate = elapsed / (idx + 1)
+                            remaining = rate * (total_entries - idx - 1)
+                            metadata_progress_state["eta_seconds"] = max(0, int(remaining))
                 continue
             
-            # Use title-based query to Goodreads
+            # Use Goodreads-only enrichment (no Anna's Archive search)
             try:
-                meta = ensure_library_metadata(entry)
+                meta = enrich_library_metadata_from_goodreads(entry)
                 if meta.get("genres") or meta.get("goodreads_link"):
                     updated_count += 1
                     # Save to disk
                     metadata[entry_id] = meta
             except Exception as e:
                 logger.debug("Failed to refresh metadata for %s: %s", entry_id, e)
-                continue
+            
+            # Update progress
+            with metadata_progress_lock:
+                metadata_progress_state["completed_books"] = idx + 1
+                if total_entries > 0:
+                    metadata_progress_state["percentage"] = int((idx + 1) / total_entries * 100)
+                    # Calculate ETA
+                    elapsed = time.time() - metadata_progress_state["start_time"]
+                    if idx + 1 > 0:
+                        rate = elapsed / (idx + 1)
+                        remaining = rate * (total_entries - idx - 1)
+                        metadata_progress_state["eta_seconds"] = max(0, int(remaining))
         
         # Persist all updates
         if updated_count > 0:
@@ -3399,6 +3838,7 @@ def refresh_library_metadata_background() -> None:
                     LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
                 logger.info("Background metadata refresh completed: %d entries enriched", updated_count)
                 # Clear cache so next load reads the updated file
+
                 global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
                 _LIBRARY_METADATA_CACHE = {}
                 _LIBRARY_METADATA_MTIME = 0.0
@@ -3406,6 +3846,16 @@ def refresh_library_metadata_background() -> None:
                 logger.exception("Failed to persist refreshed library metadata: %s", e)
     except Exception as e:
         logger.exception("Background metadata refresh failed: %s", e)
+    finally:
+        # Keep progress visible for 2 seconds at 100%, then clear
+        with metadata_progress_lock:
+            metadata_progress_state["percentage"] = 100
+            metadata_progress_state["eta_seconds"] = 0
+        time.sleep(2)
+        with metadata_progress_lock:
+            metadata_progress_state["active"] = False
+            metadata_progress_state["percentage"] = 0
+            metadata_progress_state["eta_seconds"] = None
 
 @app.route("/library/refresh-metadata", methods=["POST"])
 def refresh_library_metadata():
@@ -3420,6 +3870,16 @@ def refresh_library_metadata():
         return redirect(url_for("index"))
     
     try:
+        # Initialize progress state before starting thread
+        with metadata_progress_lock:
+            metadata_progress_state["active"] = True
+            metadata_progress_state["total_books"] = 0
+            metadata_progress_state["completed_books"] = 0
+            metadata_progress_state["start_time"] = time.time()
+            metadata_progress_state["percentage"] = 0
+            metadata_progress_state["type"] = "manual"
+            metadata_progress_state["eta_seconds"] = None
+        
         refresh_thread = threading.Thread(
             target=refresh_library_metadata_background,
             daemon=True,
@@ -3761,6 +4221,21 @@ def _run_feeds_background():
             logger.info("Starting download: title=%s format=%s dest_dir=%s", best.get("title"), file_format, dest_dir)
             saved_path = source.download(best, file_format, dest_dir)
             logger.info("Download succeeded: saved to %s", saved_path)
+        except ValueError as exc:
+            # Handle 429/403 errors gracefully - mark as try later, no traceback
+            error_msg = str(exc).lower()
+            if "429" in error_msg or "403" in error_msg or "too many requests" in error_msg:
+                logger.info("Download throttled (429/403): marking %s for retry later", best.get("title"))
+                local_debug.append(f"      Download throttled (too many requests): will retry later")
+                # Return 0 (failed) but without traceback - item will retry on next feed run
+                append_debug(local_debug)
+                return 0, user.name, downloads
+            else:
+                # Other download errors - log exception
+                logger.exception("Failed to download result")
+                local_debug.append(f"      Failed to download: {exc}")
+                append_debug(local_debug)
+                return 0, user.name, downloads
         except Exception as exc:
             logger.exception("Failed to download result")
             local_debug.append(f"      Failed to download: {exc}")
@@ -3849,6 +4324,7 @@ def _run_feeds_background():
                 "title": best.get("title") or item.title,
                 "author": best.get("author") or item.author,
                 "cover": best.get("cover", ""),
+                "file_path": str(saved_path),  # Include path for cover extraction
                 "description": strip_html_tags(best.get("description", "")).strip(),
                 "rating": best.get("rating") or best.get("goodreads_meta", {}).get("rating"),
                 "goodreads_meta": best.get("goodreads_meta", {}),
@@ -4002,6 +4478,21 @@ def feeds_stream():
             yield f"data: {payload}\n\n"
             time.sleep(1)
     return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+
+@app.route("/metadata/stream")
+def metadata_stream():
+    """
+    Server-Sent Events stream for live metadata refresh progress updates.
+    Emits the metadata_progress_state as JSON once per second while active.
+    """
+    def event_stream():
+        while True:
+            with metadata_progress_lock:
+                payload = json.dumps(metadata_progress_state)
+            yield f"data: {payload}\n\n"
+            time.sleep(1)
+    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+
 @app.route("/feeds/view")
 def feed_view():
     """Show a lazy, per-user view of current feed items without downloading.
@@ -4165,6 +4656,10 @@ def _run_maintenance_cycle() -> None:
                             
                             # Try to find Goodreads link
                             gr_link = best.get("goodreads_link") or best.get("goodreads_url")
+                            # Filter out study guides and audiobooks from search results
+                            if gr_link and ("study-guide" in gr_link.lower() or "audiobook" in gr_link.lower()):
+                                gr_link = None
+                            
                             if not gr_link:
                                 try:
                                     import requests
@@ -4183,10 +4678,13 @@ def _run_maintenance_cycle() -> None:
                                         from lxml import html as _html
                                         tree = _html.fromstring(resp.text)
                                         links = tree.cssselect("a.bookTitle")
-                                        if links and links[0].get("href"):
-                                            gr_link = links[0].get("href")
-                                            if gr_link and not gr_link.startswith("http"):
-                                                gr_link = "https://www.goodreads.com" + gr_link
+                                        for link in links:
+                                            href = link.get("href")
+                                            if href and "study-guide" not in href.lower() and "audiobook" not in href.lower():
+                                                gr_link = href
+                                                if gr_link and not gr_link.startswith("http"):
+                                                    gr_link = "https://www.goodreads.com" + gr_link
+                                                break
                                 except Exception:
                                     pass
                             

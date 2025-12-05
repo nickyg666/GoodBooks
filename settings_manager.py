@@ -486,6 +486,23 @@ class HistoryManager:
             for entry in self.load()
             if entry.get("user") == user and entry.get("title") == title
         )
+    
+    def has_file(self, user: str, filename_stem: str) -> bool:
+        """
+        Check if a file (by stem/basename without extension) exists in history for this user.
+        """
+        filename_lower = filename_stem.lower()
+        for entry in self.load():
+            if entry.get("user") != user:
+                continue
+            # Check if the path field contains the filename
+            path = entry.get("path", "")
+            if path:
+                from pathlib import Path
+                path_stem = Path(path).stem.lower()
+                if path_stem == filename_lower:
+                    return True
+        return False
 
     def record(
         self,

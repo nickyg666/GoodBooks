@@ -121,7 +121,7 @@ class SearchOptions:
     # - resolve_downloads=False => cheap search, no detail page scraping
     resolve_downloads: bool = True
     # Maximum number of <tr> rows to parse from AA result table
-    max_rows: int = 15
+    max_rows: int = 50
     # Optional override for result limit (default is AnnaSource.max_results)
     max_results: Optional[int] = None
 
@@ -130,11 +130,15 @@ def _normalize_string(s: str) -> str:
     """
     Normalize text for fuzzy matching:
       - lowercase
-      - strip punctuation
-      - collapse whitespace
+      - convert common punctuation/special chars to spaces (preserve word boundaries)
+      - collapse multiple spaces
+      - strip leading/trailing whitespace
     """
     s = (s or "").lower()
-    s = re.sub(r"[^\w\s]", "", s)
+    # Replace punctuation with space to preserve word boundaries
+    # Keep alphanumeric and spaces, convert everything else to space
+    s = re.sub(r"[^\w\s]", " ", s)
+    # Collapse multiple spaces into one
     s = re.sub(r"\s+", " ", s).strip()
     return s
 

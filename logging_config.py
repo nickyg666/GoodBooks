@@ -23,7 +23,7 @@ def configure_logging(base_dir: Path, level_name: Optional[str] = None) -> loggi
     info_path = base_dir / "info.log"
 
     formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        "%(asctime)s [%(levelname)s] [%(threadName)s] %(name)s: %(message)s"
     )
 
     root = logging.getLogger()

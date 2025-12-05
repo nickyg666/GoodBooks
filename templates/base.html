@@ -33,6 +33,15 @@
         <a href="{{ url_for('history') }}">History</a>
     </div>
 </nav>
+<div id="metadata-progress-container" class="metadata-progress-hidden">
+    <div class="metadata-progress-bar">
+        <div id="metadata-progress-fill" class="metadata-progress-fill" style="width: 0%"></div>
+    </div>
+    <div class="metadata-progress-text">
+        <span id="metadata-progress-label">Refreshing metadata...</span>
+        <span id="metadata-progress-eta">ETA: --</span>
+    </div>
+</div>
 <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -45,5 +54,68 @@
     {% endwith %}
     {% block content %}{% endblock %}
 </div>
+
+<script>
+// Metadata refresh progress bar via SSE
+document.addEventListener('DOMContentLoaded', function() {
+    if (!window.EventSource) return;
+    
+    const container = document.getElementById('metadata-progress-container');
+    const fill = document.getElementById('metadata-progress-fill');
+    const label = document.getElementById('metadata-progress-label');
+    const eta = document.getElementById('metadata-progress-eta');
+    
+    if (!container) return;
+    
+    const es = new EventSource("{{ url_for('metadata_stream') }}");
+    
+    es.onmessage = function(event) {
+        try {
+            const state = JSON.parse(event.data);
+            updateMetadataProgressUI(state);
+        } catch (e) {
+            console.error('Failed to parse metadata progress', e);
+        }
+    };
+    
+    es.onerror = function(event) {
+        console.error('Metadata stream error:', event);
+        es.close();
+    };
+    
+    function updateMetadataProgressUI(state) {
+        if (!state || !state.active) {
+            container.classList.add('metadata-progress-hidden');
+            return;
+        }
+        
+        container.classList.remove('metadata-progress-hidden');
+        
+        const total = state.total_books || 0;
+        const completed = state.completed_books || 0;
+        let pct = state.percentage || 0;
+        pct = Math.max(0, Math.min(100, pct));
+        
+        fill.style.width = pct + '%';
+        
+        let labelText = 'Refreshing metadata...';
+        if (total > 0) {
+            labelText = `${completed}/${total} books - ${pct}%`;
+        }
+        label.textContent = labelText;
+        
+        let etaText = 'ETA: --';
+        if (state.eta_seconds !== null && state.eta_seconds !== undefined && state.eta_seconds >= 0) {
+            if (state.eta_seconds < 60) {
+                etaText = `ETA: ${Math.ceil(state.eta_seconds)}s`;
+            } else {
+                const minutes = Math.ceil(state.eta_seconds / 60);
+                etaText = `ETA: ${minutes}m`;
+            }
+        }
+        eta.textContent = etaText;
+    }
+});
+</script>
 </body>
 </html>

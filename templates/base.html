@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (!container) return;
     
-    const es = new EventSource("{{ url_for('metadata_stream') }}");
+    const es = new EventSource("{{ url_for('metadata_progress') }}");
     
     es.onmessage = function(event) {
         try {
@@ -96,8 +96,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         container.classList.remove('metadata-progress-hidden');
         
-        const total = state.total_books || 0;
-        const completed = state.completed_books || 0;
+        const total = state.total_items || 0;
+        const completed = state.completed_items || 0;
         let pct = state.percentage || 0;
         pct = Math.max(0, Math.min(100, pct));
         

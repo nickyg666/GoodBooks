@@ -1,6 +1,8 @@
 # GoodBooks: Your Personal Ebook Library & Kindle Delivery System
 
 ## Overview
+# click image for video preview! May be unavailable - is downloadable from main branch!
+[![latest preview](https://raw.githubusercontent.com/nickyg666/GoodBooks/main/goodbooks.jpg)](https://x0.at/wIIA.mp4)
 
 **GoodBooks** is a sophisticated, self-hosted solution that transforms Goodreads reading lists into an automated personal ebook library with direct Kindle delivery. It combines RSS feed parsing, advanced search (via Anna's Archive), batch downloading, smart metadata enrichment, and seamless Kindle integration into a unified web interface.
 
@@ -474,4 +476,5 @@ GoodBooks combines:
 ---
 
 *Happy reading!* 📚🎉
+
 

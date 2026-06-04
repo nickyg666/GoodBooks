@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="max-width: 1400px; margin: 0 auto; padding: 1rem;">
+    <a href="{{ url_for('index') }}" class="secondary" style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); text-decoration: none; margin-bottom: 1rem; display: inline-block;">
+        ← Back to Library
+    </a>
+    
+    <h1>{{ list_name }}</h1>
+    <p class="muted">{{ total_books }} books available. Select books and add to your feeds.</p>
+    
+    {% if books %}
+    <div style="display: flex; gap: 1rem; margin: 1.5rem 0;">
+        <button type="button" class="secondary" id="select-all-btn" onclick="selectAllBooks()">
+            ☐ Select All
+        </button>
+        <button type="button" class="secondary" id="deselect-all-btn" onclick="deselectAllBooks()" style="display: none;">
+            ☑ Deselect All
+        </button>
+        <button type="button" class="primary" id="add-btn" onclick="openAddToFeedsModal()" style="margin-left: auto;">
+            Add Selected to Feeds
+        </button>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+        {% for book in books %}
+        <div class="card" style="padding: 1rem; text-align: center; cursor: pointer; position: relative;" onclick="toggleBookSelection('{{ book.title | replace(\"'\", \"\\\\\") }}', this)">
+            <input type="checkbox" class="book-checkbox" data-book="{{ book.title }}" style="position: absolute; top: 1rem; left: 1rem; cursor: pointer; zoom: 1.5;" onchange="updateSelectionButtons()">
+            
+            {% if book.cover %}
+            <img src="{{ book.cover }}" alt="{{ book.title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 6px; margin-bottom: 1rem;">
+            {% else %}
+            <div style="width: 100%; height: 200px; background: var(--surface); border-radius: 6px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--text-secondary);">
+                No Cover
+            </div>
+            {% endif %}
+            
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; line-height: 1.3;">{{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}</h3>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">{{ book.author }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 2rem;">
+        <p class="muted">No books found in this list.</p>
+    </div>
+    {% endif %}
+</div>
+
+{# Add to Feeds Modal #}
+<div id="add-feeds-modal" class="modal hidden">
+    <div class="card" style="max-width: 500px; max-height: 80vh; margin: auto; padding: 2rem; overflow: auto;">
+        <h2>Add Books to Feeds</h2>
+        
+        <form id="add-feeds-form" onsubmit="submitAddToFeeds(event)">
+            <label>
+                <span>Select User</span>
+                <select name="user_name" required style="width: 100%;">
+                    <option value="">-- Choose User --</option>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            
+            <p class="muted" style="font-size: 0.85rem; margin-top: 1rem;">
+                <span id="selected-count">0</span> books selected
+            </p>
+            
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="primary">Add to Feeds</button>
+                <button type="button" class="secondary" onclick="closeAddToFeedsModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleBookSelection(title, element) {
+    const checkbox = element.querySelector('.book-checkbox');
+    checkbox.checked = !checkbox.checked;
+    updateSelectionButtons();
+}
+
+function selectAllBooks() {
+    document.querySelectorAll('.book-checkbox').forEach(cb => cb.checked = true);
+    updateSelectionButtons();
+}
+
+function deselectAllBooks() {
+    document.querySelectorAll('.book-checkbox').forEach(cb => cb.checked = false);
+    updateSelectionButtons();
+}
+
+function updateSelectionButtons() {
+    const selected = document.querySelectorAll('.book-checkbox:checked').length;
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const deselectAllBtn = document.getElementById('deselect-all-btn');
+    const addBtn = document.getElementById('add-btn');
+    
+    if (selected > 0) {
+        selectAllBtn.style.display = 'none';
+        deselectAllBtn.style.display = 'inline-block';
+        addBtn.disabled = false;
+    } else {
+        selectAllBtn.style.display = 'inline-block';
+        deselectAllBtn.style.display = 'none';
+        addBtn.disabled = true;
+    }
+}
+
+function openAddToFeedsModal() {
+    const selected = document.querySelectorAll('.book-checkbox:checked').length;
+    if (selected === 0) {
+        alert('Please select at least one book');
+        return;
+    }
+    document.getElementById('selected-count').textContent = selected;
+    document.getElementById('add-feeds-modal').classList.remove('hidden');
+}
+
+function closeAddToFeedsModal() {
+    document.getElementById('add-feeds-modal').classList.add('hidden');
+}
+
+async function submitAddToFeeds(event) {
+    event.preventDefault();
+    
+    const userSelect = document.querySelector('select[name="user_name"]');
+    const userName = userSelect.value;
+    
+    if (!userName) {
+        alert('Please select a user');
+        return;
+    }
+    
+    const selectedBooks = Array.from(document.querySelectorAll('.book-checkbox:checked'))
+        .map(cb => cb.dataset.book);
+    
+    if (selectedBooks.length === 0) {
+        alert('Please select at least one book');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/list/{{ list_id }}/add-to-feeds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_name: userName,
+                books: selectedBooks.map(title => ({ title }))
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✓ ${data.message}`);
+            closeAddToFeedsModal();
+            deselectAllBooks();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Failed to add books: ${error.message}`);
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('add-feeds-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAddToFeedsModal();
+    }
+});
+
+// Initialize
+updateSelectionButtons();
+</script>
+{% endblock %}

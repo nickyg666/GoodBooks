@@ -1,0 +1,8 @@
+Flask
+feedparser
+beautifulsoup4
+requests
+lxml
+playwright
+playwright-stealth
+Pillow

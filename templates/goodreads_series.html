@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 1rem;">
+    <a href="javascript:history.back()" class="secondary" style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); text-decoration: none; margin-bottom: 1rem; display: inline-block;">
+        ← Back
+    </a>
+    
+    <h1>{{ series.name }}</h1>
+    <p class="muted">Found {{ series.total }} books in this series. Click "Add as Feed" to add all books to a user.</p>
+    
+    {% if series.total > 0 %}
+    <div style="display: grid; gap: 1rem; margin-top: 2rem;">
+        {% for book in series.books %}
+        <div class="card" style="padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.25rem 0;">{{ book.title }}</h4>
+                {% if book.url %}
+                <a href="{{ book.url }}" target="_blank" style="font-size: 0.9rem; color: #0066cc; text-decoration: none;">
+                    View on Goodreads →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div style="margin-top: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 6px; text-align: center;">
+        <button type="button" onclick="openAddFeedModal('{{ series.id }}', '{{ series.name }}')" style="padding: 0.75rem 1.5rem; border-radius: 6px; border: none; cursor: pointer; background: #0066cc; color: white; font-weight: 600; font-size: 1rem;">
+            Add Entire Series as Feed
+        </button>
+    </div>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 2rem;">
+        <p class="muted">No books found in this series.</p>
+    </div>
+    {% endif %}
+</div>
+
+{# Add Feed Modal #}
+<div id="add-feed-modal" class="modal hidden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+    <div class="card" style="padding: 2rem; width: 400px; max-height: 400px; overflow-y: auto;">
+        <h2 style="margin-top: 0;">Add Goodreads Series as Feed</h2>
+        
+        <form id="add-feed-form" onsubmit="submitAddFeed(event)">
+            <input type="hidden" name="series_id" id="modal-series-id">
+            <input type="hidden" name="series_name" id="modal-series-name">
+            
+            <div style="margin-bottom: 1rem;">
+                <label for="modal-user-select" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
+                    Select User
+                </label>
+                <!-- Debug: {{ settings.users|length if settings and settings.users else 0 }} users available -->
+                {% if settings and settings.users %}
+                <select id="modal-user-select" name="user_name" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: white;">
+                    <option value="">-- Choose User --</option>
+                    {% for user in settings.users %}
+                    <option value="{{ user.name }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <div style="padding: 1rem; background: #ffebee; border: 1px solid #ef5350; border-radius: 4px; color: #c62828;">
+                    No users configured. Please add users in settings first.
+                </div>
+                {% endif %}
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="send_to_kindle" value="1">
+                    <span>Auto-send to Kindle</span>
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" {% if not settings or not settings.users %}disabled{% endif %} style="padding: 0.5rem 1.5rem; border-radius: 4px; border: none; cursor: pointer; background: #0066cc; color: white; font-weight: 600; {% if not settings or not settings.users %}opacity: 0.5; cursor: not-allowed;{% endif %}">
+                    Add Feed
+                </button>
+                <button type="button" onclick="closeAddFeedModal()" style="padding: 0.5rem 1.5rem; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; background: white; color: #333; font-weight: 600;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const modal = document.getElementById('add-feed-modal');
+
+function openAddFeedModal(seriesId, seriesName) {
+    document.getElementById('modal-series-id').value = seriesId;
+    document.getElementById('modal-series-name').value = seriesName;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+
+function closeAddFeedModal() {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+}
+
+async function submitAddFeed(event) {
+    event.preventDefault();
+    
+    const seriesId = document.getElementById('modal-series-id').value;
+    const seriesName = document.getElementById('modal-series-name').value;
+    const userName = document.querySelector('select[name="user_name"]').value;
+    const sendToKindle = document.querySelector('input[name="send_to_kindle"]').checked;
+    
+    try {
+        const response = await fetch(`/goodreads/series/${seriesId}/add-feed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_name: userName,
+                send_to_kindle: sendToKindle,
+                series_name: seriesName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✓ Added ${seriesName} series as feed for ${userName}\nFolder: ${data.folder}`);
+            closeAddFeedModal();
+            setTimeout(() => window.location.href = '{{ url_for("index") }}', 1000);
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Failed to add feed: ${error.message}`);
+    }
+}
+
+// Close modal when clicking outside (on the backdrop, not the card)
+modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+        closeAddFeedModal();
+    }
+});
+</script>
+{% endblock %}

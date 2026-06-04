@@ -1,0 +1,51 @@
+/* ============================================================================
+   HIGH-CONTRAST THEME
+   WCAG AAA-grade contrast. Pure black on white, thick borders.
+   ============================================================================ */
+
+:root,
+[data-theme="high-contrast"] {
+    --primary: #0033cc;
+    --primary-light: #c4d0ff;
+    --primary-dark: #001f80;
+    --secondary: #5a008a;
+    --success: #006400;
+    --warning: #8a6d00;
+    --danger: #b00020;
+    --text-dark: #000000;
+    --text-light: #1a1a1a;
+    --bg-light: #ffffff;
+    --bg-white: #ffffff;
+    --border: #000000;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-xl: none;
+}
+
+@media (prefers-contrast: more) {
+    :root { --primary: #0033cc; --text-dark: #000; --bg-light: #fff; --border: #000; }
+}
+
+[data-theme="high-contrast"] html,
+[data-theme="high-contrast"] body { background-color: var(--bg-light); color: var(--text-dark); }
+[data-theme="high-contrast"] nav,
+[data-theme="high-contrast"] .navbar,
+[data-theme="high-contrast"] .card,
+[data-theme="high-contrast"] .panel,
+[data-theme="high-contrast"] .settings-card,
+[data-theme="high-contrast"] .modal-content,
+[data-theme="high-contrast"] table,
+[data-theme="high-contrast"] .form-control,
+[data-theme="high-contrast"] input,
+[data-theme="high-contrast"] select,
+[data-theme="high-contrast"] textarea { background: var(--bg-white); color: var(--text-dark); border: 2px solid var(--border); box-shadow: none; }
+[data-theme="high-contrast"] a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
+[data-theme="high-contrast"] a:hover { color: var(--primary-dark); }
+[data-theme="high-contrast"] .btn-primary,
+[data-theme="high-contrast"] button.primary,
+[data-theme="high-contrast"] .primary { background: var(--primary); color: #ffffff; border: 2px solid var(--border); font-weight: 700; }
+[data-theme="high-contrast"] :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+[data-theme="high-contrast"] input:focus,
+[data-theme="high-contrast"] select:focus,
+[data-theme="high-contrast"] textarea:focus { outline: 3px solid var(--primary); outline-offset: 1px; }

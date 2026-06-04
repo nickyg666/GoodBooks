@@ -1,0 +1,109 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║              EMAIL IMAGE DEBUGGING GUIDE - QUICK START                     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+WHAT THIS DOES:
+  Captures the raw email you receive and shows you exactly:
+  ✓ Whether images are embedded (multipart/related structure)
+  ✓ What Content-ID values are in the MIME parts
+  ✓ What img src= attributes are in the HTML
+  ✓ If they match (that's where the problem is)
+  ✓ Full raw MIME structure for debugging
+
+QUICK STEPS:
+
+1. Start the debugger:
+   $ cd /usr/local/bin/GoodBooks
+   $ python3 email_debugger.py
+
+2. It will ask for:
+   - IMAP server: imap.zoho.com (for Zoho)
+   - Email: your@email.com
+   - Password: your app password (NOT your main password for security)
+
+3. Hit ENTER and let it wait
+
+4. In another terminal, trigger a notification email:
+   $ curl -X POST http://localhost:5000/search?q=test&autodownload=1&user=YourUserName
+   
+   OR just download a book manually through the UI
+   (This will trigger a notification email)
+
+5. Go back to the debugger terminal
+   
+6. It will show you:
+   - Email structure
+   - Image tags in HTML
+   - MIME parts with Content-IDs
+   - Full raw email source
+   - Saves email to: test_email.eml
+
+WHAT TO LOOK FOR:
+
+✓ GOOD (images should work):
+  Part 0: text/html
+    Content-ID: <cover_123>
+    HTML contains: <img src="cid:cover_123" />
+  
+  Part 1: image/jpeg
+    Content-ID: <cover_123>
+    Size: 12345 bytes
+
+✗ BAD (images won't show):
+  Part 0: text/html
+    Content-ID: NONE
+    HTML contains: <img src="cid:cover_123" />
+  
+  Part 1: image/jpeg
+    Content-ID: NONE
+    (or CID doesn't match HTML src)
+
+HOW TO INTERPRET RESULTS:
+
+1. "Message is not multipart - no embedded images possible"
+   → Images aren't being attached at all
+   → Problem in app.py add_related() call
+
+2. Image parts exist but Content-ID is NONE
+   → add_related() isn't setting CID properly
+   → Python EmailMessage bug or version issue
+
+3. Content-IDs exist but don't match HTML img src
+   → CID format mismatch (brackets issue)
+   → HTML has "cid:cover_123" but MIME has "<other_id>"
+
+4. CIDs match perfectly
+   → This is correct! Issue is on EMAIL CLIENT side
+   → Some email clients (like Zoho) block images by default
+   → User needs to manually enable images
+
+SAVING THE EMAIL FILE:
+
+The debugger saves test_email.eml automatically.
+
+To view it in different email clients:
+- Gmail: Forward the .eml file to yourself
+- Outlook: File → Open → Outlook Data Files
+- Apple Mail: Drag .eml onto Mail.app
+- Thunderbird: File → Import
+- Text editor: View raw MIME structure
+
+TO KEEP THE LISTENER RUNNING:
+
+The debugger only captures ONE email. To capture multiple:
+  while true; do python3 email_debugger.py; done
+
+(Modify script to remove "input()" prompts if doing this)
+
+═════════════════════════════════════════════════════════════════════════════
+
+ZOHO SPECIFIC NOTE:
+
+Zoho's web interface sometimes blocks images by default.
+Even if MIME is perfect, you may need to:
+  1. Click the shield icon in email
+  2. Select "Always show images from this sender"
+  3. Or check Settings → Preferences → Images
+
+Same issue on Zoho Android app - images auto-blocked.
+

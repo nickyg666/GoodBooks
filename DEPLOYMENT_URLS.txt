@@ -1,0 +1,75 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║               GoodBooks Deployment Package URLs                           ║
+║               Generated: 2025-12-13 19:54:53 UTC                          ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+📦 PACKAGE URLs:
+────────────────────────────────────────────────────────────────────────────
+
+GoodBooks Slim Package (3.2MB):
+  https://x0.at/OBRs.zip
+
+Installer Script:
+  https://x0.at/s6Zi.sh
+
+Phil File (contains installer link):
+  https://x0.at/E4Zt.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 INSTALLATION COMMANDS:
+
+Quick Install (One Command):
+────────────────────────────────────────────────────────────────────────────
+bash <(curl -s https://x0.at/s6Zi.sh)
+
+From Phil File:
+────────────────────────────────────────────────────────────────────────────
+bash <(curl -s "$(curl -s https://x0.at/E4Zt.txt)")
+
+Get Phil Content:
+────────────────────────────────────────────────────────────────────────────
+curl -s https://x0.at/E4Zt.txt
+
+Manual Download:
+────────────────────────────────────────────────────────────────────────────
+curl -s https://x0.at/s6Zi.sh -o goodbooks-installer.sh
+chmod +x goodbooks-installer.sh
+./goodbooks-installer.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 CURL COMMAND TO PULL PHIL LINK:
+
+Get the installer link from phil file:
+────────────────────────────────────────────────────────────────────────────
+curl -s https://x0.at/E4Zt.txt
+
+Will return:
+────────────────────────────────────────────────────────────────────────────
+https://x0.at/s6Zi.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 RECOMMENDED INSTALLATION:
+
+Copy and run this single command:
+
+bash <(curl -s "$(curl -s https://x0.at/E4Zt.txt)")
+
+This will:
+1. curl https://x0.at/E4Zt.txt          → Gets installer URL
+2. curl https://x0.at/s6Zi.sh          → Downloads installer
+3. bash                                   → Executes installer
+4. Installer downloads https://x0.at/OBRs.zip
+5. Extracts and runs full installer
+6. Starts GoodBooks service
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ URLs verified and active
+✅ Ready for distribution
+✅ All files accessible
+
+Generated: 2025-12-13 19:54:53 UTC
+

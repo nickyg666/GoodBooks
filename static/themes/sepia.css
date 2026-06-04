@@ -1,0 +1,45 @@
+/* ============================================================================
+   SEPIA / WARM THEME
+   Soft warm light theme for long reading sessions.
+   ============================================================================ */
+
+:root,
+[data-theme="sepia"] {
+    --primary: #b06a2b;
+    --primary-light: #e6c79c;
+    --primary-dark: #8e541f;
+    --secondary: #8a6a2c;
+    --success: #4f7a3a;
+    --warning: #b58a2b;
+    --danger: #a8462c;
+    --text-dark: #3b2f1e;
+    --text-light: #8a7755;
+    --bg-light: #f4ecd8;
+    --bg-white: #fbf3df;
+    --border: #d6c39a;
+    --shadow-sm: 0 1px 2px 0 rgba(80, 60, 30, 0.10);
+    --shadow-md: 0 4px 6px -1px rgba(80, 60, 30, 0.12);
+    --shadow-lg: 0 10px 15px -3px rgba(80, 60, 30, 0.14);
+    --shadow-xl: 0 20px 25px -5px rgba(80, 60, 30, 0.16);
+}
+
+[data-theme="sepia"] html,
+[data-theme="sepia"] body { background-color: var(--bg-light); color: var(--text-dark); font-feature-settings: "kern", "liga", "onum"; }
+[data-theme="sepia"] nav,
+[data-theme="sepia"] .navbar,
+[data-theme="sepia"] .card,
+[data-theme="sepia"] .panel,
+[data-theme="sepia"] .settings-card,
+[data-theme="sepia"] .modal-content,
+[data-theme="sepia"] table,
+[data-theme="sepia"] .form-control,
+[data-theme="sepia"] input,
+[data-theme="sepia"] select,
+[data-theme="sepia"] textarea { background: var(--bg-white); color: var(--text-dark); border-color: var(--border); }
+[data-theme="sepia"] a { color: var(--primary-dark); }
+[data-theme="sepia"] a:hover { color: var(--primary); }
+[data-theme="sepia"] .btn-primary,
+[data-theme="sepia"] button.primary,
+[data-theme="sepia"] .primary { background: var(--primary); color: #fbf3df; border-color: var(--primary); }
+[data-theme="sepia"] .btn-primary:hover,
+[data-theme="sepia"] button.primary:hover { background: var(--primary-dark); }

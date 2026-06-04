@@ -1,0 +1,655 @@
+/* Desktop Polished Stylesheet - Light Theme with Vibrant Colors */
+/* This CSS is loaded for non-Kindle devices */
+
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --primary-light: #3b82f6;
+    --secondary: #7c3aed;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #06b6d4;
+    --background: #f8fafc;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --overlay: rgba(15, 23, 42, 0.5);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--background);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==================== NAVBAR ==================== */
+nav {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.navbar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav .navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+    margin-right: 2rem;
+    letter-spacing: -0.5px;
+}
+
+nav a, nav button {
+    font-size: 0.95rem;
+    padding: 0.6rem 1.2rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0;
+    display: inline-block;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+nav a:hover, nav button:hover {
+    background: var(--primary-light);
+    color: white;
+    transform: translateY(-2px);
+}
+
+nav a:active, nav button:active {
+    background: var(--primary-dark);
+}
+
+/* ==================== MAIN CONTENT ==================== */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+.content-wrapper {
+    width: 100%;
+}
+
+/* ==================== PROGRESS BAR ==================== */
+#progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border: none;
+    margin: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 200;
+    border-radius: 0;
+}
+
+#progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary-light));
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+}
+
+#progress-text {
+    font-size: 0.85rem;
+    text-align: center;
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+/* ==================== METADATA PROGRESS BAR ==================== */
+.metadata-progress-container {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    max-height: 100px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.metadata-progress-container.hidden {
+    max-height: 0;
+    padding: 0;
+    border: none;
+}
+
+.metadata-progress-container:not(.active) {
+    max-height: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+}
+
+.metadata-progress-container.collapsed {
+    max-height: 40px;
+}
+
+.metadata-progress-bar {
+    width: 120px;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.metadata-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary-light));
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+}
+
+#metadata-progress-percent {
+    min-width: 35px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+#metadata-progress-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    min-width: 70px;
+    color: var(--text-secondary);
+}
+
+#metadata-progress-book {
+    font-size: 0.75rem;
+    flex: 1;
+    min-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--primary);
+    max-width: 200px;
+}
+
+#metadata-progress-step {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    min-width: 70px;
+}
+
+#metadata-progress-eta {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    font-weight: 600;
+    min-width: 50px;
+    color: var(--text-secondary);
+}
+
+.metadata-progress-toggle {
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.metadata-progress-toggle:hover {
+    color: var(--primary);
+}
+
+/* ==================== CARDS ==================== */
+.card, .book-item, .library-item {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.card:hover, .book-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    border-color: var(--primary-light);
+}
+
+.card-header, .book-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.75rem;
+}
+
+.card-body {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* Settings page card styling */
+.card h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.card p.muted {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* ==================== BUTTONS ==================== */
+button, .btn, input[type="button"], input[type="submit"] {
+    font-size: 0.95rem;
+    padding: 0.65rem 1.5rem;
+    margin: 0.5rem 0.5rem 0.5rem 0;
+    border: none;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+button:hover, .btn:hover, input[type="button"]:hover, input[type="submit"]:hover {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transform: translateY(-2px);
+}
+
+button:active, .btn:active, input[type="button"]:active, input[type="submit"]:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--secondary), #6d28d9);
+    box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+}
+
+.btn-secondary:hover {
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success), #059669);
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+/* ==================== FORMS ==================== */
+input, select, textarea {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    width: 100%;
+    max-width: 300px;
+    border-radius: 8px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+input::placeholder {
+    color: var(--text-muted);
+}
+
+label {
+    font-size: 0.95rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* ==================== LISTS ==================== */
+ul, ol {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+/* ==================== LINKS ==================== */
+a {
+    color: var(--primary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* ==================== TABLES ==================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: var(--surface);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+th {
+    background: var(--primary-light);
+    color: white;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border: none;
+}
+
+td {
+    border: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+}
+
+tr:hover {
+    background: #f0f9ff;
+}
+
+/* ==================== LIBRARY/SEARCH ==================== */
+.library-grid, .search-results, .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.book-card, .book-item {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.book-card:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    border-color: var(--primary-light);
+}
+
+.book-cover {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    background: linear-gradient(135deg, var(--border), #cbd5e1);
+}
+
+.book-info {
+    padding: 1rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.book-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    border: none;
+    padding: 0;
+    color: var(--text-primary);
+}
+
+.book-author {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.book-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    flex-grow: 1;
+}
+
+.book-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.book-actions button {
+    flex: 1;
+    min-width: 100px;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    margin: 0;
+}
+
+/* ==================== MODALS ==================== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--overlay);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal.show {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.modal-body {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.modal-footer {
+    border-top: 2px solid var(--border);
+    padding-top: 1.5rem;
+    text-align: right;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* ==================== UTILITIES ==================== */
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--primary-light);
+    color: white;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    nav {
+        padding: 0.75rem 0;
+    }
+    
+    .navbar-container {
+        padding: 0 1rem;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    nav .navbar-brand {
+        margin-right: 0;
+    }
+    
+    nav a, nav button {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .library-grid, .results-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .modal-content {
+        padding: 1.5rem;
+        max-width: 95%;
+    }
+}
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+    nav {
+        display: none;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+}

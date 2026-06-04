@@ -1,0 +1,50 @@
+/* ============================================================================
+   DARK THEME
+   Override the variables desktop.css / kindle.css actually use. Applied
+   when the user picks "dark" via /static/theme-picker.js which sets
+   <html data-theme="dark">.
+   ============================================================================ */
+
+:root,
+[data-theme="dark"] {
+    --primary: #60a5fa;
+    --primary-light: #1e3a8a;
+    --primary-dark: #93c5fd;
+    --secondary: #a78bfa;
+    --success: #22c55e;
+    --warning: #facc15;
+    --danger: #f87171;
+    --text-dark: #e6e8eb;
+    --text-light: #8a93a3;
+    --bg-light: #0f1115;
+    --bg-white: #1a1d24;
+    --border: #2a2f3a;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] html,
+[data-theme="dark"] body { background-color: var(--bg-light); color: var(--text-dark); }
+[data-theme="dark"] nav,
+[data-theme="dark"] .navbar,
+[data-theme="dark"] .card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .settings-card,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] table,
+[data-theme="dark"] .form-control,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea { background: var(--bg-white); color: var(--text-dark); border-color: var(--border); }
+[data-theme="dark"] a { color: var(--primary); }
+[data-theme="dark"] a:hover { color: var(--primary-dark); }
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] button.primary,
+[data-theme="dark"] .primary { background: var(--primary); color: #0b1220; border-color: var(--primary); }
+[data-theme="dark"] .btn-primary:hover,
+[data-theme="dark"] button.primary:hover { background: var(--primary-dark); color: #0b1220; }
+[data-theme="dark"] ::placeholder { color: var(--text-light); }
+[data-theme="dark"] code,
+[data-theme="dark"] pre { background: #0b0d12; color: var(--text-dark); }

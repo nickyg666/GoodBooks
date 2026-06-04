@@ -1,0 +1,202 @@
+================================================================================
+GOODBOOKS AUTHOR FIELD ANALYSIS - EXECUTIVE SUMMARY
+================================================================================
+
+CRITICAL FINDING:
+Author field normalization is FATALLY INCONSISTENT across the codebase.
+Different normalization methods are applied in different places, causing the
+same book with the same author to be treated as NEW even when already in library.
+
+================================================================================
+KEY STATISTICS
+================================================================================
+
+Total files analyzed:           5 Python files
+Total author-related locations: 100+ usage points
+Normalization functions found:  11 different methods
+Functions that use cleanup_author(): 3 locations only
+Functions that DON'T use cleanup_author(): 8+ locations
+
+Critical severity issues:       5
+High severity issues:           6
+Medium severity issues:          4
+
+Most problematic lines:
+  - app.py:6033 (library lookup cache construction)
+  - app.py:6236 (fast path check) ← MISMATCHES with line 6033
+  - app.py:2867 (metadata storage)
+  - app.py:6275 (query building)
+
+================================================================================
+THE CORE PROBLEM: Lines 6033 vs 6236
+================================================================================
+
+LIBRARY LOOKUP BUILT (line 6033):
+  re.sub(r'[;]+', ' ', author_full)
+  Input:  "Freida; Mc; Fadden"
+  Output: "freida mc fadden" (spaces everywhere)
+
+ITEM MATCHED (line 6236):
+  cleanup_author(item.author)
+  Input:  "Freida; Mc; Fadden"
+  Output: "freida mcfadden" (space before "Mc" removed by cleanup_author)
+
+RESULT: MISMATCH!
+  lookup_key = ("title", "freida mcfadden")
+  library_lookup contains: ("title", "freida mc fadden")
+  Item marked as NEW even though it's in library!
+
+================================================================================
+ALL 11 AUTHOR NORMALIZATION METHODS
+================================================================================
+
+1. re.sub(r'[;]+', ' ') - app.py:6033 (library lookup)
+   - Simple semicolon → space replacement
+   - Doesn't handle name prefixes
+   
+2. cleanup_author() - settings_manager.py:557 (BEST METHOD)
+   - Handles "Mc", "Van", "de" prefixes specially
+   - Smart spacing and case handling
+   - Only used in 3 places!
+   
+3. _clean_rss_author() - parser_engine.py:47
+   - Removes publishers, ISBNs
+   - Handles "Last; First" format
+   - But output still has semicolons/commas
+   
+4. _deduplicate_authors() - parser_engine.py:218
+   - Expands CamelCase
+   - Splits on [;&\[\]], rejoins with "; "
+   - Used 4 times instead of cleanup_author()
+   
+5. tokens() function - app.py:500
+   - Splits into word tokens ({"word1", "word2"})
+   - Used for fuzzy matching in select_best_result()
+   - Different from string comparison
+   
+6. sanitize_author() - app.py:680
+   - Custom deduplication logic
+   - Not used consistently
+   
+7. _normalize_sort_key() - app.py:2220
+   - Just casefold(), no author normalization
+   
+8-11. Other inconsistent methods scattered throughout
+
+================================================================================
+WHERE cleanup_author() IS USED (GOOD):
+================================================================================
+- Line 6236: Fast path library lookup check ✓
+- Line 664: History storage ✓
+- Line 705: Kindle send tracking ✓
+
+WHERE cleanup_author() SHOULD BE USED BUT ISN'T (BAD):
+================================================================================
+- Line 6033: Library lookup cache construction ✗
+- Line 6275: Query building ✗
+- Line 2867: Metadata storage ✗
+- Line 3202: Metadata enrichment ✗
+- Line 2342-2382: Duplicate detection ✗
+- Line 265, 274: Goodreads URL cache key ✗
+- Line 5896-5927: Filename author extraction ✗
+
+================================================================================
+SPECIFIC FAILURE SCENARIOS
+================================================================================
+
+Scenario 1: "Mc" Prefix Problem
+  Library:  "Freida; Mc; Fadden" → stored as-is
+  Scan:     "freida mc fadden" (regex at line 6033)
+  Feed:     "Freida; Mc; Fadden"
+  Match:    "freida mcfadden" (cleanup_author at line 6236)
+  Result:   DUPLICATE DOWNLOAD!
+
+Scenario 2: Comma vs Semicolon
+  Library:  "Smith, John" → stays "smith, john"
+  Feed:     "Smith; John"
+  Match:    "smith john" (cleanup_author)
+  Result:   DUPLICATE DOWNLOAD!
+
+Scenario 3: Author Order Variation
+  Library:  "John Smith; Jane Doe" → "john smith jane doe"
+  Feed:     "Jane Doe; John Smith"
+  Match:    "jane doe john smith" (different order)
+  Result:   DUPLICATE DOWNLOAD!
+
+================================================================================
+IMPACT ASSESSMENT
+================================================================================
+
+Books affected:
+- Any book with "Mc", "Mac", "Van", "von", "de", "da", "du", "des", "la", "le"
+- Any book with multiple authors (order variation)
+- Any book with comma-separated vs semicolon-separated authors
+- Any imported books with mixed author formats
+
+Downloads wasted:
+- Users get DUPLICATES even when book is already in library
+- Same book downloaded multiple times (different author formats)
+- Bandwidth wasted
+- User confusion
+
+Data quality:
+- library_metadata.json has inconsistent author formats
+- history.json has different format than library
+- library_lookup cache doesn't match actual lookups
+
+================================================================================
+RECOMMENDED FIXES (PRIORITY ORDER)
+================================================================================
+
+CRITICAL (Breaking):
+1. Line 6033: Replace regex with cleanup_author()
+2. Line 6236: Ensure uses cleanup_author() (currently correct)
+3. Line 6275: Add cleanup_author() to query building
+4. Line 2867: Replace _deduplicate_authors() with cleanup_author()
+
+HIGH:
+5. Line 3202: Replace _deduplicate_authors() with cleanup_author()
+6. Line 6364-6365: Pre-clean author before select_best_result()
+7. Line 265, 274: Normalize in Goodreads cache key
+8. Line 2342-2382: Add cleanup_author() to dedup check
+
+MEDIUM:
+9. Remove duplicate _LIBRARY_LOOKUP_CACHE declarations (lines 59, 1389)
+10. Consolidate to ONE author normalization function
+11. Add regression tests for author format variations
+
+================================================================================
+DETAILED REPORTS GENERATED
+================================================================================
+
+1. AUTHOR_FIELD_INCONSISTENCY_REPORT.md (614 lines)
+   - Complete analysis with code snippets
+   - All 10 inconsistency sections detailed
+   - Data flow analysis
+
+2. AUTHOR_NORMALIZATION_QUICK_REFERENCE.md
+   - Quick lookup table
+   - Mismatch examples
+   - Test cases
+   - Root cause analysis
+
+================================================================================
+CONCLUSION
+================================================================================
+
+The author field normalization chaos causes real, observable bugs:
+- Same book treated as new even when in library
+- Duplicate downloads wasted
+- Data integrity issues
+
+The fix is straightforward:
+- Use cleanup_author() EVERYWHERE
+- Replace all 8+ inconsistent methods with 1 consistent one
+- Test thoroughly with author format variations
+
+This is NOT a cosmetic issue - it's a data integrity bug that affects
+core functionality (deduplication against library).
+
+Priority: CRITICAL - Should be fixed before production use.
+
+================================================================================

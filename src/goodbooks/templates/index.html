@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Search Anna's Archive</h1>
+    <form method="get" class="form-grid">
+        <label>
+            <span>Query</span>
+            <input type="text" name="q" value="{{ query }}" placeholder="Title, author, keyword" required>
+        </label>
+        <label>
+            <span>Language</span>
+            <select name="lang">
+                {% for lang in ['en','es','fr','de','it'] %}
+                <option value="{{ lang }}" {% if lang == selected_language %}selected{% endif %}>{{ lang|upper }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>User</span>
+            <select name="user">
+                <option value="">-- Select user --</option>
+                {% for user in users %}
+                <option value="{{ user.name }}" {% if user.name == user_id %}selected{% endif %}>{{ user.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="autodownload" value="1" {% if autodownload %}checked{% endif %}>
+            <span>Autodownload</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="autosend" value="1" {% if autosend %}checked{% endif %}>
+            <span>Auto-send to Kindle</span>
+        </label>
+        <button type="submit" class="primary">Search</button>
+        <button type="reset" class="secondary">Clear</button>
+    </form>
+</div>
+
+{% if results %}
+<div class="card">
+    <h2>Results</h2>
+    <div class="grid results-grid">
+        {% for result in results %}
+        <div class="result" data-md5="{{ result.md5 or result.id }}">
+            <div class="result-cover">
+                {% if result.cover %}
+                <img src="{{ result.cover }}" alt="{{ result.title }}" {% if not is_kindle %}loading="lazy"{% endif %} onerror="this.style.display='none'" />
+                {% else %}
+                <div style="width: 100%; min-height: 200px; background: #e5e7eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 0.75rem; font-size: 0.9rem;">
+                    📚
+                </div>
+                {% endif %}
+            </div>
+            <div class="meta">
+                <h3 class="result-title">{{ result.title or result.id[:16] }}</h3>
+                {% if result.author %}
+                <p class="muted result-author">by {{ result.author }}</p>
+                {% else %}
+                <p class="muted result-author" style="opacity: 0.5;">by...</p>
+                {% endif %}
+            </div>
+            
+            <!-- Download to Queue button -->
+            <div style="margin-top: 0.75rem;">
+                {% if result.md5 or result.id %}
+                <button type="button" class="chip" data-action="queue-download" data-md5="{{ result.md5 or result.id }}" data-title="{{ result.title or result.id[:16] }}" style="background: #10b981; color: white; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.4rem 0.8rem; width: 100%;">⬇️ Add to Queue</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for(
+            'search',
+            q=query,
+            user=user_id or none,
+            lang=selected_language,
+            page=page-1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none
+        ) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for(
+            'search',
+            q=query,
+            user=user_id or none,
+            lang=selected_language,
+            page=page+1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none
+        ) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if debug_log %}
+<div class="card">
+    <h2>Debug</h2>
+    <pre class="debug">{{ debug_log|join('\n') }}</pre>
+</div>
+{% endif %}
+
+<script>
+// Kindle e-ink optimization: Batch DOM updates to minimize redraws
+let scrollTimeout;
+document.addEventListener('scroll', function() {
+    if (scrollTimeout) {
+        cancelAnimationFrame(scrollTimeout);
+    }
+    scrollTimeout = requestAnimationFrame(function() {
+        // Batch any scroll-triggered DOM updates here
+        // This reduces the number of times the e-ink display refreshes
+    });
+}, { passive: true });
+
+// Disable smooth scroll on e-ink devices
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.style.scrollBehavior = 'auto';
+}
+</script>
+
+<script>
+// Progressive search loading
+if (window.location.search.includes('q=')) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    const resultsGrid = document.querySelector('.results-grid');
+    const resultsSection = document.querySelector('.card:has(> h2:first-child)');
+    
+    // Show loading indicator on first page
+    if (!urlParams.get('page') || urlParams.get('page') === '1') {
+        if (resultsSection) {
+            const loadingMsg = document.createElement('p');
+            loadingMsg.style.cssText = 'color: var(--muted); font-size: 0.9rem; text-align: center; margin: 1rem 0;';
+            loadingMsg.textContent = 'Search results loaded. Click "Add to Queue" to download.';
+            resultsSection.insertBefore(loadingMsg, resultsGrid);
+        }
+    }
+}
+
+// Queue download button handler
+document.body.addEventListener('click', async function(e) {
+    const btn = e.target.closest('[data-action="queue-download"]');
+    if (!btn) return;
+    
+    const md5 = btn.getAttribute('data-md5');
+    const title = btn.getAttribute('data-title');
+    const originalText = btn.textContent;
+    
+    btn.disabled = true;
+    btn.textContent = 'Queuing...';
+    
+    try {
+        // Get the first user from the search form, or default to first available user
+        const userSelect = document.querySelector('select[name="user"]');
+        let user = userSelect ? userSelect.value : '';
+        
+        if (!user) {
+            // If no user selected in form, use first available
+            const firstOption = userSelect ? userSelect.querySelector('option:nth-child(2)') : null;
+            user = firstOption ? firstOption.value : '';
+        }
+        
+        if (!user) {
+            alert('Please select a user');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+        }
+        
+        const response = await fetch('{{ url_for("manual_download") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ md5, user })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            btn.textContent = '✓ Queued';
+            btn.style.background = '#10b981';
+        } else {
+            alert('Error: ' + (data.error || 'Failed to queue'));
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+</script>
+
+{% endblock %}

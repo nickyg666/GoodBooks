@@ -1,0 +1,1 @@
+"""Kindle delivery for GoodBooks."""

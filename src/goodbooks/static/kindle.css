@@ -1,0 +1,371 @@
+/* ============================================================================
+   KINDLE E-INK OPTIMIZED CSS
+   Ultra-responsive, minimal design for Kindle devices
+   ============================================================================ */
+
+:root {
+  --primary-color: #000;
+  --text-color: #000;
+  --bg-color: #fff;
+  --border-color: #ccc;
+  --accent-gray: #f0f0f0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+/* NAVBAR - KINDLE VERSION */
+nav {
+  background-color: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav .navbar-brand {
+  font-size: 10px;
+  font-weight: bold;
+  margin: 0;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+nav .navbar-brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+nav .navbar-logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+}
+
+nav .nav-links {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0 0.5rem 0.5rem 0.5rem;
+}
+
+nav .nav-link {
+  font-size: 9px;
+  padding: 0.25rem 0.4rem;
+  display: inline-block;
+  color: var(--primary-color);
+  text-decoration: none;
+  border: 1px solid var(--border-color);
+}
+
+nav .nav-link:hover {
+  background-color: var(--accent-gray);
+}
+
+/* Progress bar - shown on all devices */
+#metadata-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+#metadata-progress-container.active {
+  display: flex;
+}
+
+#metadata-progress-container:not(.active) {
+  display: none;
+}
+
+.metadata-progress-toggle {
+  display: none;
+}
+
+.metadata-progress-bar {
+  width: 60px;
+  height: 4px;
+  background-color: var(--accent-gray);
+  border: 1px solid var(--border-color);
+  margin: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.metadata-progress-fill {
+  height: 100%;
+  width: 0%;
+  background-color: var(--primary-color);
+  transition: width 0.3s linear;
+}
+
+/* Feed progress bar in navbar */
+.feed-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+.feed-progress-bar {
+  width: 60px;
+  height: 4px;
+  background-color: var(--accent-gray);
+  border: 1px solid var(--border-color);
+  margin: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.feed-progress-fill {
+  height: 100%;
+  width: 0%;
+  background-color: #4CAF50;
+  transition: width 0.3s linear;
+}
+
+#feed-progress-wrapper,
+#metadata-progress-wrapper {
+  display: none;
+  flex: 0 0 auto;
+}
+
+#feed-progress-wrapper.active,
+#metadata-progress-wrapper.active {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+/* MAIN CONTENT */
+main {
+  max-width: 100%;
+  padding: 0.5rem;
+  margin: 0;
+}
+
+.container, .container-fluid {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+/* PROGRESS BAR */
+.progress-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--accent-gray);
+  border: 1px solid var(--border-color);
+  margin: 0.3rem 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background-color: var(--primary-color);
+  transition: width 0.3s linear;
+}
+
+/* CARDS & BOOK ITEMS */
+.card, .book-item, .library-card {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  margin: 0.25rem;
+  padding: 0;
+  font-size: 9px;
+  page-break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card-img, .book-image, .library-cover {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0;
+  object-fit: cover;
+}
+
+.card-body, .book-info, .library-meta {
+  padding: 0.2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title, .book-title, .library-title {
+  font-size: 8px;
+  font-weight: bold;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.library-info {
+  padding: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.folder-card .library-info {
+  background: #f5f5f5;
+}
+
+.card-text, .book-author, .library-author {
+  font-size: 7px;
+  margin: 0.1rem 0 0 0;
+  color: #333;
+}
+
+.library-cover-overlay {
+  display: none;
+}
+
+.folder-card .library-cover-overlay {
+  display: flex;
+}
+
+.library-title-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 0.2rem;
+  font-size: 8px;
+  font-weight: bold;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0e0e0;
+  color: #666;
+  width: 100%;
+  height: 100%;
+  font-size: 8px;
+}
+
+.cover-placeholder.folder-placeholder {
+  font-size: 40px;
+  color: #999;
+}
+
+/* BUTTONS */
+button, .btn, a.btn {
+  font-size: 8px;
+  padding: 0.2rem 0.4rem;
+  margin: 0.1rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--accent-gray);
+  color: var(--text-color);
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: none;
+}
+
+button:hover, .btn:hover {
+  background-color: #ddd;
+}
+
+/* FORMS & INPUTS */
+input, select, textarea, label {
+  font-size: 9px;
+}
+
+input[type='text'], input[type='email'], select, textarea {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.2rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  margin: 0.1rem 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.4rem;
+}
+
+/* HEADINGS */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+  margin: 0.3rem 0 0.2rem 0;
+}
+
+h1 { font-size: 12px; }
+h2 { font-size: 11px; }
+h3 { font-size: 10px; }
+
+/* KINDLE SPECIFIC */
+* {
+  animation: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: #000;
+  text-decoration: underline;
+}
+
+/* GRID LAYOUT FOR KINDLE 4-COLUMN */
+.grid, .results-grid, .library-view-grid, .history-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  margin: 0;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.15rem 0.25rem;
+  background: var(--accent-gray);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 0;
+  font-size: 7px;
+  margin: 0.05rem;
+  text-decoration: none;
+}
+
+@media print {
+  body { background-color: #fff; color: #000; }
+  nav, footer { display: none; }
+}

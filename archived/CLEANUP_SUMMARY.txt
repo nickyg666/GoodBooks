@@ -1,0 +1,203 @@
+═══════════════════════════════════════════════════════════════════════
+  GOODBOOKS DIRECTORY CLEANUP SUMMARY
+  Date: December 10, 2025
+═══════════════════════════════════════════════════════════════════════
+
+SUMMARY OF CHANGES
+───────────────────────────────────────────────────────────────────────
+
+1. ROOT DIRECTORY CLEANED
+   - Removed 60+ documentation files
+   - Removed 10+ test/debug scripts
+   - Removed old implementation files
+   - Removed log files
+   - Now contains: 12 Python modules + 3 scripts + config
+
+2. ORGANIZED INTO SUBDIRECTORIES
+
+   📁 docs/ - All documentation (68 files)
+      └─ CHANGELOG.md (Version history)
+      └─ IMPLEMENTATION_NOTES.md (Technical details)
+      └─ DIRECTORY_STRUCTURE.md (This organization)
+      └─ TESTING.md (Test procedures)
+      └─ 60+ other documentation files
+
+   📁 archived/ - Old/unused code (14 files)
+      └─ test_search.py (Old test script)
+      └─ test_momot.sh (Old test script)
+      └─ COVER_CACHE_MANAGER_IMPL.py (Old implementation)
+      └─ GENRE_FILTER_IMPL.py (Old implementation)
+      └─ build_epub_v2.py (Old EPUB builder)
+      └─ *.bak (Backup files)
+
+   📁 logs/ - Runtime logs (auto-created)
+      └─ debug.log (Debug output)
+      └─ info.log (Info output)
+      └─ email_debug.log (Email debugging)
+
+   📁 data/ - Non-code data files
+      └─ DESKTOP_CSS.css (Web UI stylesheet)
+      └─ KINDLE_CSS.css (EPUB stylesheet)
+
+   📁 samples/ - Example files
+      └─ test_email.eml (Sample email)
+      └─ *.eml (Example emails)
+
+   📁 static/ - Web UI assets (unchanged)
+   📁 templates/ - Flask templates (unchanged)
+
+CORE PRODUCTION FILES IN ROOT
+───────────────────────────────────────────────────────────────────────
+
+Python Modules (10):
+  ✓ app.py - Main Flask application
+  ✓ search_engine.py - Anna's Archive search
+  ✓ stealth_browser.py - Browser automation
+  ✓ parser_engine.py - Feed parsing
+  ✓ settings_manager.py - Settings/history
+  ✓ logging_config.py - Logging config
+  ✓ converthelper.py - EPUB conversion
+  ✓ cover_cache_manager.py - Cover caching
+  ✓ ebook_metadata_extractor.py - Metadata
+  ✓ genre_filter.py - Genre filtering
+
+Setup & Deployment Scripts (5):
+  ✓ installer.sh - Installation
+  ✓ setup_wizard.sh - Configuration
+  ✓ post_install.py - Post-setup
+  ✓ rebuild_epub.py - EPUB rebuild
+  ✓ send_to_kindle.sh - Send to Kindle
+
+Configuration & Other:
+  ✓ README.md - Main documentation
+  ✓ LICENSE - License file
+  ✓ goodbooks.service - Systemd config
+  ✓ requirements.txt - Dependencies
+
+FILES REMOVED
+───────────────────────────────────────────────────────────────────────
+
+Corrupted/Weird Files:
+  ✗ ":" "search_engine.py (parsing artifact)
+
+Test/Debug Scripts Moved to archived/:
+  ✗ test_search.py
+  ✗ test_momot.sh
+  ✗ email_debugger.py
+  ✗ extract_failed_urls.py
+  ✗ view_eml.py
+  ✗ fix_timeout.py
+
+Old Implementation Files Moved to archived/:
+  ✗ COVER_CACHE_MANAGER_IMPL.py
+  ✗ GENRE_FILTER_IMPL.py
+  ✗ build_epub_v2.py
+  ✗ build_epub_v2.py.bak
+
+Unused Modules Moved to archived/:
+  ✗ cover_downloader.py
+  ✗ goodreads_epub_utils.py
+
+Backups Moved to archived/:
+  ✗ post_install.py.bak
+  ✗ goodbooks_content.txt.bak
+
+Documentation Consolidated to docs/:
+  ✗ 60+ markdown and text files
+
+LOG FILES MOVED TO logs/:
+  ✗ debug.log
+  ✗ info.log
+  ✗ email_debug.log
+  ✗ goodbooks_restart.log
+
+SAMPLE FILES MOVED TO samples/:
+  ✗ test_email.eml
+  ✗ nopics.eml
+  ✗ Added to Library_*.eml
+
+CSS FILES MOVED TO data/:
+  ✗ DESKTOP_CSS.css
+  ✗ KINDLE_CSS.css
+
+BENEFITS OF THIS CLEANUP
+───────────────────────────────────────────────────────────────────────
+
+✓ Cleaner Root Directory
+  - Root now contains only essential production code
+  - Easier to identify core files
+  - Better navigation for developers
+
+✓ Better Organization
+  - Documentation centralized in docs/
+  - Test files separated into archived/
+  - Logs kept in logs/ folder
+  - Data files in data/ folder
+
+✓ Easier Maintenance
+  - Old code not in production directory
+  - Easy to find documentation
+  - Clear folder structure
+  - Reduced clutter
+
+✓ Improved Clarity
+  - Clear distinction between production and test code
+  - Documentation easily discoverable
+  - Less confusion when navigating
+
+DIRECTORY STATISTICS
+───────────────────────────────────────────────────────────────────────
+
+Root Directory:
+  - Python modules: 10
+  - Scripts: 5  
+  - Config files: 4
+  - Total files: 19
+
+Subdirectories:
+  - docs/: 68 files (~500K)
+  - archived/: 14 files (~100K)
+  - logs/: 4 files (~150M)
+  - data/: 2 files (~21K)
+  - samples/: 3 files (~80K)
+  - static/: (web assets)
+  - templates/: (Flask templates)
+
+FINDING FILES AFTER CLEANUP
+───────────────────────────────────────────────────────────────────────
+
+Need to...                          Look in...
+────────────────────────────────────────────────────────────────────────
+Run the app                         Root directory
+Understand implementation            docs/IMPLEMENTATION_NOTES.md
+Check what changed                  docs/CHANGELOG.md
+Find test/debug scripts             archived/
+Read documentation                  docs/
+View log files                       logs/
+Find examples/samples               samples/
+View stylesheet configs             data/
+Update code                         Root .py files
+
+NEXT STEPS
+───────────────────────────────────────────────────────────────────────
+
+1. Update git tracking (if applicable)
+   git add .
+   git commit -m "Cleanup: Organize documentation and old files"
+
+2. Verify everything still works
+   systemctl restart goodbooks
+   tail -f logs/debug.log
+
+3. Update development documentation
+   See docs/DIRECTORY_STRUCTURE.md
+
+4. Maintain organization going forward
+   - Keep new code in root
+   - Move docs to docs/
+   - Archive old code
+   - Move logs to logs/
+
+═══════════════════════════════════════════════════════════════════════
+CLEANUP COMPLETE ✓
+═══════════════════════════════════════════════════════════════════════

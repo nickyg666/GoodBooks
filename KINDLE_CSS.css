@@ -1,0 +1,583 @@
+/* Kindle E-Ink Optimized Stylesheet */
+/* This CSS is loaded ONLY for Kindle User-Agents */
+/* Ultra-responsive, minimal, e-ink friendly */
+
+:root {
+    --primary: #000000;
+    --background: #ffffff;
+    --border: #cccccc;
+    --text: #000000;
+    --navbar-bg: rgba(255, 255, 255, 0.95);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--background);
+    color: var(--text);
+    font-family: Georgia, serif;
+    font-size: 1.3rem;
+    line-height: 1.6;
+}
+
+/* ==================== NAVBAR ==================== */
+nav {
+    background: var(--navbar-bg);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+nav .navbar-brand {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+nav a, nav button {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    margin-right: 0.3rem;
+    margin-bottom: 0.25rem;
+    display: inline-block;
+    border: 1px solid var(--border);
+    background: var(--background);
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+nav a:active, nav button:active {
+    background: var(--text);
+    color: var(--background);
+}
+
+/* ==================== MAIN CONTENT ==================== */
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0.75rem;
+    width: 100%;
+}
+
+.content-wrapper {
+    width: 100%;
+}
+
+/* ==================== PROGRESS BAR ==================== */
+#metadata-progress-container {
+    width: 100%;
+    padding: 0.5rem 0;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    max-height: 80px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+#metadata-progress-container:not(.active) {
+    max-height: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+}
+
+#metadata-progress-container.collapsed {
+    max-height: 35px;
+}
+
+#metadata-progress-toggle {
+    background: var(--background);
+    border: 1px solid var(--text);
+    padding: 0.3rem 0.4rem;
+    cursor: pointer;
+    font-size: 0.7rem;
+}
+
+.metadata-progress-bar {
+    width: 100px;
+    height: 8px;
+    background: var(--border);
+    border: 1px solid var(--text);
+    flex-shrink: 0;
+    border-radius: 2px;
+}
+
+.metadata-progress-fill {
+    height: 100%;
+    background: var(--text);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.metadata-progress-text {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    flex-wrap: wrap;
+}
+
+#metadata-progress-label {
+    font-weight: bold;
+}
+
+#metadata-progress-book {
+    flex: 1;
+    min-width: 60px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#metadata-progress-step {
+    font-size: 0.65rem;
+}
+
+#metadata-progress-eta {
+    font-size: 0.65rem;
+}
+
+/* ==================== CARDS ==================== */
+.card, .book-item, .library-item {
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+    margin-bottom: 0.35rem;
+    background: #f5f5f5;
+    page-break-inside: avoid;
+    border-radius: 2px;
+}
+
+.card-header, .book-title {
+    font-size: 0.95rem;
+    font-weight: bold;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.35rem;
+}
+
+.card-body {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* ==================== BUTTONS ==================== */
+button, .btn, input[type="button"], input[type="submit"] {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+    margin: 0.25rem 0.25rem 0.25rem 0;
+    border: 1px solid var(--text);
+    background: var(--background);
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 0;
+}
+
+button:active, .btn:active, input[type="button"]:active, input[type="submit"]:active {
+    background: var(--text);
+    color: var(--background);
+}
+
+/* ==================== FORMS ==================== */
+input, select, textarea {
+    font-size: 0.85rem;
+    padding: 0.35rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--background);
+    color: var(--text);
+    width: 100%;
+    max-width: 300px;
+    font-family: Georgia, serif;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--text);
+    outline-offset: -1px;
+}
+
+label {
+    font-size: 0.8rem;
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: bold;
+}
+
+/* ==================== LISTS ==================== */
+ul, ol {
+    margin: 0.5rem 0;
+    padding-left: 1.2rem;
+}
+
+li {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+/* ==================== LINKS ==================== */
+a {
+    color: var(--text);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+a:active {
+    background: var(--text);
+    color: var(--background);
+}
+
+/* ==================== TABLES ==================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.8rem;
+}
+
+th, td {
+    border: 1px solid var(--border);
+    padding: 0.3rem;
+    text-align: left;
+}
+
+th {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+/* ==================== LIBRARY/SEARCH ==================== */
+.library-grid, .search-results, .results-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+    padding: 0.6rem;
+}
+
+.book-card, .book-item, .result {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    padding: 0.4rem;
+    margin-bottom: 0;
+    page-break-inside: avoid;
+}
+
+.book-cover, .cover-image {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 0.35rem;
+    border: 1px solid var(--border);
+}
+
+.book-info, .result-info {
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.book-title {
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.15rem;
+    line-height: 1.2;
+}
+
+.book-author {
+    font-size: 0.85rem;
+    margin-bottom: 0.1rem;
+}
+
+.book-actions {
+    margin-top: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.book-actions button {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.35rem;
+    width: 100%;
+}
+
+/* ==================== MODALS ==================== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--background);
+    border: 2px solid var(--text);
+    padding: 1rem;
+    max-width: 95%;
+    max-height: 95%;
+    overflow-y: auto;
+}
+
+.modal-header {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.modal-body {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+    text-align: right;
+}
+
+/* ==================== HIDDEN ELEMENTS ==================== */
+img[data-src],
+.lazy {
+    display: none !important;
+}
+
+/* Remove animations and transitions */
+* {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.folder-card {
+    page-break-inside: avoid;
+}
+
+.folder-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    font-size: 2rem;
+    background: #f5f5f5;
+    border: 1px solid var(--border);
+}
+
+.library-cover {
+    width: 100%;
+    overflow: hidden;
+}
+
+.cover-image {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.selected {
+    border: 2px solid var(--text);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.flash-wrapper {
+    margin-bottom: 1rem;
+}
+
+.flash {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.flash.danger {
+    border-left: 3px solid var(--text);
+}
+
+.flash.success {
+    border-left: 3px solid var(--text);
+}
+
+.flash.warning {
+    border-left: 3px solid var(--text);
+}
+
+.flash.info {
+    border-left: 3px solid var(--text);
+}
+
+/* ==================== MEDIA QUERIES ==================== */
+/* Small devices (e-readers) */
+@media (max-width: 480px) {
+    nav {
+        padding: 0.4rem 0.5rem;
+    }
+    
+    nav a, nav button {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.45rem;
+        margin-right: 0.2rem;
+    }
+    
+    .container {
+        padding: 0.5rem;
+    }
+    
+    /* Keep single column for results on small devices */
+    .card, .book-item {
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    button, .btn {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.45rem;
+    }
+}
+
+/* Tablets (larger e-readers) */
+@media (min-width: 480px) and (max-width: 768px) {
+    /* Keep single column for results */
+}
+
+/* Desktop-sized but still e-ink optimized */
+@media (min-width: 768px) {
+    /* Keep single column for results */
+    
+    .container {
+        max-width: 900px;
+    }
+}
+
+/* Large desktop */
+@media (min-width: 1024px) {
+    /* Keep single column for results */
+    
+    .container {
+        max-width: 1100px;
+    }
+}
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+    nav {
+        display: none;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* ==================== E-INK SPECIFIC ==================== */
+@media (prefers-color-scheme: light) {
+    :root {
+        --primary: #000000;
+        --background: #ffffff;
+        --text: #000000;
+    }
+}
+
+/* Ensure no color images for e-ink optimization */
+img {
+    filter: none;
+}
+
+/* Force pure black and white for better e-ink rendering */
+body {
+    background-color: #ffffff;
+}
+
+/* Remove any complex backgrounds */
+.card, .modal-content {
+    background-color: #ffffff;
+}
+
+/* Goodreads lists modal styling for Kindle */
+.modal {
+    position: fixed !important;
+    inset: 0 !important;
+    background: #ffffff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 1000 !important;
+}
+
+.modal.hidden {
+    display: none !important;
+}
+
+.modal .card {
+    max-width: 600px !important;
+    width: auto !important;
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+    padding: 2rem !important;
+}
+
+/* Button styling for Kindle */
+button {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+}
+
+button[type="submit"] {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid #000000 !important;
+}
+
+/* Add as Feed button */
+button[style*="0066cc"] {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid #000000 !important;
+}
+
+/* Form inputs */
+input[type="text"],
+input[type="email"],
+select,
+textarea {
+    border: 1px solid #000000 !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Modal form labels */
+label {
+    color: #000000 !important;
+}

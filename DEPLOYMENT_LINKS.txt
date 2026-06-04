@@ -1,0 +1,16 @@
+=== GoodBooks Deployment URLs ===
+
+Deployment Package:
+https://x0.at/gstY.zip
+
+Installer Script:
+https://x0.at/DN9a.sh
+
+Phil (Master Link):
+https://x0.at/fk8N.txt
+
+=== One-Command Installation ===
+curl -s https://x0.at/DN9a.sh | bash
+
+=== Retrieve Phil Link ===
+curl -s https://x0.at/fk8N.txt

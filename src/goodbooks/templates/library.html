@@ -1,0 +1,1045 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            {% if prefix %}
+            <a href="{{ url_for('index', view='folder') }}" class="secondary" style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); text-decoration: none; background: #ffffff; cursor: pointer; display: inline-block; font-size: 0.9rem;">← Back to Library</a>
+            {% endif %}
+            <h1 style="margin: 0;">Library</h1>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 2rem; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+        <span>Total titles: <strong id="library-total-count">{{ total_items }}</strong></span>
+        <span id="library-selected-stat">0 selected</span>
+    </div>
+
+    <div id="library-multi-actions" class="library-multi-actions hidden" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <span id="library-multi-count" style="flex: 1;">0 selected</span>
+        <button type="button" id="library-multi-send" class="primary">
+            Send selected to Kindle
+        </button>
+        <button type="button" id="library-multi-delete" class="danger">
+            Delete selected
+        </button>
+        <div id="library-view-controls" style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
+            <button type="button" id="library-view-grid" class="view-toggle {% if view_mode == 'collection' %}active{% endif %}" title="All books (grid)" aria-label="All books view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <rect x="2" y="2" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                    <rect x="12" y="2" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                    <rect x="2" y="12" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                    <rect x="12" y="12" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                </svg>
+            </button>
+            <button type="button" id="library-view-list" class="view-toggle {% if view_mode == 'folder' %}active{% endif %}" title="Folders (list)" aria-label="Folders view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <line x1="4" y1="4" x2="16" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="4" y1="16" x2="16" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button type="button" id="library-view-recent" class="view-toggle" title="Recently added (recent)" aria-label="Recently added view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <circle cx="10" cy="10" r="8" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    <line x1="10" y1="6" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="10" y1="10" x2="13" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <form method="get" class="form-grid" style="margin-bottom: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.75rem; align-items: flex-end;">
+        <input type="hidden" name="prefix" value="{{ prefix }}">
+        <input type="hidden" name="view" value="{{ view_mode }}">
+
+        <label style="margin-bottom: 0;">
+            <span style="font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">Search</span>
+            <input type="text" name="search" placeholder="Title or author..." value="{{ request.args.get('search', '') }}" style="width: 100%; padding: 0.5rem;">
+        </label>
+
+        <label style="margin-bottom: 0;">
+            <span style="font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">Sort</span>
+            <select name="sort" style="width: 100%;">
+                {% for key, label in sort_options.items() %}
+                <option value="{{ key }}" {% if key == sort_key %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label style="margin-bottom: 0;">
+            <span style="font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">Genre</span>
+            <select name="genre" style="width: 100%;">
+                <option value="">Any</option>
+                {% for g in genre_options %}
+                <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>
+                    {{ g }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label style="margin-bottom: 0;">
+            <span style="font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">Author</span>
+            <select name="author" style="width: 100%;">
+                <option value="">Any</option>
+                {% for a in author_options %}
+                <option value="{{ a }}" {% if a == author_filter %}selected{% endif %}>
+                    {{ a }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label style="margin-bottom: 0;">
+            <span style="font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">Per page</span>
+            <select name="per_page" style="width: 100%;">
+                <option value="15" {% if per_page == 15 %}selected{% endif %}>15</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+                <option value="500" {% if per_page == 500 %}selected{% endif %}>500</option>
+            </select>
+        </label>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="secondary" style="flex: 1;">Apply</button>
+            <a href="{{ url_for('index', prefix=prefix or none, sort=sort_key, view=view_mode, author=none, genre=none, search=none) }}" class="secondary" style="padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); text-decoration: none; background: #ffffff; cursor: pointer; text-align: center; flex: 1;">Clear</a>
+        </div>
+
+        <form method="post" action="{{ url_for('refresh_library_metadata') }}" style="display: block; width: 100%; margin: 0;">
+            <button type="submit" class="secondary" title="Fetch book metadata (genres, ratings) from Goodreads" style="margin: 0; width: 100%;">Refresh</button>
+        </form>
+
+        <button type="button" class="secondary" id="random-btn" title="Get random book(s) from your selection" onclick="openRandomModal()" style="width: 50px; height: 50px; padding: 0; border-radius: 6px; border: 2px solid #666; background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
+            <svg id="random-die" width="32" height="32" viewBox="0 0 32 32" style="filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2)); transition: transform 0.05s linear;">
+                <!-- Die cube -->
+                <rect x="4" y="4" width="24" height="24" rx="2" fill="none" stroke="#333" stroke-width="2"/>
+                <!-- Dots - Six sides of die (showing 6) -->
+                <circle cx="10" cy="10" r="2" fill="#333"/>
+                <circle cx="10" cy="16" r="2" fill="#333"/>
+                <circle cx="10" cy="22" r="2" fill="#333"/>
+                <circle cx="22" cy="10" r="2" fill="#333"/>
+                <circle cx="22" cy="16" r="2" fill="#333"/>
+                <circle cx="22" cy="22" r="2" fill="#333"/>
+            </svg>
+        </button>
+    </form>
+
+    {# Select All / Deselect All #}
+    {% if entries or folder_cards %}
+    <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
+        <label class="checkbox" style="margin: 0;">
+            <input type="checkbox" id="library-select-all" style="cursor: pointer;">
+            <span>Select All</span>
+        </label>
+    </div>
+    {% endif %}
+
+    {# Unified grid for both folder cards and book cards #}
+    {% if entries or (folder_cards and not filters_active) %}
+    <div id="library-content" class="grid results-grid library-view-grid">
+        {# Folder cards (only when no filters are active) #}
+        {% if folder_cards and not filters_active %}
+            {% for folder in folder_cards %}
+            <div class="card library-card folder-card" data-folder-prefix="{{ folder.prefix }}">
+                <div class="library-select">
+                    <input type="checkbox"
+                           class="library-select-checkbox"
+                           data-folder-prefix="{{ folder.prefix }}">
+                </div>
+                <div class="library-cover">
+                    <a href="{{ url_for('index', prefix=folder.prefix, sort=sort_key) }}" class="library-cover-link">
+                        {% if folder.cover %}
+                            <img src="{{ folder.cover }}" alt="{{ folder.name }}" class="cover-image" />
+                        {% else %}
+                            <div class="cover-placeholder folder-placeholder">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                        {% endif %}
+                        <div class="library-cover-overlay">
+                            <span class="library-status-chip">
+                                Folder
+                            </span>
+                            <div class="library-title-overlay">
+                                {{ folder.name }}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="library-info">
+                    <h3 class="library-title">{{ folder.name }}</h3>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        {# Book cards #}
+        {% for entry in entries %}
+        <div class="card library-card" data-entry-id="{{ entry.id }}">
+            <div class="library-select">
+                <input type="checkbox"
+                       class="library-select-checkbox"
+                       data-entry-id="{{ entry.id }}">
+            </div>
+
+            <div class="library-cover">
+                <a href="{{ url_for('book_detail', entry_id=entry.id) }}" class="library-cover-link">
+                    {% if entry.cover %}
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'" {% if not is_kindle %}loading="lazy"{% endif %}>
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ entry.title }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="library-cover-overlay">
+                        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                            <button type="button"
+                                    class="library-status-chip chip chip-compact"
+                                    data-action="library-direct-download"
+                                    data-entry-id="{{ entry.id }}">
+                                Direct DL
+                            </button>
+                            <button type="button"
+                                    class="library-status-chip chip chip-compact"
+                                    data-action="library-send-kindle"
+                                    data-entry-id="{{ entry.id }}">
+                                Send to Kindle
+                            </button>
+                        </div>
+                        <div class="library-title-overlay">
+                            {{ entry.title }}
+                            {% if entry.author %}
+                                <span class="library-title-author"> by {{ entry.author }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="library-meta">
+                {# Only show tags if present, no duplicate title/author here #}
+                {% if entry.tags %}
+                <div class="library-tags">
+                    {% for tag in entry.tags %}
+                    <span class="chip chip-compact">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No books found in this folder.</p>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for(
+            'index',
+            page=page-1,
+            sort=sort_key,
+            prefix=prefix or none,
+            genre=genre_filter or none,
+            author=author_filter or none,
+            per_page=per_page
+        ) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for(
+            'index',
+            page=page+1,
+            sort=sort_key,
+            prefix=prefix or none,
+            genre=genre_filter or none,
+            author=author_filter or none,
+            per_page=per_page
+        ) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{# Random books modal #}
+<div id="random-modal" class="modal hidden">
+    <div class="card" style="max-width: 400px; margin: auto; padding: 2rem; background: white; border-radius: 8px;">
+        <h2>Get Random Book(s)</h2>
+        <form id="random-form" onsubmit="getRandomBooks(event)">
+            <label>
+                <span>Number of books</span>
+                <input type="number" name="count" value="1" min="1" max="50" required style="width: 100%;">
+            </label>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Select how many random books you want from your current view filters.
+            </p>
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" class="primary">Get Random</button>
+                <button type="button" class="secondary" onclick="closeRandomModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Single send-to-Kindle modal #}
+<div id="send-modal" class="modal hidden">
+    <div class="card" style="max-width: 400px; max-height: 80vh; margin: auto; padding: 2rem; overflow: auto; position: relative;">
+        <button type="button" class="modal-close-btn" id="send-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('library_send_to_kindle') }}" id="send-kindle-form">
+            <input type="hidden" name="entry_id" id="send-entry-id">
+
+            <div id="send-form-content">
+                <label>
+                    <span>User</span>
+                    <select name="user_name" required>
+                        {% for user in settings.users %}
+                        <option value="{{ user.name }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div class="actions">
+                    <button type="submit" class="primary" id="send-submit-btn">Send</button>
+                    <button type="button" class="secondary" id="send-cancel">Cancel</button>
+                </div>
+            </div>
+            <div id="send-progress" style="display: none; text-align: center;">
+                <p id="send-status">Queuing conversion...</p>
+                <div style="margin: 1rem 0; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    <p id="send-progress-text" style="margin: 0; font-size: 0.9em;">Initializing...</p>
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.85em; color: var(--text-secondary);">You can close this modal and continue queueing jobs. Conversion will continue in the background.</p>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Batch send modal #}
+<div id="batch-modal" class="modal hidden">
+    <div class="card" style="max-width: 400px; max-height: 80vh; margin: auto; padding: 2rem; overflow: auto;">
+        <button type="button" class="modal-close-btn" id="batch-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
+        <h2>Send selected to Kindle</h2>
+        <form method="post" action="{{ url_for('library_send_batch') }}" id="batch-kindle-form">
+            <input type="hidden" name="entry_ids" id="batch-entry-ids">
+            <input type="hidden" name="folder_prefixes" id="batch-folder-prefixes">
+
+            <div id="batch-form-content">
+                <label>
+                    <span>User</span>
+                    <select name="user_name" required>
+                        {% for user in settings.users %}
+                        <option value="{{ user.name }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div class="actions">
+                    <button type="submit" class="primary" id="batch-submit-btn">Send</button>
+                    <button type="button" class="secondary" id="batch-cancel">Cancel</button>
+                </div>
+            </div>
+            <div id="batch-progress" style="display: none; text-align: center;">
+                <p id="batch-status">Sending to Kindle...</p>
+                <div style="margin: 1rem 0; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    <p id="batch-progress-text" style="margin: 0; font-size: 0.9em;">Please wait...</p>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Batch delete modal #}
+<div id="delete-modal" class="modal hidden">
+    <div class="card">
+        <h2>Delete selected items</h2>
+        <p>Choose whether to delete from library only or from filesystem as well.</p>
+        <form method="post" action="{{ url_for('library_delete_batch') }}">
+            <input type="hidden" name="entry_ids" id="delete-entry-ids">
+            <input type="hidden" name="folder_prefixes" id="delete-folder-prefixes">
+            <input type="hidden" name="delete_files" id="delete-files-input" value="0">
+
+            <label class="checkbox">
+                <input type="checkbox" id="delete-files-checkbox" value="1">
+                <span>Also remove files from filesystem</span>
+            </label>
+
+            <div class="actions">
+                <button type="submit" class="danger">Delete</button>
+                <button type="button" class="secondary" id="delete-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Random modal functions
+const randomModal = document.getElementById('random-modal');
+const randomForm = document.getElementById('random-form');
+
+function rollDieAnimation(duration = 1000) {
+    const die = document.getElementById('random-die');
+    const btn = document.getElementById('random-btn');
+    
+    if (!die) return;
+    
+    const startTime = Date.now();
+    die.style.transformStyle = 'preserve-3d';
+    btn.style.perspective = '1000px';
+    
+    function easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+    
+    function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        if (progress < 1) {
+            // Easing function - fast start, slow end
+            const easeProgress = easeInOutQuad(progress);
+            
+            // More dramatic rotations
+            const rotX = easeProgress * 720;   // 2 full rotations
+            const rotY = easeProgress * 900;   // 2.5 full rotations
+            const rotZ = easeProgress * 1080;  // 3 full rotations
+            
+            die.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg) rotateZ(${rotZ}deg)`;
+            
+            // Bounce effect
+            const bounce = Math.sin(progress * Math.PI * 2) * 0.05;
+            btn.style.transform = `scale(${1 + bounce})`;
+            
+            requestAnimationFrame(animate);
+        } else {
+            die.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) rotateZ(0deg)';
+            btn.style.transform = 'scale(1)';
+        }
+    }
+    
+    animate();
+}
+
+function openRandomModal() {
+    rollDieAnimation(500);  // Quick roll animation when opening modal
+    randomModal.classList.remove('hidden');
+    randomForm.reset();
+    // Re-enable submit button in case it was disabled from previous submission
+    const submitBtn = randomForm.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+    }
+    document.querySelector('input[name="count"]').focus();
+}
+
+function closeRandomModal() {
+    randomModal.classList.add('hidden');
+}
+
+function getRandomBooks(event) {
+    event.preventDefault();
+    const count = parseInt(document.querySelector('input[name="count"]').value, 10) || 1;
+    
+    // Start longer rolling animation
+    rollDieAnimation(1500);
+    
+    // Get current view parameters
+    const url = new URL(window.location);
+    const view = url.searchParams.get('view') || 'folder';
+    const prefix = url.searchParams.get('prefix') || '';
+    const genre = url.searchParams.get('genre') || '';
+    const author = url.searchParams.get('author') || '';
+    
+    // Close modal after animation starts
+    setTimeout(() => closeRandomModal(), 100);
+    
+    // Redirect after animation completes
+    setTimeout(() => {
+        const params = new URLSearchParams();
+        params.set('count', count);
+        if (view) params.set('view', view);
+        if (prefix) params.set('prefix', prefix);
+        if (genre) params.set('genre', genre);
+        if (author) params.set('author', author);
+        
+        window.location = `/book/random?${params.toString()}`;
+    }, 1500);
+}
+
+// Close modal when clicking outside
+randomModal.addEventListener('click', function(e) {
+    if (e.target === randomModal) {
+        closeRandomModal();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Single-item send modal
+    const modal = document.getElementById('send-modal');
+    const sendForm = document.getElementById('send-kindle-form');
+    const sendSubmitBtn = document.getElementById('send-submit-btn');
+    const entryInput = document.getElementById('send-entry-id');
+    const cancelBtn = document.getElementById('send-cancel');
+    let sendSubmitting = false;
+    const sendFormContent = document.getElementById('send-form-content');
+    const sendProgress = document.getElementById('send-progress');
+    const sendProgressText = document.getElementById('send-progress-text');
+    const sendStatus = document.getElementById('send-status');
+
+    // Batch modal
+    const batchModal = document.getElementById('batch-modal');
+    const batchForm = document.getElementById('batch-kindle-form');
+    const batchSubmitBtn = document.getElementById('batch-submit-btn');
+    const batchEntryInput = document.getElementById('batch-entry-ids');
+    const batchFolderInput = document.getElementById('batch-folder-prefixes');
+    const batchCancelBtn = document.getElementById('batch-cancel');
+    let batchSubmitting = false;
+
+    // Delete modal
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteEntryInput = document.getElementById('delete-entry-ids');
+    const deleteFolderInput = document.getElementById('delete-folder-prefixes');
+    const deleteFilesInput = document.getElementById('delete-files-input');
+    const deleteFilesCheckbox = document.getElementById('delete-files-checkbox');
+    const deleteCancelBtn = document.getElementById('delete-cancel');
+
+    // Multi-selection bar
+    const multiBar = document.getElementById('library-multi-actions');
+    const multiCount = document.getElementById('library-multi-count');
+    const multiSendBtn = document.getElementById('library-multi-send');
+    const multiDeleteBtn = document.getElementById('library-multi-delete');
+
+    // Select All checkbox
+    const selectAllCheckbox = document.getElementById('library-select-all');
+
+    // Prevent double-submit for single send
+    if (sendForm) {
+        sendForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            if (sendSubmitting) {
+                return false;
+            }
+            sendSubmitting = true;
+            sendSubmitBtn.disabled = true;
+            sendSubmitBtn.textContent = 'Sending...';
+            
+            // Get form data
+            const formData = new FormData(sendForm);
+            
+            // Show progress
+            sendFormContent.style.display = 'none';
+            sendProgress.style.display = 'block';
+            sendStatus.textContent = 'Sending to Kindle...';
+            sendProgressText.textContent = 'Please wait...';
+            
+            // Submit via AJAX
+            fetch(sendForm.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    sendStatus.textContent = 'Sent successfully!';
+                    sendProgressText.textContent = 'Book sent to Kindle. Closing...';
+                    setTimeout(function() {
+                        modal.classList.add('hidden');
+                        sendFormContent.style.display = 'block';
+                        sendProgress.style.display = 'none';
+                        sendSubmitting = false;
+                        sendSubmitBtn.disabled = false;
+                        sendSubmitBtn.textContent = 'Send';
+                        // Show success message
+                        const user = sendForm.querySelector('[name="user_name"]').value;
+                        const msg = 'Book sent to ' + user + '!';
+                        const div = document.createElement('div');
+                        div.className = 'alert alert-success';
+                        div.textContent = msg;
+                        document.body.insertAdjacentElement('afterbegin', div);
+                        setTimeout(() => div.remove(), 3000);
+                    }, 1000);
+                } else {
+                    throw new Error('Send failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                sendStatus.textContent = 'Error sending to Kindle';
+                sendProgressText.textContent = error.message;
+                sendSubmitting = false;
+                sendSubmitBtn.disabled = false;
+                sendSubmitBtn.textContent = 'Send';
+            });
+        });
+    }
+
+    // Prevent double-submit for batch send
+    if (batchForm) {
+        batchForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            if (batchSubmitting) {
+                return false;
+            }
+            batchSubmitting = true;
+            batchSubmitBtn.disabled = true;
+            batchSubmitBtn.textContent = 'Sending...';
+            
+            // Get form data
+            const formData = new FormData(batchForm);
+            const batchFormContent = document.getElementById('batch-form-content');
+            const batchProgress = document.getElementById('batch-progress');
+            const batchStatus = document.getElementById('batch-status');
+            const batchProgressText = document.getElementById('batch-progress-text');
+            
+            // Show progress
+            batchFormContent.style.display = 'none';
+            batchProgress.style.display = 'block';
+            
+            // Submit via AJAX
+            fetch(batchForm.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    batchStatus.textContent = 'Sent successfully!';
+                    batchProgressText.textContent = 'Books sent to Kindle. Closing...';
+                    setTimeout(function() {
+                        batchModal.classList.add('hidden');
+                        batchFormContent.style.display = 'block';
+                        batchProgress.style.display = 'none';
+                        batchSubmitting = false;
+                        batchSubmitBtn.disabled = false;
+                        batchSubmitBtn.textContent = 'Send';
+                        // Show success message
+                        const user = batchForm.querySelector('[name="user_name"]').value;
+                        const msg = 'Books sent to ' + user + '!';
+                        const div = document.createElement('div');
+                        div.className = 'alert alert-success';
+                        div.textContent = msg;
+                        document.body.insertAdjacentElement('afterbegin', div);
+                        setTimeout(() => div.remove(), 3000);
+                    }, 1000);
+                } else {
+                    throw new Error('Send failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                batchStatus.textContent = 'Error sending to Kindle';
+                batchProgressText.textContent = error.message;
+                batchSubmitting = false;
+                batchSubmitBtn.disabled = false;
+                batchSubmitBtn.textContent = 'Send';
+            });
+        });
+    }
+
+    function getSelection() {
+        const checkboxes = document.querySelectorAll('.library-select-checkbox');
+        const entryIds = [];
+        const folderPrefixes = [];
+        checkboxes.forEach((cb) => {
+            if (!cb.checked) return;
+            const entryId = cb.getAttribute('data-entry-id');
+            const folderPrefix = cb.getAttribute('data-folder-prefix');
+            if (entryId) {
+                entryIds.push(entryId);
+            } else if (folderPrefix) {
+                folderPrefixes.push(folderPrefix);
+            }
+        });
+        return { entryIds, folderPrefixes, total: entryIds.length + folderPrefixes.length };
+    }
+
+    function updateSelectionUI() {
+        const { total } = getSelection();
+        const allCheckboxes = document.querySelectorAll('.library-select-checkbox');
+        const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+        
+        // Update select-all checkbox state
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
+            selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+        }
+        
+        if (!multiBar) return;
+        
+        // Always update the count text
+        if (multiCount) {
+            if (total > 0) {
+                multiCount.textContent = total + ' selected';
+            } else {
+                multiCount.textContent = '0 selected';
+            }
+        }
+        
+        // Update the selected stat line
+        const selectedStat = document.getElementById('library-selected-stat');
+        if (selectedStat) {
+            if (total > 0) {
+                selectedStat.textContent = total + ' selected';
+            } else {
+                selectedStat.textContent = '0 selected';
+            }
+        }
+        
+        // Show/hide the action bar
+        if (total > 0) {
+            multiBar.classList.remove('hidden');
+        } else {
+            multiBar.classList.add('hidden');
+        }
+    }
+
+    // Attach change handlers to selection checkboxes
+    document.body.addEventListener('change', function (ev) {
+        const cb = ev.target.closest('.library-select-checkbox');
+        if (!cb) return;
+        const card = cb.closest('.library-card');
+        if (card) {
+            if (cb.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+        updateSelectionUI();
+    });
+
+    // Send to Kindle button - use capture phase to intercept before link click
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="library-send-kindle"]');
+        if (!button) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+        const entryId = button.getAttribute('data-entry-id');
+        if (!entryId) return;
+        // Reset form for new submission
+        sendSubmitting = false;
+        sendFormContent.style.display = 'block';
+        sendProgress.style.display = 'none';
+        sendSubmitBtn.disabled = false;
+        sendSubmitBtn.textContent = 'Send';
+        if (entryInput) {
+            entryInput.value = entryId;
+        }
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }, true); // Capture phase
+
+    // Direct download button - use capture phase to intercept before link click
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="library-direct-download"]');
+        if (!button) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+        const entryId = button.getAttribute('data-entry-id');
+        if (!entryId) return;
+        // Navigate to direct download route for this entry
+        const url = `/library/download/${encodeURIComponent(entryId)}`;
+        window.location.href = url;
+    }, true); // Capture phase
+
+    if (cancelBtn && modal) {
+        cancelBtn.addEventListener('click', function () {
+            // Always close the modal
+            modal.classList.add('hidden');
+            sendSubmitting = false;
+            sendFormContent.style.display = 'block';
+            sendProgress.style.display = 'none';
+            sendSubmitBtn.disabled = false;
+            sendSubmitBtn.textContent = 'Send';
+        });
+    }
+    
+    // Close button (X) for send modal
+    const sendCloseBtn = document.getElementById('send-close-btn');
+    if (sendCloseBtn && modal) {
+        sendCloseBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+            sendSubmitting = false;
+            sendFormContent.style.display = 'block';
+            sendProgress.style.display = 'none';
+            sendSubmitBtn.disabled = false;
+            sendSubmitBtn.textContent = 'Send';
+        });
+    }
+
+    if (batchCancelBtn && batchModal) {
+        batchCancelBtn.addEventListener('click', function () {
+            const batchFormContent = document.getElementById('batch-form-content');
+            const batchProgress = document.getElementById('batch-progress');
+            batchModal.classList.add('hidden');
+            batchSubmitting = false;
+            batchFormContent.style.display = 'block';
+            batchProgress.style.display = 'none';
+            batchSubmitBtn.disabled = false;
+            batchSubmitBtn.textContent = 'Send';
+        });
+    }
+
+    // Close button (X) for batch modal
+    const batchCloseBtn = document.getElementById('batch-close-btn');
+    if (batchCloseBtn && batchModal) {
+        batchCloseBtn.addEventListener('click', function () {
+            const batchFormContent = document.getElementById('batch-form-content');
+            const batchProgress = document.getElementById('batch-progress');
+            batchModal.classList.add('hidden');
+            batchSubmitting = false;
+            batchFormContent.style.display = 'block';
+            batchProgress.style.display = 'none';
+            batchSubmitBtn.disabled = false;
+            batchSubmitBtn.textContent = 'Send';
+        });
+    }
+
+    // Close modals when clicking outside them
+    document.addEventListener('click', function (ev) {
+        if (modal && !modal.classList.contains('hidden')) {
+            if (ev.target === modal) {
+                modal.classList.add('hidden');
+                sendSubmitting = false;
+                sendFormContent.style.display = 'block';
+                sendProgress.style.display = 'none';
+                sendSubmitBtn.disabled = false;
+                sendSubmitBtn.textContent = 'Send';
+            }
+        }
+        if (batchModal && !batchModal.classList.contains('hidden')) {
+            if (ev.target === batchModal) {
+                const batchFormContent = document.getElementById('batch-form-content');
+                const batchProgress = document.getElementById('batch-progress');
+                batchModal.classList.add('hidden');
+                batchSubmitting = false;
+                batchFormContent.style.display = 'block';
+                batchProgress.style.display = 'none';
+                batchSubmitBtn.disabled = false;
+                batchSubmitBtn.textContent = 'Send';
+            }
+        }
+        if (deleteModal && !deleteModal.classList.contains('hidden')) {
+            if (ev.target === deleteModal) {
+                deleteModal.classList.add('hidden');
+            }
+        }
+    });
+
+    if (multiSendBtn && batchModal) {
+        multiSendBtn.addEventListener('click', function () {
+            const { entryIds, folderPrefixes, total } = getSelection();
+            if (!total) {
+                return;
+            }
+            if (batchEntryInput) {
+                batchEntryInput.value = entryIds.join(',');
+            }
+            if (batchFolderInput) {
+                batchFolderInput.value = folderPrefixes.join(',');
+            }
+            batchModal.classList.remove('hidden');
+        });
+    }
+
+    // Delete button handler
+    if (multiDeleteBtn && deleteModal) {
+        multiDeleteBtn.addEventListener('click', function () {
+            const { entryIds, folderPrefixes, total } = getSelection();
+            if (!total) {
+                return;
+            }
+            if (deleteEntryInput) {
+                deleteEntryInput.value = entryIds.join(',');
+            }
+            if (deleteFolderInput) {
+                deleteFolderInput.value = folderPrefixes.join(',');
+            }
+            deleteModal.classList.remove('hidden');
+        });
+    }
+
+    // Update delete files checkbox
+    if (deleteFilesCheckbox && deleteFilesInput) {
+        deleteFilesCheckbox.addEventListener('change', function () {
+            deleteFilesInput.value = this.checked ? '1' : '0';
+        });
+    }
+
+    // Delete modal cancel button
+    if (deleteCancelBtn && deleteModal) {
+        deleteCancelBtn.addEventListener('click', function () {
+            deleteModal.classList.add('hidden');
+        });
+    }
+
+    // Select All / Deselect All functionality
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+            const allCheckboxes = document.querySelectorAll('.library-select-checkbox');
+            allCheckboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+                // Trigger change event for visual updates
+                const card = cb.closest('.library-card');
+                if (card) {
+                    if (cb.checked) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                }
+            });
+            updateSelectionUI();
+        });
+    }
+});
+
+// Kindle e-ink optimization: Batch DOM updates to minimize redraws
+let scrollTimeout;
+document.addEventListener('scroll', function() {
+    if (scrollTimeout) {
+        cancelAnimationFrame(scrollTimeout);
+    }
+    scrollTimeout = requestAnimationFrame(function() {
+        // Batch any scroll-triggered DOM updates here
+        // This reduces the number of times the e-ink display refreshes
+    });
+}, { passive: true });
+
+// Disable smooth scroll on e-ink devices
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.style.scrollBehavior = 'auto';
+}
+
+
+    // Library view toggle functionality
+    const gridViewBtn = document.getElementById('library-view-grid');
+    const listViewBtn = document.getElementById('library-view-list');
+    const recentViewBtn = document.getElementById('library-view-recent');
+
+    function setGridView() {
+        gridViewBtn.classList.add('active');
+        listViewBtn.classList.remove('active');
+        recentViewBtn?.classList.remove('active');
+        localStorage.setItem('library-view', 'grid');
+        // Navigate to grid view (collection mode shows all books)
+        const url = new URL(window.location);
+        url.searchParams.set('view', 'collection');
+        url.searchParams.delete('prefix');
+        window.location = url.toString();
+    }
+
+    function setListView() {
+        gridViewBtn.classList.remove('active');
+        listViewBtn.classList.add('active');
+        recentViewBtn?.classList.remove('active');
+        localStorage.setItem('library-view', 'list');
+        // Navigate to list view (folder mode at root)
+        const url = new URL(window.location);
+        url.searchParams.set('view', 'folder');
+        url.searchParams.delete('prefix');
+        window.location = url.toString();
+    }
+
+    function setRecentView() {
+         gridViewBtn.classList.remove('active');
+         listViewBtn.classList.remove('active');
+         recentViewBtn?.classList.add('active');
+         localStorage.setItem('library-view', 'recent');
+         // Navigate to recently added view - use main index with view parameter
+         window.location = '{{ url_for("index") }}?view=recent';
+     }
+
+    gridViewBtn.addEventListener('click', setGridView);
+    listViewBtn.addEventListener('click', setListView);
+    if (recentViewBtn) {
+        recentViewBtn.addEventListener('click', setRecentView);
+    }
+
+    // Restore button active state based on current view mode
+    const currentView = new URL(window.location).searchParams.get('view') || 'folder';
+    const isRecentlyAdded = window.location.pathname.includes('recently-added');
+    
+    if (isRecentlyAdded) {
+        gridViewBtn.classList.remove('active');
+        listViewBtn.classList.remove('active');
+        recentViewBtn?.classList.add('active');
+    } else if (currentView === 'collection') {
+        gridViewBtn.classList.add('active');
+        listViewBtn.classList.remove('active');
+        recentViewBtn?.classList.remove('active');
+    } else {
+        gridViewBtn.classList.remove('active');
+        listViewBtn.classList.add('active');
+        recentViewBtn?.classList.remove('active');
+    }
+
+
+    // Prevent double submissions on forms
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function (e) {
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.style.opacity = '0.6';
+            }
+        });
+    });
+
+    // Listen to metadata progress stream
+    function connectProgressStream() {
+        const progressDiv = document.getElementById('send-progress');
+        const progressText = document.getElementById('send-progress-text');
+        const statusText = document.getElementById('send-status');
+        
+        if (!progressDiv) return;
+        
+        const eventSource = new EventSource('/metadata_progress');
+        
+        eventSource.addEventListener('message', function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (!data.active) {
+                    eventSource.close();
+                    if (progressDiv.style.display !== 'none') {
+                        progressText.textContent = 'Completed!';
+                        statusText.textContent = 'All items processed';
+                    }
+                    return;
+                }
+                
+                // Only show progress if modal is open
+                if (progressDiv.style.display === 'block') {
+                    const percentage = data.percentage || 0;
+                    const current = data.current_book || 'Processing...';
+                    const step = data.current_step || '';
+                    const eta = data.eta_seconds ? Math.round(data.eta_seconds) : '?';
+                    
+                    progressText.textContent = `${current} - ${step} (${percentage}% - ETA: ${eta}s)`;
+                    statusText.textContent = `${data.completed_books || 0} of ${data.total_books || 0} processed`;
+                }
+            } catch (e) {
+                console.error('Error parsing progress data:', e);
+            }
+        });
+        
+        eventSource.addEventListener('error', function(event) {
+            console.error('Progress stream error:', event);
+            eventSource.close();
+        });
+    }
+    
+    // Connect to progress stream on page load
+    connectProgressStream();
+</script>
+{% endblock %}

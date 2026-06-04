@@ -1,0 +1,97 @@
+=== COVER PAGE ===
+GoodBooks
+Your Personal Ebook Library & Kindle Delivery System
+
+=== WELCOME ===
+Welcome to GoodBooks!
+
+GoodBooks is your personal ebook manager and Kindle delivery system. It's designed to keep your book collection organized, searchable, and instantly accessible from any device.
+
+Whether you're managing a large library, searching for specific titles, or sending books to your Kindle, GoodBooks makes it simple and seamless.
+
+=== QUICK START ===
+Get Up and Running in Minutes
+
+Step 1: Access Your Library
+Open the GoodBooks web app from any browser. You'll see your entire ebook collection organized by title, author, and custom folders.
+
+Step 2: Search and Browse
+Use the search feature to find any book by title or author. Filter by genre, sort by date added or title, and browse your books however you prefer.
+
+Step 3: Send to Kindle
+Found a book you want to read? Click "Send to Kindle" and select your user account. The book is automatically formatted and sent to your Kindle device within seconds.
+
+Step 4: Check History
+Your reading history automatically tracks every download and delivery. Visit the History page anytime to see what you've sent and when.
+
+=== FEATURES ===
+What You Can Do with GoodBooks
+
+Library Management: View all your ebooks in an organized grid. Each book shows the cover, title, and quick access buttons.
+
+Smart Search: Search Anna's Archive for new books without leaving the app. Download directly or set up automatic delivery to your Kindle.
+
+Feed Integration: Connect RSS feeds and HTML pages to automatically discover new books matching your interests.
+
+One-Click Delivery: Select your Kindle email address and send any book with a single click. Formatting is automatic.
+
+Reading History: Track every book you've downloaded and sent. See where each book came from and when you accessed it.
+
+Custom Organization: Create folders and collections to organize your library however makes sense to you.
+
+=== ACCESSING REMOTELY ===
+Away from Home?
+
+If you're away from your home network, GoodBooks is also available at:
+
+books.a1e.lol
+
+Use your access token at the login prompt to securely access your library from anywhere.
+
+=== TIPS & TRICKS ===
+Make the Most of GoodBooks
+
+Batch Operations: Select multiple books at once and send them all to Kindle in one action.
+
+Autodownload: When searching, enable autodownload to automatically fetch and send matching books to your Kindle.
+
+Feed Monitoring: Set up feeds to automatically check for new books daily. Run feeds manually or let them run in the background.
+
+Metadata Refresh: Let GoodBooks pull book information from Goodreads to enrich your library with ratings, genres, and descriptions.
+
+Organize First: Take time to sort and organize your library. Use the folder view to create a structure that works for you.
+
+=== SETTINGS ===
+Customize Your Experience
+
+Configure your Kindle email address in Settings.
+
+Add multiple user accounts if you have different Kindles in your household.
+
+Set up SMTP for automatic email notifications when books are sent.
+
+Connect RSS feeds to discover new content automatically.
+
+Adjust download folders and storage locations as needed.
+
+=== GETTING HELP ===
+Support
+
+Most issues can be resolved by:
+
+Checking the History page to verify your downloads
+
+Refreshing metadata to get updated book information
+
+Running feeds manually to check for new discoveries
+
+Reviewing the Settings page to ensure your Kindle email is correct
+
+All your books are safely stored and organized. Your Kindle email is encrypted and never shared.
+
+=== ENJOY ===
+Happy Reading!
+
+Your entire library is now at your fingertips. Send books to your Kindle, discover new favorites, and keep your reading life organized.
+
+GoodBooks puts you in control of your personal ebook ecosystem.

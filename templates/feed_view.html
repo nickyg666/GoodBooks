@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Feed Items</h1>
+    <p class="muted">
+        This page shows items discovered in your configured feeds, grouped by user.
+        Nothing is downloaded automatically here; use the search/manual download
+        flow to fetch specific items.
+    </p>
+</div>
+
+{% if feed_groups %}
+{% for username, items in feed_groups.items() %}
+<div class="card">
+    <h2>{{ username }}</h2>
+    <div class="grid results-grid">
+        {% for item in items %}
+        <div class="card library-card feed-item">
+            <div class="library-cover">
+                {% if item.cover %}
+                <img src="{{ item.cover }}" alt="Cover" onerror="this.style.display='none'" {% if not is_kindle %}loading="lazy"{% endif %} style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <div class="cover-placeholder">
+                    <span>{{ item.title }}</span>
+                </div>
+                {% endif %}
+                <div class="library-title-overlay">{{ item.title }}</div>
+            </div>
+
+            <div class="library-meta">
+                {% if item.author %}
+                <p style="font-size: 11px; margin: 0.2rem 0; color: var(--text-light); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">by {{ item.author }}</p>
+                {% endif %}
+                {% if item.description %}
+                <p style="font-size: 10px; margin: 0.2rem 0; color: var(--text-light); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ item.description }}</p>
+                {% endif %}
+                <div style="margin-top: 0.4rem; display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                    {% if item.link %}
+                    <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="chip" style="font-size: 9px;">View</a>
+                    {% endif %}
+                    <form method="get" action="{{ url_for('search') }}" style="display: inline;">
+                        <input type="hidden" name="q" value="{{ item.title }} {{ item.author }}">
+                        <button type="submit" class="chip" style="font-size: 9px;">Search</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+    <p>No feed items found. Try running your feeds or adjusting feed settings.</p>
+</div>
+{% endif %}
+
+{% if debug_log %}
+<div class="card">
+    <h2>Debug</h2>
+    <pre class="debug">{{ debug_log|join('\n') }}</pre>
+</div>
+{% endif %}
+{% endblock %}

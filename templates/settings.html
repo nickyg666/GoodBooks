@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h1 style="margin-bottom: 2rem;">Settings</h1>
+    <form method="post" id="settings-form" action="{{ url_for('settings') }}">
+        <!-- System Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>System</h2>
+            <p class="muted">Control how the web server runs and how much detail is captured in the logs.</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Server Port</label>
+                    <input type="number" name="server-port" value="{{ settings.server_port }}" min="1" max="65535" required style="width: 120px;" aria-label="Server Port">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Log Level</label>
+                    <select name="log-level" style="width: 140px;" aria-label="Log Level">
+                        {% for level in ['DEBUG', 'INFO', 'WARNING', 'ERROR'] %}
+                        <option value="{{ level }}" {% if settings.log_level == level %}selected{% endif %}>{{ level }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Request Timeout (s)</label>
+                    <input type="number" name="request-timeout" value="{{ settings.request_timeout }}" min="10" max="300" required style="width: 100px;" aria-label="Request Timeout in seconds">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Maintenance Interval (s)</label>
+                    <input type="number" name="maintenance-interval-seconds" value="{{ settings.maintenance_interval_seconds }}" min="60" max="86400" required style="width: 100px;" aria-label="Maintenance Interval in seconds">
+                    <span class="muted" style="font-size: 0.85rem;">(900 = 15min)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <label class="checkbox" style="margin: 0;">
+                        <input type="checkbox" name="disable-background-jobs" {% if settings.disable_background_jobs %}checked{% endif %}>
+                        <span>Disable background jobs</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>Notifications</h2>
+            <p class="muted">Global email addresses (comma-separated).</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Notification Emails</label>
+                    <input type="text" name="notification-emails" value="{{ settings.notification_emails }}" placeholder="user1@example.com, user2@example.com" style="width: 300px;" aria-label="Notification emails (comma separated)">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Kindle Emails</label>
+                    <input type="text" name="kindle-emails" value="{{ settings.kindle_emails }}" placeholder="kindle1@kindle.com, kindle2@kindle.com" style="width: 300px;" aria-label="Kindle emails (comma separated)">
+                </div>
+                <div style="border-top: 1px solid var(--border); margin-top: 0.75rem; padding-top: 0.75rem;">
+                    <p class="muted" style="margin-top: 0;">Send notification emails for:</p>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label class="checkbox" style="margin: 0;">
+                            <input type="checkbox" name="notify-download-failures" {% if settings.notify_download_failures %}checked{% endif %}>
+                            <span>Download Failures</span>
+                        </label>
+                        <label class="checkbox" style="margin: 0;">
+                            <input type="checkbox" name="notify-metadata-failures" {% if settings.notify_metadata_failures %}checked{% endif %}>
+                            <span>Metadata Enrichment Failures</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SMTP Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>SMTP</h2>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Host</label>
+                    <input type="text" name="smtp-host" value="{{ settings.smtp.host }}" required style="width: 200px;" aria-label="SMTP host">
+                    <label style="margin: 0; flex-shrink: 0;">Port</label>
+                    <input type="number" name="smtp-port" value="{{ settings.smtp.port }}" required style="width: 80px;" aria-label="SMTP port">
+                    <label class="checkbox" style="margin: 0;">
+                        <input type="checkbox" name="smtp-use-tls" {% if settings.smtp.use_tls %}checked{% endif %}>
+                        <span>Use TLS</span>
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Username</label>
+                    <input type="text" name="smtp-username" value="{{ settings.smtp.username }}" style="width: 200px;" aria-label="SMTP username">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Password</label>
+                    <input type="password" name="smtp-password" value="{{ settings.smtp.password }}" style="width: 200px;" aria-label="SMTP password">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">From Email</label>
+                    <input type="email" name="smtp-from-email" value="{{ settings.smtp.from_email }}" style="width: 250px;" aria-label="SMTP from email address">
+                </div>
+            </div>
+        </div>
+
+        <!-- Defaults Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>Defaults</h2>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <label style="margin: 0; flex-shrink: 0; width: 140px;">Download Directory</label>
+                <input type="text" name="default-download-dir" value="{{ settings.default_download_dir }}" style="width: 300px;" aria-label="Default download directory">
+            </div>
+        </div>
+
+        <!-- Library Defaults Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>Library Defaults</h2>
+            <p class="muted">Configure library scanning and display.</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Library Directory</label>
+                    <input type="text" name="library-root" value="{{ settings.library_root or settings.default_download_dir }}" style="width: 300px;" aria-label="Library root directory">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Items per Page</label>
+                    <input type="number" name="library-items-per-page" min="1" max="500" value="{{ settings.library_items_per_page }}" style="width: 100px;" aria-label="Library items per page">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Default Sort</label>
+                    <select name="library-default-sort" style="width: 200px;" aria-label="Library default sort order">
+                        <option value="date_newest" {% if settings.library_default_sort == 'date_newest' %}selected{% endif %}>Date (newest)</option>
+                        <option value="date_oldest" {% if settings.library_default_sort == 'date_oldest' %}selected{% endif %}>Date (oldest)</option>
+                        <option value="title_az" {% if settings.library_default_sort == 'title_az' %}selected{% endif %}>Title A–Z</option>
+                        <option value="title_za" {% if settings.library_default_sort == 'title_za' %}selected{% endif %}>Title Z–A</option>
+                        <option value="author_az" {% if settings.library_default_sort == 'author_az' %}selected{% endif %}>Author A–Z</option>
+                        <option value="author_za" {% if settings.library_default_sort == 'author_za' %}selected{% endif %}>Author Z–A</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Max Feed Workers</label>
+                    <input type="number" name="max-feed-workers" min="1" max="16" value="{{ settings.max_feed_workers }}" style="width: 100px;" aria-label="Max feed workers">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Max Concurrent Downloads</label>
+                    <input type="number" name="max-concurrent-downloads" min="1" max="16" value="{{ settings.max_concurrent_downloads }}" style="width: 100px;" aria-label="Max concurrent downloads">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <label style="margin: 0; flex-shrink: 0; width: 140px;">Extra Folders (one per line)</label>
+                    <textarea name="library-extra-dirs" rows="3" style="width: 300px;" aria-label="Library extra directories (one per line)">{% for p in settings.library_extra_dirs %}{{ p }}{% if not loop.last %}&#10;{% endif %}{% endfor %}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Selection & Management Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>Users</h2>
+            <p class="muted">Select a user to view or edit their settings.</p>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                <label style="margin: 0; flex-shrink: 0; width: 140px;">Select User</label>
+                <select id="user-selector" name="user-selector" aria-label="Select user" style="width: 300px;" onchange="selectUser()">
+                    <option value="">-- New User --</option>
+                </select>
+                <button type="button" class="secondary" onclick="deleteSelectedUser()">Delete User</button>
+            </div>
+            <div id="user-editor" style="display: none;"></div>
+        </div>
+
+        <!-- Maintenance Card -->
+        <div class="card" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 30px; padding: 1rem;">
+            <h2>Maintenance Tools</h2>
+            <p class="muted">Optimize library and fix cached data.</p>
+            <form method="post" action="{{ url_for('clear_cover_cache') }}" style="display: inline;">
+                <button type="submit" class="secondary" onclick="return confirm('Clear all cached covers? Forces re-fetching on next view.');">
+                    Clear Cover Cache
+                </button>
+            </form>
+        </div>
+
+        <!-- Save Button -->
+        <input type="hidden" name="user-count" id="user-count" value="{{ settings.users|length }}">
+        <button type="submit" class="primary" id="save-button" style="width: auto; margin-top: 1rem; padding: 0.5rem 2rem;">Save Settings</button>
+        <div id="save-status" style="margin-top: 1rem; display: none;"></div>
+    </form>
+</div>
+<script>
+const existingUsers = {{ existing_users|tojson }};
+</script>
+<script src="{{ url_for('static', filename='settings.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,91 @@
+================================================================================
+QUICK FIX REFERENCE - December 8, 2025
+================================================================================
+
+ISSUE 1: Email Images Not Embedding
+LOCATION: app.py (lines 1046, 1253)
+FIX: Changed MIME Content-ID from <cid> to cid format
+STATUS: ✅ FIXED - Images now embed inline in notification emails
+
+ISSUE 2: Progress Bar Won't Auto-Hide
+LOCATION: templates/base.html (lines 139-197)
+FIX: Added EventSource cleanup + removed buggy auto-dismiss logic
+STATUS: ✅ FIXED - Progress bar now hides cleanly when done
+
+ISSUE 3: 429 Rate Limiting Backoff Too Short
+LOCATION: search_engine.py (line 741)
+FIX: Increased sleep from 5 seconds to 15 seconds
+STATUS: ✅ FIXED - More respectful backoff on rate limits
+
+ISSUE 4: Stale Images in Cache
+LOCATION: data/cover_cache/
+SOLUTION: Run this to clear:
+    rm -rf /usr/local/bin/GoodBooks/data/cover_cache/*
+STATUS: ✅ DOCUMENTED - Clear cache whenever you see stale images
+
+================================================================================
+COMMANDS TO TEST FIXES
+================================================================================
+
+1. Clear cover cache (if needed):
+   $ rm -rf /usr/local/bin/GoodBooks/data/cover_cache/*
+
+2. Restart service:
+   $ sudo systemctl restart goodbooks
+
+3. Monitor for 429 errors:
+   $ tail -f /usr/local/bin/GoodBooks/info.log | grep 429
+
+4. Test metadata refresh:
+   - Go to Settings → Refresh (should show progress bar)
+   - Bar should hide cleanly when done (no flicker)
+
+5. Test notification email:
+   - Download a book and trigger notification
+   - Check email - cover should display inline
+
+================================================================================
+CACHE DETAILS
+================================================================================
+
+Cache Directory: /usr/local/bin/GoodBooks/data/cover_cache/
+File Format: MD5 hashes of URLs (e.g., a3c4d5e6f7g8h9i0j1k2l3m4.jpg)
+Min Width: 300px (smaller images not cached)
+Quality: 95% JPEG
+
+Clear entire cache:
+    rm -rf /usr/local/bin/GoodBooks/data/cover_cache/*
+
+Clear old cache (>30 days old):
+    python3 << 'EOF'
+    from cover_cache_manager import get_cache_manager
+    removed = get_cache_manager().cleanup_old_cache(max_age_days=1)
+    print(f"Removed {removed} old covers")
+    EOF
+
+================================================================================
+CONFIGURATION RECOMMENDATIONS
+================================================================================
+
+If still getting 429 errors:
+1. Reduce download concurrency: Settings → max_concurrent_downloads = 1
+2. Increase 429 throttle: search_engine.py line 34 - increase MAX_429_ERRORS
+3. Monitor: tail -f info.log | grep "429\|Too Many Requests"
+
+If images still not showing:
+1. Clear cache: rm -rf data/cover_cache/*
+2. Check SMTP settings (Settings → SMTP Configuration)
+3. Test email delivery: check spam folder first
+4. Review app.log for MIME errors: grep "Failed to send" *.log
+
+================================================================================
+FILES MODIFIED
+================================================================================
+
+✅ app.py (MIME Content-ID format fixes)
+✅ search_engine.py (429 backoff timing)
+✅ templates/base.html (progress bar auto-hide logic)
+📄 FIXES_DECEMBER_8_2025.md (detailed documentation)
+
+NO OTHER FILES CHANGED - All changes minimal and surgical
+================================================================================

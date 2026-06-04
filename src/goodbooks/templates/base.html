@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="white">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <title>{{ app_name }} - {{ title if title else 'Home' }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Conditional CSS loading based on device type -->
+    {% if is_kindle %}
+        <!-- Kindle e-ink optimized CSS -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='kindle.css') }}">
+    {% else %}
+        <!-- Desktop polished CSS -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='desktop.css') }}">
+    {% endif %}
+    
+    <style>
+        /* E-ink specific optimizations */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="navbar-brand">
+        <a href="{{ url_for('index') }}" class="navbar-brand-link">
+            <img src="{{ url_for('static', filename='cover-nav.png') }}" alt="GoodBooks" class="navbar-logo">
+            <span class="navbar-title">{{ app_name }}</span>
+        </a>
+    </div>
+    
+    <!-- Progress Bars Container: Vertical layout -->
+    <div id="progress-bars-container" style="display: flex; flex-direction: column; gap: 0.8rem; flex: 1; padding: 0 1rem; min-width: 0;">
+        <!-- Feed Progress (Top) -->
+        <div id="feed-progress-wrapper" class="feed-progress-wrapper" style="min-width: 0; flex: 1;">
+            <div style="font-size: 0.65rem; font-weight: 600; color: var(--muted); margin-bottom: 0.25rem; white-space: nowrap;">Feed</div>
+            <div id="feed-progress-container" class="feed-progress-container" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap; min-width: 0;">
+                <div class="feed-progress-bar" style="min-width: 70px; width: 70px; flex-shrink: 0;">
+                    <div id="feed-progress-fill" class="feed-progress-fill" style="width: 0%"></div>
+                </div>
+                <span id="feed-progress-percent" style="min-width: 25px; text-align: center; font-weight: bold; font-size: 0.75rem; flex-shrink: 0;">0%</span>
+                <span id="feed-progress-label" style="font-size: 0.65rem; font-weight: 500; min-width: 45px; flex-shrink: 0;">Searching</span>
+                <span id="feed-progress-book" style="font-size: 0.65rem; flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--accent-green); min-width: 80px;">--</span>
+                <span id="feed-progress-step" style="font-size: 0.65rem; flex-shrink: 0; color: var(--muted); min-width: 40px;">--</span>
+                <span id="feed-progress-eta" style="font-size: 0.65rem; flex-shrink: 0; font-weight: 600; min-width: 35px;">--</span>
+            </div>
+        </div>
+        
+        <!-- Metadata Progress (Bottom) -->
+        <div id="metadata-progress-wrapper" class="metadata-progress-wrapper" style="min-width: 0; flex: 1;">
+            <div style="font-size: 0.65rem; font-weight: 600; color: var(--muted); margin-bottom: 0.25rem; white-space: nowrap;">Metadata</div>
+            <div id="metadata-progress-container" class="metadata-progress-container" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap; min-width: 0;">
+                <div class="metadata-progress-bar" style="min-width: 70px; width: 70px; flex-shrink: 0;">
+                    <div id="metadata-progress-fill" class="metadata-progress-fill" style="width: 0%"></div>
+                </div>
+                <span id="metadata-progress-percent" style="min-width: 25px; text-align: center; font-weight: bold; font-size: 0.75rem; flex-shrink: 0;">0%</span>
+                <span id="metadata-progress-label" style="font-size: 0.65rem; font-weight: 500; min-width: 45px; flex-shrink: 0;">Refresh</span>
+                <span id="metadata-progress-book" style="font-size: 0.65rem; flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--accent-blue); min-width: 80px;">--</span>
+                <span id="metadata-progress-step" style="font-size: 0.65rem; flex-shrink: 0; color: var(--muted); min-width: 40px;">--</span>
+                <span id="metadata-progress-eta" style="font-size: 0.65rem; flex-shrink: 0; font-weight: 600; min-width: 35px;">--</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="nav-links">
+        <a href="{{ url_for('index', view='folder') }}" class="nav-link">Library</a>
+        <a href="{{ url_for('search') }}" class="nav-link">Search</a>
+        <a href="{{ url_for('feed_view') }}" class="nav-link">Feeds</a>
+        <a href="{{ url_for('settings') }}" class="nav-link">Settings</a>
+        <a href="{{ url_for('history') }}" class="nav-link">History</a>
+    </div>
+</nav>
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-wrapper">
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message|safe }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</div>
+
+<script>
+// Metadata refresh progress bar via SSE
+document.addEventListener('DOMContentLoaded', function() {
+    
+    if (!window.EventSource) {
+        return;
+    }
+
+    const container = document.getElementById('metadata-progress-container');
+    const wrapper = document.getElementById('metadata-progress-wrapper');
+    const fill = document.getElementById('metadata-progress-fill');
+    const label = document.getElementById('metadata-progress-label');
+    const book = document.getElementById('metadata-progress-book');
+    const step = document.getElementById('metadata-progress-step');
+    const eta = document.getElementById('metadata-progress-eta');
+    const percent = document.getElementById('metadata-progress-percent');
+
+    if (!container) {
+        return;
+    }
+
+    // No toggle functionality needed in navbar mode
+    window.es = new EventSource("{{ url_for('metadata_progress') }}");
+    let lastActive = false;
+
+    window.es.onopen = function() {
+    };
+
+    window.es.onmessage = function(event) {
+        try {
+            const state = JSON.parse(event.data);
+            updateMetadataProgressUI(state);
+            
+            // Check if we should close the connection
+            if (lastActive && !state.active) {
+                window.es.close();
+                lastActive = false;
+            } else {
+                lastActive = state.active;
+            }
+        } catch (e) {
+            console.error('[Progress Bar] Failed to parse metadata progress:', e, 'data:', event.data);
+        }
+    };
+
+    window.es.onerror = function(event) {
+        console.error('[Progress Bar] Stream error:', event);
+        if (window.es.readyState === 2) {
+            window.es.close();
+        }
+    };
+
+    function updateMetadataProgressUI(state) {
+        const active = state && state.active;
+        
+        if (!active) {
+            if (wrapper) wrapper.classList.remove('active');
+            container.classList.remove('active');
+            // Close the EventSource to stop receiving updates
+            if (window.es && window.es.readyState !== 2) {
+                window.es.close();
+            }
+            return;
+        }
+
+        if (wrapper) wrapper.classList.add('active');
+        container.classList.add('active');
+
+        const total = state.total_books || 0;
+        const completed = state.completed_books || 0;
+        let pct = state.percentage || 0;
+        pct = Math.max(0, Math.min(100, pct));
+
+        if (fill) {
+            fill.style.width = pct + '%';
+        }
+
+        if (percent) {
+            percent.textContent = pct + '%';
+        }
+
+        let labelText = 'Metadata refresh in progress...';
+        if (total > 0) {
+            labelText = `${completed}/${total} books`;
+        }
+        if (label) {
+            label.textContent = labelText;
+        }
+
+        // Update current book being processed
+        if (state.current_book && book) {
+            book.textContent = `📖 ${state.current_book}`;
+        }
+
+        // Update current step
+        if (state.current_step && step) {
+            step.textContent = state.current_step;
+        } else if (step) {
+            step.textContent = '--';
+        }
+
+        // Update ETA
+        if (step && state.eta_seconds !== null && state.eta_seconds !== undefined) {
+            let etaText;
+            if (state.eta_seconds < 60) {
+                etaText = `ETA: ${Math.ceil(state.eta_seconds)}s`;
+            } else if (state.eta_seconds < 3600) {
+                const minutes = Math.ceil(state.eta_seconds / 60);
+                etaText = `ETA: ${minutes}m`;
+            } else {
+                const hours = Math.floor(state.eta_seconds / 3600);
+                const minutes = Math.ceil((state.eta_seconds % 3600) / 60);
+                etaText = `ETA: ${hours}h ${minutes}m`;
+            }
+            eta.textContent = etaText;
+        } else if (eta) {
+            eta.textContent = '--';
+        }
+        if (state.current_step && step) {
+            step.textContent = state.current_step;
+        }
+
+        let etaText = 'ETA: --';
+        if (state.eta_seconds !== null && state.eta_seconds !== undefined && state.eta_seconds >= 0) {
+            if (state.eta_seconds < 60) {
+                etaText = `ETA: ${Math.ceil(state.eta_seconds)}s`;
+            } else if (state.eta_seconds < 3600) {
+                const minutes = Math.ceil(state.eta_seconds / 60);
+                etaText = `ETA: ${minutes}m`;
+            } else {
+                const hours = Math.floor(state.eta_seconds / 3600);
+                const minutes = Math.ceil((state.eta_seconds % 3600) / 60);
+                etaText = `ETA: ${hours}h ${minutes}m`;
+            }
+        }
+        if (eta) {
+            eta.textContent = etaText;
+        }
+    }
+});
+
+// Feed run progress bar via SSE
+document.addEventListener('DOMContentLoaded', function() {
+    
+    if (!window.EventSource) {
+        return;
+    }
+
+    const feedContainer = document.getElementById('feed-progress-container');
+    const feedWrapper = document.getElementById('feed-progress-wrapper');
+    const feedFill = document.getElementById('feed-progress-fill');
+    const feedLabel = document.getElementById('feed-progress-label');
+    const feedBook = document.getElementById('feed-progress-book');
+    const feedStep = document.getElementById('feed-progress-step');
+    const feedEta = document.getElementById('feed-progress-eta');
+    const feedPercent = document.getElementById('feed-progress-percent');
+
+    if (!feedContainer) {
+        return;
+    }
+
+    let feedEs = null;
+    {# Only try to connect to feed progress if endpoint exists #}
+    feedEs = new EventSource("/feeds/stream");
+    let feedLastActive = false;
+
+    if (feedEs) {
+        feedEs.onopen = function() {
+        };
+
+        feedEs.onmessage = function(event) {
+            try {
+                const state = JSON.parse(event.data);
+                updateFeedProgressUI(state);
+                
+                if (feedLastActive && !state.active) {
+                    feedEs.close();
+                    feedLastActive = false;
+                } else {
+                    feedLastActive = state.active;
+                }
+            } catch (e) {
+                console.error('[Feed Progress] Failed to parse feed progress:', e, 'data:', event.data);
+            }
+        };
+
+        feedEs.onerror = function(event) {
+            console.error('[Feed Progress] Stream error:', event);
+            if (feedEs.readyState === 2) {
+                feedEs.close();
+            }
+        };
+    }
+
+    function updateFeedProgressUI(state) {
+        const active = state && state.active;
+        
+        if (!active) {
+            if (feedWrapper) feedWrapper.classList.remove('active');
+            feedContainer.style.display = 'none';
+            if (feedEs && feedEs.readyState !== 2) {
+                feedEs.close();
+            }
+            return;
+        }
+
+        if (feedWrapper) feedWrapper.classList.add('active');
+        feedContainer.style.display = 'flex';
+
+        const overall = state.overall || {};
+        const total = overall.total_items || 0;
+        const completed = overall.completed_items || 0;
+        let pct = 0;
+        if (total > 0) {
+            pct = Math.round((completed / total) * 100);
+        }
+        pct = Math.max(0, Math.min(100, pct));
+
+        if (feedFill) {
+            feedFill.style.width = pct + '%';
+        }
+
+        if (feedPercent) {
+            feedPercent.textContent = pct + '%';
+        }
+
+        let labelText = 'Feed run...';
+        if (total > 0) {
+            labelText = `${completed}/${total}`;
+        }
+        if (feedLabel) {
+            feedLabel.textContent = labelText;
+        }
+
+        // Current feed/step info
+        const feeds = state.feeds || {};
+        let feedInfo = overall.current_item || '--';
+        if (feedBook) {
+            feedBook.textContent = feedInfo;
+        }
+
+        // Step info (e.g., "downloading", "converting", etc.)
+        if (overall.current_step && feedStep) {
+            feedStep.textContent = overall.current_step;
+        } else if (feedStep) {
+            feedStep.textContent = '--';
+        }
+
+        // ETA
+        if (overall.eta_seconds !== null && overall.eta_seconds !== undefined && overall.eta_seconds >= 0) {
+            let etaText = 'ETA: --';
+            if (overall.eta_seconds < 60) {
+                etaText = `ETA: ${Math.ceil(overall.eta_seconds)}s`;
+            } else if (overall.eta_seconds < 3600) {
+                const minutes = Math.ceil(overall.eta_seconds / 60);
+                etaText = `ETA: ${minutes}m`;
+            } else {
+                const hours = Math.floor(overall.eta_seconds / 3600);
+                const minutes = Math.ceil((overall.eta_seconds % 3600) / 60);
+                etaText = `ETA: ${hours}h ${minutes}m`;
+            }
+            if (feedEta) {
+                feedEta.textContent = etaText;
+            }
+        } else if (feedEta) {
+            feedEta.textContent = '--';
+        }
+    }
+});
+</script>
+</body>
+</html>

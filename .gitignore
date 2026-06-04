@@ -1,0 +1,50 @@
+# --- Python --- #
+venv/
+.env
+__pycache__/
+*.pyo
+*.pyc
+*.py.bak
+*.py.backup
+.pytest_cache/
+*.egg-info/
+
+# --- Data --- #
+data/
+
+# --- Logs --- #
+debug.log
+info.log
+*.log
+app.out
+app.pid
+
+# --- Backups --- #
+*.bak
+*.backup
+*.old
+
+# --- Cache --- #
+.cache/
+mnt/
+
+# --- User libraries (ebook folders) --- #
+
+# --- Build artifacts --- #
+*.zip
+*.tar.gz
+*.epub
+*.pdf
+*.mobi
+*.azw3
+*.azw
+*.mp4
+*.jpg
+*.png
+!docs/**/*.png
+!static/**/*.png
+!static/**/*.jpg
+
+# --- OS --- #
+.DS_Store
+Thumbs.db

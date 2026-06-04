@@ -1,0 +1,1174 @@
+Return-Path: <server.notifications.home.ubu.lol@gmail.com>
+Received: from [192.168.0.9] (c-174-60-232-108.hsd1.pa.comcast.net.
+ [174.60.232.108])        by smtp.gmail.com with ESMTPSA id
+ af79cd13be357-8b627a8a9c7sm1196217885a.43.2025.12.08.18.19.18        for
+ <nick@ubu.lol>        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384
+ bits=256/256);        Mon, 08 Dec 2025 18:19:18 -0800 (PST)
+Message-ID: <69378726.050a0220.1f60b8.13c2@mx.google.com>
+Date: Mon, 08 Dec 2025 18:19:18 -0800 (PST)
+From: server.notifications.home.ubu.lol@gmail.com
+X-Google-Original-From: BOOKS@ubu.lol
+To: nick@ubu.lol
+Subject: Added to Library: 37 books
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=3D"utf-8">
+    <meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-scale=3D=
+1.0">
+    <title>Added to Library</title>
+    <style>
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", syste=
+m-ui, sans-serif;
+            margin: 0;
+            padding: 16px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            margin-bottom: 24px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 16px;
+        }
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            color: #333;
+        }
+        .header p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .container {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class=3D"container">
+        <div class=3D"header">
+            <h1>Added to Library</h1>
+            <p>37 books added to your library</p>
+        </div>
+        <div class=3D"grid">
+            <div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; padd=
+ing: 12px; text-align: center; background-color: #fafafa; display: flex; flex=
+-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">C</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Chicken Soup for the Soul: Well=
+ That Was Funny: 101 Feel Good Stories</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Amy NewmarkNewmark, Amy</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.6</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Am=
+y Newmark
+
+A Simon &amp; Schuster eBook. Simon &amp; Schuster has a great book for every=
+ reader.
+
+Chicken Soup for the Soul...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/120694.Nutshell_Library' style=3D'display: inline-block; paddin=
+g: 6px 12px; background-color: #d4a574; color: white; text-decoration: none; =
+border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a>=
+</div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">E</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Eloise in Paris</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Thompson, Kay</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.2</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Th=
+ompson, Kay
+
+Eloise 2, 2013
+
+lgli/eng\2016-03\2016-03-18 Part 1-2\Kay Thompson - [Eloise 02] - Eloise in P=
+aris (ret...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/782854.Eloise' style=3D'display: inline-block; padding: 6px 12p=
+x; background-color: #d4a574; color: white; text-decoration: none; border-rad=
+ius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">E</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Ellie McDoodle diaries. Have pe=
+n, will travel</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Barshaw, Ruth McNallyRuth McNally Barshaw</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.1</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ba=
+rshaw, Ruth McNally
+
+When Ellie&#x27;s family moves to a new town, she&#x27;s sure she won&#x27;t =
+fit in. Nobody else likes to rea...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/3176149-ellie-mcdoodle' style=3D'display: inline-block; padding=
+: 6px 12px; background-color: #d4a574; color: white; text-decoration: none; b=
+order-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a><=
+/div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">S</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Skulduggery Pleasant</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Landy, Derek</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.2</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>La=
+ndy, Derek
+
+Skulduggery Pleasant 1, 0
+
+lgli/2010\2010-08-26\Derek Landy - [Skulduggery Pleasant 01] - Skulduggery P.=
+..</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/284440.Skulduggery_Pleasant' style=3D'display: inline-block; pa=
+dding: 6px 12px; background-color: #d4a574; color: white; text-decoration: no=
+ne; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads=
+</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">L</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Lizzie and the Redcoat: Stirrin=
+gs of Revolution in the American Colonies (1765) (Sisters in Time #4)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Susan Martins MillerMiller, Susan Martins</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.2</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Su=
+san Martins Miller
+
+Time Period: December 1764 - May 1766 Tensions simmer in 1765 Boston, home to=
+ twelve-year-old L...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/11643854-american-challenge' style=3D'display: inline-block; pa=
+dding: 6px 12px; background-color: #d4a574; color: white; text-decoration: no=
+ne; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads=
+</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">H</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Han Solo and the Lost Legacy</d=
+iv>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Daley, Brian</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.9</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Da=
+ley, Brian
+
+Star Wars; Han Solo Adventures 3, 2012
+
+lgli/R:/!fiction/0day/SFFebooks/Star Wars/2 - Rise of the Empir...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/27473933-the-dragon-flyers' style=3D'display: inline-block; pad=
+ding: 6px 12px; background-color: #d4a574; color: white; text-decoration: non=
+e; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads<=
+/a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">G</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Gregor and the Code of Claw</di=
+v>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Suzanne Collins</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Su=
+zanne Collins
+
+The stunning conclusion to the riveting Gregor the Overlander series.
+Everyone in the Underland has ...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/537070.Gregor_and_the_Code_of_Claw' style=3D'display: inline-bl=
+ock; padding: 6px 12px; background-color: #d4a574; color: white; text-decorat=
+ion: none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Go=
+odreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Trouble with Lacy Brown</di=
+v>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Clopton, Debra</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.9</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Cl=
+opton, Debra
+
+Love is in the air...and the hair -- or so wacky hairstylist Lacy Brown belie=
+ves when she swoops int
+...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/396239.The_Trouble_With_Tink' style=3D'display: inline-block; p=
+adding: 6px 12px; background-color: #d4a574; color: white; text-decoration: n=
+one; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodread=
+s</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">S</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Silverwing</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Kenneth. 1967- Oppel</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.1</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ke=
+nneth. 1967- Oppel
+
+When a newborn bat named Shade but sometimes called &quot;Runt&quot; becomes =
+separated from his colony du...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/857920.Silverwing' style=3D'display: inline-block; padding: 6px=
+ 12px; background-color: #d4a574; color: white; text-decoration: none; border=
+-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">A</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">A Wind in the Door (Time Quinte=
+t #2</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Madeleine L&#x27;Engle</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.0</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ma=
+deleine L&#x27;Engle
+
+A Wind in the Door is a young adult science fantasy novel by Madeleine L&#x27=
+;Engle. It is a companion ...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/18130.A_Wind_in_the_Door' style=3D'display: inline-block; paddi=
+ng: 6px 12px; background-color: #d4a574; color: white; text-decoration: none;=
+ border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a=
+></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">C</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Coraline</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Neil Gaiman</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.1</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ne=
+il Gaiman
+
+When Coraline explores her new home, she steps through a door and into anothe=
+r house just like her o</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/17061.Coraline' style=3D'display: inline-block; padding: 6px 12=
+px; background-color: #d4a574; color: white; text-decoration: none; border-ra=
+dius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">M</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">My Teacher Is an Alien</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Coville, Bruce</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.8</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Co=
+ville, Bruce
+
+My Teacher 1, 0
+
+lgli/2011\2011-03-23\Bruce Coville - [My Teacher 01] - My Teacher Is an Alien=
+ (epub)...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/84060.My_Teacher_Is_an_Alien' style=3D'display: inline-block; p=
+adding: 6px 12px; background-color: #d4a574; color: white; text-decoration: n=
+one; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodread=
+s</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">S</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Swallows and Amazons. # 1</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Ransome, Arthur</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.0</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ra=
+nsome, Arthur
+
+The ultimate children&#x27;s classic - long summer days filled with adventure=
+.   John, Susan, Titty and R...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/125190.Swallows_and_Amazons' style=3D'display: inline-block; pa=
+dding: 6px 12px; background-color: #d4a574; color: white; text-decoration: no=
+ne; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads=
+</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">1</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">101 DalmatiansThe hundred and o=
+ne dalmatians</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Dodie Smith [Smith, Dodie]</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.1</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Do=
+die Smith [Smith, Dodie]
+
+That daring, hilarious pack of hounds from the classic tale of canine intrigu=
+e returns in...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/511614.The_101_Dalmatians' style=3D'display: inline-block; padd=
+ing: 6px 12px; background-color: #d4a574; color: white; text-decoration: none=
+; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</=
+a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">D</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Dragon&#x27;s Blood</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Jane Yolen</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.0</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ja=
+ne Yolen
+
+Dragons are trained to fight to the death, and two determined teens help free=
+ them in this spellbind
+
+Hou...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/201054.Dragon_s_Blood' style=3D'display: inline-block; padding:=
+ 6px 12px; background-color: #d4a574; color: white; text-decoration: none; bo=
+rder-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></=
+div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">S</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Sarah, Plain and Tall</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Patricia] Patricia MacLachlan</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.8</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Pa=
+tricia] Patricia MacLachlan
+
+1986 Newbery Medal&quot;Did Mama sing every day?&quot; Caleb asks his sister =
+Anna. &quot;Every-single...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/106264.Sarah_Plain_and_Tall' style=3D'display: inline-block; pa=
+dding: 6px 12px; background-color: #d4a574; color: white; text-decoration: no=
+ne; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads=
+</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Missing Locket (Cynthia&#x2=
+7;s Attic, Book 1) (Cynthia&#x27;s Attic)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Cunningham, Mary, 1947-Mary Cunningham</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Cu=
+nningham, Mary, 1947-
+
+Magical costumes, disappearing stairs and a spooky attic filled with dusty an=
+tiques what mor...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/686295.The_Missing_Locket' style=3D'display: inline-block; padd=
+ing: 6px 12px; background-color: #d4a574; color: white; text-decoration: none=
+; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</=
+a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">S</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Soup</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Peck, Robert NewtonRobert Newton Peck; Charles C Gehm<=
+/div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.0</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Pe=
+ck, Robert Newton
+
+>From the Publisher  When it came to getting the two of us in trouble, Soup wa=
+s a regular genius....</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/493508.Soup' style=3D'display: inline-block; padding: 6px 12px;=
+ background-color: #d4a574; color: white; text-decoration: none; border-radiu=
+s: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">[</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">[Hot SEALs Universe 01] =E2=80=
+=A2 Guarded by a SEAL</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Morgan, Julie</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.7</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Mo=
+rgan, Julie
+
+Andria Huffton led a quiet life in Virginia Beach. No worries. No baggage. No=
+ problems. She left all
+
+...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/21145172-hazzardous-universe' style=3D'display: inline-block; p=
+adding: 6px 12px; background-color: #d4a574; color: white; text-decoration: n=
+one; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodread=
+s</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">B</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Bullied at the Academy : A Reve=
+rse Harem Bully Academy Romance (Island Academy Book 2)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">C.T. Rhames [Rhames, C.T.]</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.5</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>C.=
+T. Rhames [Rhames, C.T.]
+
+Island Academy 2, 2019
+
+lgli/C.T. Rhames [Rhames, C.T.] - Bullied at the Academy : A Reve...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/13436682-the-vincenzos-bully-problem' style=3D'display: inline-=
+block; padding: 6px 12px; background-color: #d4a574; color: white; text-decor=
+ation: none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on =
+Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">I</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Isabel of the Whales</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Hester VelmansVelmans, Hester</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>He=
+ster Velmans
+
+Eleven-year-old Isabel is a &quot;plain old&quot; girl living in Provincetown=
+, Massachusetts, who believes tha
+...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/1146475.Isabel_of_the_Whales' style=3D'display: inline-block; p=
+adding: 6px 12px; background-color: #d4a574; color: white; text-decoration: n=
+one; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodread=
+s</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">P</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Pippy&#x27;s Wish</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Ryan, MaddieMaddie Ryan</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ry=
+an, Maddie
+
+DCPM Press
+
+2013-03-08</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/17341964-pippy-s-wish' style=3D'display: inline-block; padding:=
+ 6px 12px; background-color: #d4a574; color: white; text-decoration: none; bo=
+rder-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></=
+div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Bravest of the Brave</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">G. A. Henty</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.4</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>G.=
+ A. Henty
+
+Blackmask Online
+
+2010</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/12864137-the-bravest-squirrel-ever' style=3D'display: inline-bl=
+ock; padding: 6px 12px; background-color: #d4a574; color: white; text-decorat=
+ion: none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Go=
+odreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Golden Wizard</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">J.S. Jaeger</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.2</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>J.=
+S. Jaeger
+
+In the world of Zndaria, only nobility are selected to study magic. Nate=E2=
+=80=94the fifteen-year-old son of
+
+Go...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/17317916-the-golden-wizard' style=3D'display: inline-block; pad=
+ding: 6px 12px; background-color: #d4a574; color: white; text-decoration: non=
+e; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads<=
+/a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">N</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Nathaniel&#x27;s Got the Blues<=
+/div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Heaney, David L.</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>He=
+aney, David L.
+
+In the winter of his life, Nathaniel, a fruit rat, is bored, angry and depres=
+sed. Even his longsuff...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/18008226-nathaniel-s-1st-adventure' style=3D'display: inline-bl=
+ock; padding: 6px 12px; background-color: #d4a574; color: white; text-decorat=
+ion: none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Go=
+odreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">U</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Unbalanced: A LitRPG Adventure =
+(Class Shift Book 2)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Sean Oswald</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.1</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Se=
+an Oswald
+
+Power has a price...
+Tim wants to find a place in his new world. He wants friends, but bringing th=
+em
+
+Ae...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/18620524-adventure-pom' style=3D'display: inline-block; padding=
+: 6px 12px; background-color: #d4a574; color: white; text-decoration: none; b=
+order-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a><=
+/div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">W</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">War of the Gods Complete Series=
+ Boxed Set</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Meg Xuemei X</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.5</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Me=
+g Xuemei X
+
+2019
+
+lgli/r:\!fiction\0day\eng\_IRC\2020\IRC bookz 2020-n017-027\2020\2020-n027\Me=
+g Xuemei X - [War of...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/18716254-war-of-the-gods' style=3D'display: inline-block; paddi=
+ng: 6px 12px; background-color: #d4a574; color: white; text-decoration: none;=
+ border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a=
+></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Bridge Builder&#x27;s Story=
+: A Novel : A Novel</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">by Howard FastFast, Howard</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.9</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>by=
+ Howard Fast
+
+Comparativists evaluate democratization by looking at regimes in the transiti=
+on and consolidation ph
+...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/19335701-the-mystery-of-dragon-bridge' style=3D'display: inline=
+-block; padding: 6px 12px; background-color: #d4a574; color: white; text-deco=
+ration: none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on=
+ Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">A</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Amelia&#x27;s Middle-School Gra=
+duation Yearbook (Amelia&#x27;s Notebooks, #29)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Marissa Moss</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.8</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ma=
+rissa Moss
+
+Amelia is excited to graduate from middle school, but she&#x27;s nervous abou=
+t starting high school, espe
+
+S...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/22929033-amelia-s-middle-school-graduation-yearbook' style=3D'd=
+isplay: inline-block; padding: 6px 12px; background-color: #d4a574; color: wh=
+ite; text-decoration: none; border-radius: 4px; font-size: 11px; font-weight:=
+ 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Adventures of Lola</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Jade Harley</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Ja=
+de Harley
+
+2017
+
+lgli/Jade Harley - The Adventures of Lola (2017, ).azw3</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/34387751-the-adventures-of-lola' style=3D'display: inline-block=
+; padding: 6px 12px; background-color: #d4a574; color: white; text-decoration=
+: none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodr=
+eads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">H</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Han Solo and the Lost Legacy</d=
+iv>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Daley, Brian</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.2</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Da=
+ley, Brian
+
+Star Wars; Han Solo Adventures 3, 2012
+
+lgli/R:/!fiction/0day/SFFebooks/Star Wars/2 - Rise of the Empir...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/20506898-the-harp-of-elvyth' style=3D'display: inline-block; pa=
+dding: 6px 12px; background-color: #d4a574; color: white; text-decoration: no=
+ne; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads=
+</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">C</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Come Fly with Me</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Claire Raye</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.7</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Cl=
+aire Raye
+
+Taylor Patterson has sworn off men and he&#x27;s her worst nightmare. Arrogan=
+t and flirtatious, and now C
+
+Cl...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/9496765-come-fly-with-me' style=3D'display: inline-block; paddi=
+ng: 6px 12px; background-color: #d4a574; color: white; text-decoration: none;=
+ border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a=
+></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Twins at St. Clare&#x27;s</=
+div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Enid Blyton</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.0</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>En=
+id Blyton
+
+Pat and Isabel, the O&#x27;Sullivan twins, find life at St Clare&#x27;s is no=
+t at all as easy as at their old=20
+
+1941</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/735693.The_Twins_at_St_Clare_s' style=3D'display: inline-block;=
+ padding: 6px 12px; background-color: #d4a574; color: white; text-decoration:=
+ none; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodre=
+ads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Taken (Foxcraft)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Inbali IserlesIserles, Inbali, author</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.1</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>In=
+bali Iserles
+
+247 pages : 20 cm
+Isla is a young fox whose world is shattered when her family suddenly vanishe=
+s. Is
+...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/24999030-the-taken' style=3D'display: inline-block; padding: 6p=
+x 12px; background-color: #d4a574; color: white; text-decoration: none; borde=
+r-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">T</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">The Alpha&#x27;s Curse: A Tale =
+of Midnight Valley (The Midnight Valley Saga)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Storm, SierraSierra Storm</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.2</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>St=
+orm, Sierra
+
+As a human, Michelle Silverfox Smith knows how to put on a good appearance=E2=
+=80=94talent, a promising caree
+
+...</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/44252168-primrose-s-curse' style=3D'display: inline-block; padd=
+ing: 6px 12px; background-color: #d4a574; color: white; text-decoration: none=
+; border-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</=
+a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">C</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Chemistry: The Atom and Element=
+s (Super Smart Science Series)</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Terrazas, April Chloe, author, illustratorApril Chloe =
+Terrazas</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 4.3</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Te=
+rrazas, April Chloe, author, illustrator
+
+The exciting topic of Chemistry is explored, covering the atom--protons, ...<=
+/div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/17669764-chemistry' style=3D'display: inline-block; padding: 6p=
+x 12px; background-color: #d4a574; color: white; text-decoration: none; borde=
+r-radius: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div><div style=3D"border: 1px solid #e0e0e0; border-radius: 8px; pa=
+dding: 12px; text-align: center; background-color: #fafafa; display: flex; fl=
+ex-direction: column;">
+            <div style=3D"margin-bottom: 8px; display: flex; justify-content:=
+ center; align-items: center; min-height: 140px; background-color: white; bor=
+der-radius: 4px; overflow: hidden;">
+                <div style=3D"display: flex; align-items: center; justify-con=
+tent: center; width: 100%; height: 140px; background: linear-gradient(135deg,=
+ #667eea 0%, #764ba2 100%); border-radius: 4px; color: white; font-size: 48px=
+; font-weight: bold;">S</div>
+            </div>
+            <div style=3D"font-weight: 600; font-size: 13px; margin: 8px 0 0 =
+0; word-break: break-word; line-height: 1.3;">Stink : the incredible shrinkin=
+g kid</div>
+            <div style=3D"font-size: 11px; color: #666; margin: 4px 0 0 0; wo=
+rd-break: break-word;">Megan McDonald</div>
+            <div style=3D'font-size: 12px; color: #ff9800; margin-top: 4px; f=
+ont-weight: 500;'>=E2=98=85 3.9</div>
+            <div style=3D'font-size: 12px; color: #666; margin-top: 6px; line=
+-height: 1.4; word-break: break-word; max-height: 60px; overflow: hidden;'>Me=
+gan McDonald
+
+Walker Books Ltd
+
+London</div>
+            <div style=3D'margin-top: 8px;'><a href=3D'https://www.goodreads.=
+com/book/show/579228.Stink' style=3D'display: inline-block; padding: 6px 12px=
+; background-color: #d4a574; color: white; text-decoration: none; border-radi=
+us: 4px; font-size: 11px; font-weight: 500;'>View on Goodreads</a></div>
+        </div>
+        </div>
+    </div>
+</body>
+</html>

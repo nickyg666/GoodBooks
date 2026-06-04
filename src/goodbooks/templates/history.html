@@ -1,0 +1,600 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>Download History</h1>
+
+    <form method="post" action="{{ url_for('run_feeds') }}" style="margin-bottom: 1rem;">
+        <button type="submit" class="primary">Run Feeds</button>
+    </form>
+
+    <div id="feed-progress" class="card feed-progress hidden" style="margin-bottom: 1rem;">
+        <h2>Feed Progress</h2>
+        <div id="feed-progress-overall" style="margin-bottom: 0.5rem;">
+            <div id="feed-progress-overall-label" class="feed-progress-label"
+                 style="font-size: 0.9rem; margin-bottom: 0.25rem;">
+                Overall: 0/0 (0%)
+            </div>
+            <div class="feed-progress-bar-outer"
+                 style="position: relative; height: 0.5rem; background: #ddd; border-radius: 999px; overflow: hidden;">
+                <div id="feed-progress-overall-bar"
+                     class="feed-progress-bar"
+                     style="height: 100%; width: 0%; background: #888;"></div>
+            </div>
+        </div>
+        <div id="feed-progress-users" class="feed-progress-users" style="margin-top: 0.75rem;">
+            <!-- Per-user feed progress rows will be populated by SSE client script. -->
+        </div>
+    </div>
+
+
+    {% if feed_debug %}
+    <details class="debug-block">
+        <summary>Last feed run debug log</summary>
+        <pre class="debug">{{ feed_debug|join('\n') }}</pre>
+    </details>
+    {% endif %}
+
+    {# Search, per-page, sort, and genre filter selectors #}
+    <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Search:</span>
+            <input type="text" id="search-input" value="{{ request.args.get('search', '') }}" 
+                   placeholder="Title or author..." style="padding: 0.5rem; width: 200px;">
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Genre:</span>
+            <select id="genre-filter" onchange="updateQueryParam('genre', this.value)" style="padding: 0.5rem;">
+                <option value="">All genres</option>
+                {% for genre in unique_genres %}
+                <option value="{{ genre }}" {% if genre_filter == genre %}selected{% endif %}>{{ genre }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Items per page:</span>
+            <select name="per_page" onchange="updateQueryParam('per_page', this.value)" style="padding: 0.5rem;">
+                <option value="15" {% if request.args.get('per_page', '50') == '15' %}selected{% endif %}>15</option>
+                <option value="25" {% if request.args.get('per_page', '50') == '25' %}selected{% endif %}>25</option>
+                <option value="50" {% if request.args.get('per_page', '50') == '50' or not request.args.get('per_page') %}selected{% endif %}>50</option>
+                <option value="100" {% if request.args.get('per_page', '50') == '100' %}selected{% endif %}>100</option>
+            </select>
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Sort by:</span>
+            <select name="sort" onchange="updateQueryParam('sort', this.value)" style="padding: 0.5rem;">
+                <option value="newest" {% if request.args.get('sort', 'newest') == 'newest' %}selected{% endif %}>Newest first</option>
+                <option value="oldest" {% if request.args.get('sort', 'newest') == 'oldest' %}selected{% endif %}>Oldest first</option>
+                <option value="title_az" {% if request.args.get('sort', 'newest') == 'title_az' %}selected{% endif %}>Title A–Z</option>
+                <option value="title_za" {% if request.args.get('sort', 'newest') == 'title_za' %}selected{% endif %}>Title Z–A</option>
+            </select>
+        </label>
+        <span style="color: var(--muted); font-size: 0.9rem;">Total: {{ total_items }} items</span>
+    </div>
+
+    <script>
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            updateQueryParam('search', this.value);
+        }
+    });
+    </script>
+
+    {% if entries %}
+    <div class="grid history-grid">
+        {% for entry in entries %}
+        <div class="card library-card history-card">
+            <div class="library-cover">
+                {% if entry.entry_id %}
+                <a href="{{ url_for('book_detail', entry_id=entry.entry_id) }}" class="library-cover-link">
+                    {% if entry.cover %}
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'">
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ entry.title }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="library-title-overlay">{{ entry.title }}</div>
+                </a>
+                {% else %}
+                <div class="library-cover history-cover-clickable" data-title="{{ entry.title }}" data-author="{{ entry.author or '' }}" data-format="{{ entry.filetype }}" data-source="{{ entry.source }}" style="position: relative; width: 100%; height: 100%; cursor: pointer;" onclick="showHistoryDetails(this)">
+                    {% if entry.cover %}
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ entry.title }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="library-title-overlay">{{ entry.title }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="library-meta">
+                <div class="history-info">
+                    {% if entry.author %}
+                    <p style="font-size: 11px; margin: 0.2rem 0; color: var(--text-light);">by {{ entry.author }}</p>
+                    {% endif %}
+                    <p style="font-size: 10px; margin: 0.2rem 0; color: var(--text-light);">
+                        {{ entry.filetype }} | {{ entry.source }}
+                    </p>
+                    {% if entry.timestamp %}
+                    <p style="font-size: 9px; margin: 0.2rem 0; color: var(--muted);">
+                        <span class="timestamp-est" data-utc="{{ entry.timestamp }}">{{ entry.timestamp }}</span>
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="history-chips library-chips" style="display: flex; gap: 0.25rem; margin-top: 0.25rem;">
+                    {% if entry.has_path %}
+                        {% if entry.path %}<a href="{{ url_for('history_direct_download', index=0, file_path=entry.path) }}" class="chip" style="font-size: 9px;">DL</a>{% else %}<a href="{{ url_for('history_direct_download', index=entry.index) }}" class="chip" style="font-size: 9px;">DL</a>{% endif %}
+                        <button type="button"
+                                class="chip"
+                                data-action="history-send-kindle"
+                                data-file-path="{{ entry.path }}"
+                                style="font-size: 9px;">Send</button>
+                    {% endif %}
+                    {% if entry.kindle_sent %}
+                    <span class="chip" style="font-size: 9px; background-color: #27ae60; color: white;" title="Sent to {{ entry.kindle_sent_email or 'Kindle' }}">✓ Sent</span>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('history_delete') }}" style="display: inline;">
+                        <input type="hidden" name="index" value="{{ entry.index }}">
+                        <button type="submit" class="chip" style="font-size: 9px;">Remove</button>
+                    </form>
+                    {% if entry.entry_id %}
+                    <form method="post" action="{{ url_for('history_delete') }}" style="display: inline;">
+                        <input type="hidden" name="index" value="{{ entry.index }}">
+                        <input type="hidden" name="delete_library" value="1">
+                        <button type="submit" class="chip" style="font-size: 9px; background: #c0392b; color: white;">Remove+Library</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p>No history yet.</p>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No history yet.</p>
+    {% endif %}
+    {% if total_pages > 1 %}
+    <div class="pagination" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            {% if page > 1 %}
+            <a href="{{ url_for('history', page=page-1) }}">&laquo; Newer</a>
+            {% endif %}
+        </div>
+        <div>
+            Page {{ page }} of {{ total_pages }}
+        </div>
+        <div>
+            {% if page < total_pages %}
+            <a href="{{ url_for('history', page=page+1) }}">Older &raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# Send-to-Kindle modal for history entries #}
+<div id="history-send-modal" class="modal hidden">
+    <div class="card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
+        <button type="button" id="history-send-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('history_send_to_kindle') }}" id="history-send-form">
+            <input type="hidden" name="file_path" id="history-send-file-path">
+            <input type="hidden" name="index" id="history-send-index">
+
+            <div id="history-send-form-content">
+                <label>
+                    <span>User</span>
+                    <select name="user_name" required>
+                        {% for user in settings.users %}
+                        <option value="{{ user.name }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="submit" class="primary" id="history-send-submit-btn">Send</button>
+                    <button type="button" class="secondary" id="history-send-cancel">Cancel</button>
+                </div>
+            </div>
+            <div id="history-send-progress" style="display: none; text-align: center;">
+                <p id="history-send-status">Sending to Kindle...</p>
+                <div style="margin: 1rem 0; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    <p id="history-send-progress-text" style="margin: 0; font-size: 0.9em;">Please wait...</p>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# History entry details modal #}
+<div id="history-details-modal" class="modal hidden">
+    <div class="card" style="max-width: 600px; margin: auto; padding: 2rem; position: relative;">
+        <button type="button" id="history-details-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
+        <div style="display: flex; gap: 1.5rem;">
+            <div style="flex-shrink: 0;">
+                <img id="history-details-cover" src="" alt="Cover" style="width: 150px; height: 225px; object-fit: cover; border-radius: 4px;">
+            </div>
+            <div style="flex: 1;">
+                <h2 id="history-details-title" style="margin-top: 0;"></h2>
+                <p id="history-details-author" style="color: var(--text-light); margin: 0.5rem 0;"></p>
+                <div style="margin: 1rem 0; padding: 0.5rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+                    <p style="margin: 0.25rem 0; font-size: 0.9em;"><strong>Format:</strong> <span id="history-details-format"></span></p>
+                    <p style="margin: 0.25rem 0; font-size: 0.9em;"><strong>Source:</strong> <span id="history-details-source"></span></p>
+                </div>
+                <p id="history-details-info" style="font-size: 0.85em; color: var(--text-secondary); margin-top: 1rem;"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateQueryParam(param, value) {
+    const url = new URL(window.location);
+    url.searchParams.set(param, value);
+    url.searchParams.set('page', '1');  // Reset to page 1 when changing sort/per_page
+    window.location = url.toString();
+}
+
+function showHistoryDetails(coverElement) {
+    const modal = document.getElementById('history-details-modal');
+    if (!modal) return;
+    
+    const title = coverElement.getAttribute('data-title') || 'Unknown Title';
+    const author = coverElement.getAttribute('data-author') || 'Unknown Author';
+    const format = coverElement.getAttribute('data-format') || 'Unknown';
+    const source = coverElement.getAttribute('data-source') || 'Unknown';
+    const cover = coverElement.querySelector('img');
+    const coverSrc = cover ? cover.src : '';
+    
+    // Populate modal
+    document.getElementById('history-details-title').textContent = title;
+    document.getElementById('history-details-author').textContent = author;
+    document.getElementById('history-details-format').textContent = format.toUpperCase();
+    document.getElementById('history-details-source').textContent = source;
+    document.getElementById('history-details-info').textContent = 'This book was downloaded and is available in your history.';
+    
+    const coverImg = document.getElementById('history-details-cover');
+    if (coverSrc && !coverSrc.includes('undefined')) {
+        coverImg.src = coverSrc;
+    } else {
+        coverImg.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22225%22%3E%3Crect fill=%22%23ccc%22 width=%22150%22 height=%22225%22/%3E%3C/svg%3E';
+    }
+    
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('history-send-modal');
+    const detailsModal = document.getElementById('history-details-modal');
+    const detailsCloseBtn = document.getElementById('history-details-close-btn');
+    const historyForm = document.getElementById('history-send-form');
+    const historySubmitBtn = document.getElementById('history-send-submit-btn');
+    const indexInput = document.getElementById('history-send-index');
+    const cancelBtn = document.getElementById('history-send-cancel');
+    const formContent = document.getElementById('history-send-form-content');
+    const progressDiv = document.getElementById('history-send-progress');
+    const progressText = document.getElementById('history-send-progress-text');
+    const statusText = document.getElementById('history-send-status');
+    let historySubmitting = false;
+
+    // Prevent double-submit
+    if (historyForm) {
+        historyForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            if (historySubmitting) {
+                return false;
+            }
+            historySubmitting = true;
+            historySubmitBtn.disabled = true;
+            historySubmitBtn.textContent = 'Sending...';
+            
+            // Get form data
+            const formData = new FormData(historyForm);
+            
+            // Show progress
+            formContent.style.display = 'none';
+            progressDiv.style.display = 'block';
+            statusText.textContent = 'Sending to Kindle...';
+            progressText.textContent = 'Please wait...';
+            
+            // Submit via AJAX
+            fetch(historyForm.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    statusText.textContent = 'Sent successfully!';
+                    progressText.textContent = 'Book sent to Kindle. Closing...';
+                    setTimeout(function() {
+                        modal.classList.add('hidden');
+                        formContent.style.display = 'block';
+                        progressDiv.style.display = 'none';
+                        historySubmitting = false;
+                        historySubmitBtn.disabled = false;
+                        historySubmitBtn.textContent = 'Send';
+                        // Show success message
+                        const user = historyForm.querySelector('[name="user_name"]').value;
+                        const msg = 'Book sent to ' + user + '!';
+                        const div = document.createElement('div');
+                        div.className = 'alert alert-success';
+                        div.textContent = msg;
+                        document.body.insertAdjacentElement('afterbegin', div);
+                        setTimeout(() => div.remove(), 3000);
+                    }, 1000);
+                } else {
+                    throw new Error('Send failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusText.textContent = 'Error sending to Kindle';
+                progressText.textContent = error.message;
+                historySubmitting = false;
+                historySubmitBtn.disabled = false;
+                historySubmitBtn.textContent = 'Send';
+            });
+        });
+    }
+
+    document.body.addEventListener('click', function (ev) {
+        const button = ev.target.closest('[data-action="history-send-kindle"]');
+        if (!button) return;
+        
+        // Try to get file_path first (new way), fall back to index (old way)
+        const filePath = button.getAttribute('data-file-path');
+        const idx = button.getAttribute('data-index');
+        
+        if (!filePath && !idx) return;
+        
+        // Reset form for new submission
+        historySubmitting = false;
+        formContent.style.display = 'block';
+        progressDiv.style.display = 'none';
+        historySubmitBtn.disabled = false;
+        historySubmitBtn.textContent = 'Send';
+        
+        // Set file_path if available, otherwise set index
+        if (filePath) {
+            document.getElementById('history-send-file-path').value = filePath;
+        }
+        if (idx) {
+            indexInput.value = idx;
+        }
+        
+        modal.classList.remove('hidden');
+    });
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            // Always close the modal
+            modal.classList.add('hidden');
+            historySubmitting = false;
+            formContent.style.display = 'block';
+            progressDiv.style.display = 'none';
+            historySubmitBtn.disabled = false;
+            historySubmitBtn.textContent = 'Send';
+        });
+    }
+    
+    // Close button (X) for history send modal
+    const closeBtn = document.getElementById('history-send-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+            modal.classList.add('hidden');
+            historySubmitting = false;
+            formContent.style.display = 'block';
+            progressDiv.style.display = 'none';
+            historySubmitBtn.disabled = false;
+            historySubmitBtn.textContent = 'Send';
+        });
+    }
+    
+    // Allow closing by clicking outside the modal
+    document.addEventListener('click', function (ev) {
+        if (modal && !modal.classList.contains('hidden')) {
+            if (ev.target === modal) {
+                modal.classList.add('hidden');
+                historySubmitting = false;
+                formContent.style.display = 'block';
+                progressDiv.style.display = 'none';
+                historySubmitBtn.disabled = false;
+                historySubmitBtn.textContent = 'Send';
+            }
+        }
+    });
+    
+    // Handle details modal close button
+    if (detailsCloseBtn && detailsModal) {
+        detailsCloseBtn.addEventListener('click', function () {
+            detailsModal.classList.add('hidden');
+        });
+    }
+    
+    // Handle click-outside to close details modal
+    document.addEventListener('click', function (ev) {
+        if (detailsModal && !detailsModal.classList.contains('hidden')) {
+            if (ev.target === detailsModal) {
+                detailsModal.classList.add('hidden');
+            }
+        }
+    });
+    
+    // Live feed progress via Server-Sent Events
+    if (!!window.EventSource) {
+        const progressContainer = document.getElementById('feed-progress');
+        const usersContainer = document.getElementById('feed-progress-users');
+        const overallBar = document.getElementById('feed-progress-overall-bar');
+        const overallLabel = document.getElementById('feed-progress-overall-label');
+
+        const es = new EventSource("{{ url_for('feeds_stream') }}");
+
+        es.onmessage = function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                updateFeedProgressUI(data);
+            } catch (e) {
+                console.error('Failed to parse feed progress payload', e);
+            }
+        };
+
+        function updateFeedProgressUI(state) {
+            if (!state || !state.active) {
+                if (progressContainer) {
+                    progressContainer.classList.add('hidden');
+                }
+                return;
+            }
+
+            if (progressContainer) {
+                progressContainer.classList.remove('hidden');
+            }
+
+            const overall = state.overall || {};
+            const feeds = state.feeds || {};
+
+            const total = overall.total_items || 0;
+            const completed = overall.completed_items || 0;
+            let pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+            pct = Math.max(0, Math.min(100, pct));
+
+            if (overallBar) {
+                overallBar.style.width = pct + '%';
+            }
+            if (overallLabel) {
+                let text = `Overall: ${completed}/${total} (${pct}%)`;
+                const eta = overall.eta_seconds;
+                if (eta != null && eta >= 0) {
+                    if (eta >= 3600) {
+                        const hrs = Math.floor(eta / 3600);
+                        const mins = Math.floor((eta % 3600) / 60);
+                        text += ` – ETA ${hrs}h ${mins}m`;
+                    } else {
+                        const mins = Math.floor(eta / 60);
+                        const secs = Math.floor(eta % 60);
+                        text += ` – ETA ${mins}:${secs.toString().padStart(2, '0')}`;
+                    }
+                }
+                overallLabel.textContent = text;
+            }
+
+            // Group feeds by user for per-user progress display
+            const byUser = {};
+            Object.keys(feeds).forEach(function (key) {
+                const f = feeds[key] || {};
+                const uname = f.user || 'Unknown';
+                if (!byUser[uname]) {
+                    byUser[uname] = [];
+                }
+                byUser[uname].push(f);
+            });
+
+            if (!usersContainer) {
+                return;
+            }
+            usersContainer.innerHTML = '';
+
+            Object.keys(byUser).forEach(function (uname) {
+                const group = document.createElement('div');
+                group.className = 'feed-user-group';
+
+                const header = document.createElement('div');
+                header.className = 'feed-user-header';
+                header.textContent = uname;
+                group.appendChild(header);
+
+                byUser[uname].forEach(function (f) {
+                    const row = document.createElement('div');
+                    row.className = 'feed-row';
+
+                    const title = document.createElement('div');
+                    title.className = 'feed-title';
+                    title.textContent = f.label || f.feed_url || '';
+                    row.appendChild(title);
+
+                    const barWrap = document.createElement('div');
+                    barWrap.className = 'feed-bar-wrap';
+
+                    const bar = document.createElement('div');
+                    bar.className = 'feed-bar';
+                    const ftot = f.total_items || 0;
+                    const fcomp = f.completed_items || 0;
+                    let fpct = ftot > 0 ? Math.round((fcomp / ftot) * 100) : 0;
+                    fpct = Math.max(0, Math.min(100, fpct));
+                    bar.style.width = fpct + '%';
+                    barWrap.appendChild(bar);
+
+                    const label = document.createElement('div');
+                    label.className = 'feed-bar-label';
+                    let line = `${fcomp}/${ftot} (${fpct}%)`;
+                    if (f.eta_seconds != null && f.eta_seconds >= 0) {
+                        if (f.eta_seconds >= 3600) {
+                            const hrs = Math.floor(f.eta_seconds / 3600);
+                            const mins = Math.floor((f.eta_seconds % 3600) / 60);
+                            line += ` – ETA ${hrs}h ${mins}m`;
+                        } else {
+                            const mins = Math.floor(f.eta_seconds / 60);
+                            const secs = Math.floor(f.eta_seconds % 60);
+                            line += ` – ETA ${mins}:${secs.toString().padStart(2, '0')}`;
+                        }
+                    }
+                    label.textContent = line;
+
+                    row.appendChild(barWrap);
+                    row.appendChild(label);
+
+                    group.appendChild(row);
+                });
+
+                usersContainer.appendChild(group);
+            });
+        }
+    }
+});
+
+// Kindle e-ink optimization: Batch DOM updates to minimize redraws
+let scrollTimeout;
+document.addEventListener('scroll', function() {
+    if (scrollTimeout) {
+        cancelAnimationFrame(scrollTimeout);
+    }
+    scrollTimeout = requestAnimationFrame(function() {
+        // Batch any scroll-triggered DOM updates here
+        // This reduces the number of times the e-ink display refreshes
+    });
+}, { passive: true });
+
+// Disable smooth scroll on e-ink devices
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.style.scrollBehavior = 'auto';
+}
+
+// Convert UTC timestamps to EST
+document.querySelectorAll('.timestamp-est').forEach(el => {
+    try {
+        const utcStr = el.getAttribute('data-utc');
+        if (!utcStr) return;
+        
+        const date = new Date(utcStr.replace('Z', '+00:00'));
+        const estFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        el.textContent = estFormatter.format(date) + ' EST';
+    } catch (e) {
+        console.warn('Failed to convert timestamp:', e);
+    }
+});
+</script>
+{% endblock %}

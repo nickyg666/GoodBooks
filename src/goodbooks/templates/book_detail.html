@@ -1,0 +1,639 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+    <!-- Cover section -->
+    <div style="flex-shrink: 0; position: relative; {% if is_kindle %}width: 125px;{% else %}width: auto;{% endif %}">
+        {% if entry.cover or entry.id %}
+        <img src="{% if entry.id %}/cover/{{ entry.id.replace('::', '') }}{% else %}{{ entry.cover }}{% endif %}" 
+             alt="{{ entry.title }}" 
+             style="{% if is_kindle %}width: 125px; height: auto;{% else %}width: 125px; height: auto;{% endif %} border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"
+             onerror="this.src='{{ entry.cover or '' }}'; this.onerror=null;" 
+             {% if not is_kindle %}loading="lazy"{% endif %}>
+        {% else %}
+        <div style="{% if is_kindle %}width: 125px; height: 188px;{% else %}width: 125px; height: 188px;{% endif %} background: var(--panel); border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span style="text-align: center; padding: 1rem; font-size: {% if is_kindle %}0.9rem;{% else %}0.9rem;{% endif %}">{{ entry.title }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Metadata section -->
+    <div style="flex: 1;">
+        <h1 style="margin-top: 0; margin-bottom: 0.5rem;">{{ entry.title }}</h1>
+        
+        {% if entry.author or meta.author %}
+        <p style="font-size: 1.1rem; color: var(--muted); margin-bottom: 1rem;">
+            by {{ entry.author or meta.author }}
+        </p>
+        {% endif %}
+
+        <!-- Full Description -->
+        {% set description = meta.description or (meta.goodreads_meta and meta.goodreads_meta.description) %}
+        {% if description %}
+        <div style="margin-bottom: 1.5rem; line-height: 1.6; padding: 1rem; background: var(--panel); border-radius: 6px;">
+            <h3 style="margin-top: 0; margin-bottom: 0.5rem;">Description</h3>
+            <p style="margin: 0; word-wrap: break-word;">{{ description }}</p>
+            <a href="{{ url_for('library_direct_download', entry_id=entry.id) }}" class="chip" style="background: var(--primary); color: var(--text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 500;">
+                Direct DL
+            </a>
+            <button type="button" class="chip" data-action="send-kindle" data-entry-id="{{ entry.id }}" style="background: var(--primary); color: var(--text); padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500;">
+                Send to Kindle
+            </button>
+            <button type="button" id="refresh-metadata-btn" style="background: #4CAF50; color: var(--text); padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500;">
+                ↻ Refresh
+            </button>
+            <button type="button" id="delete-book-btn" style="background: #e74c3c; color: white; padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500;">
+                Delete
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Goodreads Rating Section (with link) -->
+        {% set rating_value = meta.rating or (meta.goodreads_meta and meta.goodreads_meta.rating) %}
+        {% set rating_count = meta.goodreads_meta and meta.goodreads_meta.rating_count %}
+        {% set gr_link = meta.goodreads_link or (meta.goodreads_meta and meta.goodreads_meta.goodreads_url) %}
+        {% if rating_value or gr_link %}
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--panel); border-radius: 6px; border-left: 4px solid var(--primary);">
+            <h3 style="margin-top: 0; margin-bottom: 1rem;">Goodreads Rating</h3>
+            <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                {% if rating_value %}
+                <div style="flex: 0 0 auto;">
+                    <div style="font-size: 2.5rem; font-weight: bold; color: var(--primary);">{{ "%.1f"|format(rating_value) }}</div>
+                    <div style="display: flex; gap: 2px; margin-top: 0.25rem; justify-content: center;">
+                        {% for i in range(1, 6) %}
+                            {% if i <= (rating_value|round|int) %}
+                                <span style="color: gold; font-size: 1.5rem;">★</span>
+                            {% elif i - rating_value < 1 %}
+                                <span style="color: gold; font-size: 1.5rem;">✱</span>
+                            {% else %}
+                                <span style="color: #ccc; font-size: 1.5rem;">★</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% if rating_count %}
+                    <div style="font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem;">{{ rating_count|int }} ratings</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if gr_link %}
+                <a href="{{ gr_link }}" target="_blank" rel="noopener" style="padding: 0.75rem 1.5rem; background: var(--primary); color: var(--text); border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-weight: 500; flex: 0 0 auto;">
+                    Read Reviews on Goodreads →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- This Edition Section -->
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--panel); border-radius: 6px;">
+            <h3 style="margin-top: 0; margin-bottom: 1rem;">This Edition</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Format -->
+                {% if entry.filetype or (meta.goodreads_meta and meta.goodreads_meta.edition_format) %}
+                <div>
+                    <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Format</strong>
+                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ (entry.filetype or meta.goodreads_meta.edition_format)|upper }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Pages -->
+                {% if meta.pages or (meta.goodreads_meta and meta.goodreads_meta.pages) %}
+                <div>
+                    <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Pages</strong>
+                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ meta.pages or meta.goodreads_meta.pages }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Publish Date -->
+                {% if meta.publish_date or (meta.goodreads_meta and meta.goodreads_meta.edition_published) %}
+                <div>
+                    <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Published</strong>
+                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ meta.publish_date or meta.goodreads_meta.edition_published }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Language -->
+                {% if meta.language or (meta.goodreads_meta and meta.goodreads_meta.edition_language) %}
+                <div>
+                    <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase;">Language</strong>
+                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">{{ (meta.language or meta.goodreads_meta.edition_language)|title }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Genres -->
+        {% set display_genres = meta.genres or (meta.goodreads_meta and meta.goodreads_meta.genres) %}
+        {% if display_genres %}
+        <div style="margin-bottom: 1.5rem;">
+            <strong style="font-size: 0.9rem; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Genres</strong>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if display_genres is string %}
+                    <div class="genre-tile" data-genre="{{ display_genres }}" style="position: relative; display: inline-block;">
+                        <button class="genre-btn chip chip-compact" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'none' || this.nextElementSibling.style.display === '') ? 'block' : 'none'; return false;" data-genre="{{ display_genres }}" style="cursor: pointer; text-decoration: none;">{{ display_genres }} ▼</button>
+                        <div class="genre-dropdown" data-genre="{{ display_genres }}" style="display: none; position: absolute; top: 100%; left: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 200px;">
+                            <button type="button" class="genre-option" onclick="window.location.href='{{ url_for('index', view='collection', genre='GENRE', sort='date_newest') }}'.replace('GENRE', encodeURIComponent('{{ display_genres }}')); return false;" data-action="show-library" data-genre="{{ display_genres }}" style="display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; color: var(--text); font-size: 0.95rem;">
+                                Show all in library
+                            </button>
+                            <button type="button" class="genre-option" data-action="add-most-read" data-genre="{{ display_genres }}" style="display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; color: var(--text); font-size: 0.95rem; border-top: 1px solid var(--border);">
+                                Add most read this week
+                            </button>
+                            <button type="button" class="genre-option" data-action="goodreads-lists" data-genre="{{ display_genres }}" style="display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; color: var(--text); font-size: 0.95rem; border-top: 1px solid var(--border);">
+                                View Goodreads lists
+                            </button>
+                        </div>
+                    </div>
+                {% else %}
+                    {% for genre in display_genres %}
+                    <div class="genre-tile" data-genre="{{ genre }}" style="position: relative; display: inline-block;">
+                        <button class="genre-btn chip chip-compact" onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display === 'none' || this.nextElementSibling.style.display === '') ? 'block' : 'none'; return false;" data-genre="{{ genre }}" style="cursor: pointer; text-decoration: none;">{{ genre }} ▼</button>
+                        <div class="genre-dropdown" data-genre="{{ genre }}" style="display: none; position: absolute; top: 100%; left: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; min-width: 200px;">
+                            <button type="button" class="genre-option" onclick="window.location.href='{{ url_for('index', view='collection', genre='GENRE', sort='date_newest') }}'.replace('GENRE', encodeURIComponent('{{ genre }}')); return false;" data-action="show-library" data-genre="{{ genre }}" style="display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; color: var(--text); font-size: 0.95rem;">
+                                Show all in library
+                            </button>
+                            <button type="button" class="genre-option" data-action="add-most-read" data-genre="{{ genre }}" style="display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; color: var(--text); font-size: 0.95rem; border-top: 1px solid var(--border);">
+                                Add most read this week
+                            </button>
+                            <button type="button" class="genre-option" data-action="goodreads-lists" data-genre="{{ genre }}" style="display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; color: var(--text); font-size: 0.95rem; border-top: 1px solid var(--border);">
+                                View Goodreads lists
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Back to Library Link -->
+        <div style="margin-top: 2rem;"><br><br><br><br><br>
+            <a href="{{ url_for('index') }}" class="secondary" style="padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; display: inline-block;">
+                Back to Library
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Send to Kindle Modal -->
+<div id="send-modal" class="modal hidden">
+    <div class="card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
+        <button type="button" id="send-close-x" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 2rem; cursor: pointer; color: var(--text); z-index: 10; padding: 0; width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
+        <h2>Send to Kindle</h2>
+        <form method="post" action="{{ url_for('library_send_to_kindle') }}" id="send-kindle-form">
+            <input type="hidden" name="entry_id" id="send-entry-id" value="{{ entry.id }}">
+            <div id="send-form-content">
+                <label>
+                    <span>User</span>
+                    <select name="user_name" required>
+                        {% for user in settings.users %}
+                        <option value="{{ user.name }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="submit" class="primary" id="send-submit-btn">Send</button>
+                    <button type="button" class="secondary" id="send-cancel">Cancel</button>
+                </div>
+            </div>
+            <div id="send-progress" style="display: none; text-align: center;">
+                <p id="send-status">Sending to Kindle...</p>
+                <div style="margin: 1rem 0; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    <p id="send-progress-text" style="margin: 0; font-size: 0.9em;">Please wait...</p>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Book Modal -->
+<div id="delete-modal" class="modal hidden">
+    <div class="card" style="max-width: 500px; margin: auto; padding: 2rem;">
+        <h2>Delete Book</h2>
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">Choose what to delete:</p>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <button id="delete-library-only-btn" type="button" style="padding: 1rem; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                Delete from Library (Keep File)
+            </button>
+            <button id="delete-library-and-files-btn" type="button" style="padding: 1rem; background: #c0392b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                Delete from Library & Disk (Cannot Undo)
+            </button>
+            <button id="delete-cancel-btn" type="button" style="padding: 1rem; background: var(--border); color: var(--text); border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Show modal for adding most read genre feed - GLOBAL FUNCTION
+function showGenreFeedModal(genre) {
+    console.log('showGenreFeedModal called with genre:', genre);
+    
+    // Remove any existing modal first
+    const existingModal = document.getElementById('genre-feed-modal');
+    if (existingModal) {
+        console.log('Removing existing modal');
+        existingModal.remove();
+    }
+    
+    fetch('/api/users')
+        .then(r => {
+            console.log('Users fetch response:', r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('Users data received:', data);
+            const users = (data.users && Array.isArray(data.users)) ? data.users : [];
+            const userOptions = users
+                .map(u => {
+                    const name = typeof u === 'string' ? u : u?.name;
+                    return name ? `<option value="${name}">${name}</option>` : '';
+                })
+                .join('');
+
+            const modal = document.createElement('div');
+            modal.id = 'genre-feed-modal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            modal.innerHTML = `
+                <div style="background: white; color: #000; padding: 2rem; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative;">
+                    <h2 style="margin-top: 0;">Add Most Read ${genre}</h2>
+                    <p style="color: var(--muted);">Add the most read books from this week in <strong>${genre}</strong> to your library.</p>
+                    <form id="genre-feed-form" style="margin-top: 1.5rem;">
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select User:</label>
+                            <select id="genre-user-select" required style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; background: white; color: #000; font-size: 1rem;">
+                                <option value="">-- Choose a user --</option>
+                                ${userOptions}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="genre-auto-kindle" name="auto_kindle">
+                                <span>Auto-send to Kindle</span>
+                            </label>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Storage Location Name:</label>
+                            <input type="text" id="genre-storage-location" value="${genre} Most_read_this_week" style="width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; background: white; color: #000; font-size: 1rem;">
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" style="flex: 1; padding: 0.75rem; background: var(--primary); color: var(--text); border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Add Feed</button>
+                            <button type="button" id="genre-cancel-btn" style="flex: 1; padding: 0.75rem; background: var(--border); color: var(--text); border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            console.log('Adding modal to body');
+            document.body.appendChild(modal);
+            console.log('Modal added, querying for form');
+
+            const form = modal.querySelector('#genre-feed-form');
+            const userSelect = modal.querySelector('#genre-user-select');
+            const cancelBtn = modal.querySelector('#genre-cancel-btn');
+
+            console.log('Form found:', !!form, 'UserSelect found:', !!userSelect, 'CancelBtn found:', !!cancelBtn);
+
+            const removeModal = () => {
+                console.log('Removing modal');
+                modal.remove();
+            };
+            
+            cancelBtn.addEventListener('click', removeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) removeModal();
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const user = userSelect.value;
+                
+                if (!user) {
+                    alert('Please select a user');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/add-genre-feed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            genre,
+                            user,
+                            auto_kindle: modal.querySelector('#genre-auto-kindle').checked,
+                            storage_location: modal.querySelector('#genre-storage-location').value
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(`Feed added successfully for ${user}!`);
+                        removeModal();
+                    } else {
+                        alert('Error: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error adding feed:', error);
+                    alert('Failed to add feed');
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Failed to load users:', err);
+            alert('Failed to load users. Please try again.');
+        });
+}
+
+// Auto-collapse genre dropdowns when clicking outside
+function setupGenreAutoCollapse() {
+    document.addEventListener('click', function(e) {
+        // Check if click is inside a genre dropdown or button
+        const genreTile = e.target.closest('.genre-tile');
+        
+        // If clicked outside all genre tiles, close all dropdowns
+        if (!genreTile) {
+            const allDropdowns = document.querySelectorAll('.genre-dropdown');
+            allDropdowns.forEach(dropdown => {
+                dropdown.style.display = 'none';
+            });
+        }
+    }, true); // Use capture phase to ensure we catch the click
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('send-modal');
+    const cancelBtn = document.getElementById('send-cancel');
+    const closeXBtn = document.getElementById('send-close-x');
+    const submitBtn = document.getElementById('send-submit-btn');
+    const form = document.getElementById('send-kindle-form');
+    const sendButtons = document.querySelectorAll('[data-action="send-kindle"]');
+    const formContent = document.getElementById('send-form-content');
+    const progressDiv = document.getElementById('send-progress');
+    const progressText = document.getElementById('send-progress-text');
+    const statusText = document.getElementById('send-status');
+    let isSubmitting = false;
+
+    sendButtons.forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            // Reset form for new submission
+            isSubmitting = false;
+            formContent.style.display = 'block';
+            progressDiv.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send';
+            modal.classList.remove('hidden');
+        });
+    });
+
+    function closeModal() {
+        // Always close the modal
+        modal.classList.add('hidden');
+        isSubmitting = false;
+        formContent.style.display = 'block';
+        progressDiv.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send';
+    }
+    
+    function closeModalForcefully() {
+        // Force close the modal (used by X button)
+        modal.classList.add('hidden');
+        isSubmitting = false;
+        formContent.style.display = 'block';
+        progressDiv.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send';
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeModal);
+    }
+    
+    if (closeXBtn) {
+        closeXBtn.addEventListener('click', closeModalForcefully);
+    }
+
+    // Prevent double-submit
+    if (form) {
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            if (isSubmitting) {
+                return false;
+            }
+            isSubmitting = true;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+            
+            // Get form data
+            const formData = new FormData(form);
+            
+            // Show progress
+            formContent.style.display = 'none';
+            progressDiv.style.display = 'block';
+            statusText.textContent = 'Sending to Kindle...';
+            progressText.textContent = 'Please wait...';
+            
+            // Submit via AJAX
+            fetch(form.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    statusText.textContent = 'Sent successfully!';
+                    progressText.textContent = 'Book sent to Kindle. Closing...';
+                    setTimeout(function() {
+                        modal.classList.add('hidden');
+                        formContent.style.display = 'block';
+                        progressDiv.style.display = 'none';
+                        isSubmitting = false;
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Send';
+                        // Show success message
+                        const user = form.querySelector('[name="user_name"]').value;
+                        const msg = 'Book sent to ' + user + '!';
+                        const div = document.createElement('div');
+                        div.className = 'alert alert-success';
+                        div.textContent = msg;
+                        document.body.insertAdjacentElement('afterbegin', div);
+                        setTimeout(() => div.remove(), 3000);
+                    }, 1000);
+                } else {
+                    throw new Error('Send failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusText.textContent = 'Error sending to Kindle';
+                progressText.textContent = error.message;
+                isSubmitting = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send';
+            });
+        });
+    }
+
+    // Always allow closing by clicking outside
+    document.addEventListener('click', function (ev) {
+        if (modal && !modal.classList.contains('hidden')) {
+            if (ev.target === modal) {
+                closeModal();
+            }
+        }
+    });
+
+    // Handle genre dropdown options and auto-collapse
+    document.querySelectorAll('.genre-option').forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const action = this.dataset.action;
+            const genre = this.dataset.genre;
+
+            if (action === 'show-library') {
+                window.location.href = "{{ url_for('index', view='collection', genre='GENRE', sort='date_newest') }}".replace('GENRE', encodeURIComponent(genre));
+            } else if (action === 'add-most-read') {
+                showGenreFeedModal(genre);
+            } else if (action === 'goodreads-lists') {
+                window.location.href = "{{ url_for('goodreads_genre_lists', genre='GENRE') }}".replace('GENRE', encodeURIComponent(genre));
+            }
+        });
+    });
+
+    // Setup auto-collapse for genre dropdowns
+    setupGenreAutoCollapse();
+
+
+    // Handle metadata refresh button
+    const refreshBtn = document.getElementById('refresh-metadata-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async function () {
+            const entryId = "{{ entry.id }}";
+            const originalText = refreshBtn.textContent;
+            refreshBtn.textContent = '⏳ Refreshing...';
+            refreshBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/book/${encodeURIComponent(entryId)}/refresh-metadata`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    refreshBtn.textContent = '✓ Done!';
+                    setTimeout(() => { location.reload(); }, 1000);
+                } else {
+                    refreshBtn.textContent = '✗ Error';
+                    console.error('Refresh error:', data.error);
+                    setTimeout(() => { refreshBtn.textContent = originalText; }, 2000);
+                    refreshBtn.disabled = false;
+                }
+            } catch (error) {
+                refreshBtn.textContent = '✗ Error';
+                console.error('Refresh error:', error);
+                setTimeout(() => { refreshBtn.textContent = originalText; }, 2000);
+                refreshBtn.disabled = false;
+            }
+        });
+    }
+
+    // Handle delete button
+    const deleteBtn = document.getElementById('delete-book-btn');
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+    const deleteLibraryOnlyBtn = document.getElementById('delete-library-only-btn');
+    const deleteLibraryAndFilesBtn = document.getElementById('delete-library-and-files-btn');
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function () {
+            deleteModal.classList.remove('hidden');
+        });
+    }
+
+    if (deleteCancelBtn) {
+        deleteCancelBtn.addEventListener('click', function () {
+            deleteModal.classList.add('hidden');
+        });
+    }
+
+    if (deleteLibraryOnlyBtn) {
+        deleteLibraryOnlyBtn.addEventListener('click', function () {
+            deleteItem(false);
+        });
+    }
+
+    if (deleteLibraryAndFilesBtn) {
+        deleteLibraryAndFilesBtn.addEventListener('click', function () {
+            if (confirm('This action cannot be undone. Delete this book from library AND remove file from disk?')) {
+                deleteItem(true);
+            }
+        });
+    }
+
+    function deleteItem(deleteFiles) {
+        const entryId = "{{ entry.id }}";
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '{{ url_for("library_delete_batch") }}';
+        form.innerHTML = `
+            <input type="hidden" name="entry_ids" value="${entryId}">
+            <input type="hidden" name="folder_prefixes" value="">
+            <input type="hidden" name="delete_files" value="${deleteFiles ? '1' : '0'}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Listen to metadata progress stream
+    function connectProgressStream() {
+        const progressDiv = document.getElementById('send-progress');
+        const progressText = document.getElementById('send-progress-text');
+        const statusText = document.getElementById('send-status');
+        
+        if (!progressDiv) return;
+        
+        const eventSource = new EventSource('/metadata_progress');
+        
+        eventSource.addEventListener('message', function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (!data.active) {
+                    eventSource.close();
+                    if (progressDiv.style.display !== 'none') {
+                        progressText.textContent = 'Completed!';
+                        statusText.textContent = 'All items processed';
+                    }
+                    return;
+                }
+                
+                // Only show progress if modal is open
+                if (progressDiv.style.display === 'block') {
+                    const percentage = data.percentage || 0;
+                    const current = data.current_book || 'Processing...';
+                    const step = data.current_step || '';
+                    const eta = data.eta_seconds ? Math.round(data.eta_seconds) : '?';
+                    
+                    progressText.textContent = `${current} - ${step} (${percentage}% - ETA: ${eta}s)`;
+                    statusText.textContent = `${data.completed_books || 0} of ${data.total_books || 0} processed`;
+                }
+            } catch (e) {
+                console.error('Error parsing progress data:', e);
+            }
+        });
+        
+        eventSource.addEventListener('error', function(event) {
+            console.error('Progress stream error:', event);
+            eventSource.close();
+        });
+    }
+    
+    // Connect to progress stream on page load
+    connectProgressStream();
+
+});;
+</script>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <a href="{{ url_for('index') }}" class="secondary" style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); text-decoration: none; background: #ffffff; cursor: pointer; display: inline-block; font-size: 0.9rem;">← Back to Library</a>
+            <h1 style="margin: 0;">Recently Added</h1>
+        </div>
+        
+        <!-- View Toggle Buttons -->
+        <div id="library-view-controls" style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="library-view-grid" class="view-toggle" title="All books (grid)" aria-label="All books view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <rect x="2" y="2" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                    <rect x="12" y="2" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                    <rect x="2" y="12" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                    <rect x="12" y="12" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+                </svg>
+            </button>
+            <button type="button" id="library-view-list" class="view-toggle" title="Folders (list)" aria-label="Folders view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <line x1="4" y1="4" x2="16" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="4" y1="16" x2="16" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button type="button" id="library-view-recent" class="view-toggle active" title="Recently added (recent)" aria-label="Recently added view">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <circle cx="10" cy="10" r="8" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    <line x1="10" y1="6" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="10" y1="10" x2="13" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div style="margin-bottom: 1.5rem; display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
+        <!-- Limit Selection -->
+        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+            <label style="font-size: 0.85rem; font-weight: 500; color: var(--text);">Show:</label>
+            <select name="limit" onchange="updateFilters()" id="limit-select" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: white; cursor: pointer;">
+                <option value="50" {% if limit == 50 %}selected{% endif %}>50 books</option>
+                <option value="100" {% if limit == 100 %}selected{% endif %}>100 books</option>
+                <option value="200" {% if limit == 200 %}selected{% endif %}>200 books</option>
+                <option value="500" {% if limit == 500 %}selected{% endif %}>500 books</option>
+            </select>
+        </div>
+
+        <!-- Source Filter (Feed) -->
+        {% if available_sources %}
+        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+            <label style="font-size: 0.85rem; font-weight: 500; color: var(--text);">From feed:</label>
+            <select name="source" onchange="updateFilters()" id="source-select" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: white; cursor: pointer; max-width: 300px;">
+                <option value="">All feeds</option>
+                {% for source in available_sources %}
+                <option value="{{ source }}" {% if source == source_filter %}selected{% endif %}>
+                    {% if source %}{{ source|truncate(50, True) }}{% else %}Unknown{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <!-- Stats -->
+        <div style="margin-left: auto; color: var(--text-muted); font-size: 0.9rem;">
+            <span>Displaying: <strong>{{ books|length }}</strong> / <strong>{{ total }}</strong> items</span>
+        </div>
+    </div>
+
+    <script>
+    function updateFilters() {
+        const url = new URL(window.location);
+        const limit = document.getElementById('limit-select').value;
+        const source = document.getElementById('source-select')?.value || '';
+        
+        url.searchParams.set('limit', limit);
+        
+        if (source) {
+            url.searchParams.set('source', source);
+        } else {
+            url.searchParams.delete('source');
+        }
+        
+        window.location = url.toString();
+    }
+    </script>
+
+    {% if books %}
+    <div class="grid library-grid">
+        {% for book in books %}
+        <div class="card library-card">
+            <div class="library-cover">
+                {% if book.entry_id %}
+                <a href="{{ url_for('book_detail', entry_id=book.entry_id) }}" class="library-cover-link">
+                    {% if book.cover %}
+                    <img src="{{ book.cover }}" alt="{{ book.title }}" onerror="this.style.display='none'">
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ book.title }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="library-title-overlay">{{ book.title }}</div>
+                </a>
+                {% else %}
+                <div style="position: relative; width: 100%; height: 100%;">
+                    {% if book.cover %}
+                    <img src="{{ book.cover }}" alt="{{ book.title }}" onerror="this.style.display='none'" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                    <div class="cover-placeholder">
+                        <span>{{ book.title }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="library-title-overlay">{{ book.title }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="library-meta">
+                <div style="font-size: 0.85rem;">
+                    {% if book.author %}
+                    <p style="margin: 0.25rem 0; color: var(--text-light);">{{ book.author }}</p>
+                    {% endif %}
+                    {% if book.filetype %}
+                    <p style="margin: 0.25rem 0; color: var(--text-light); font-size: 0.75rem;">{{ book.filetype|upper }}</p>
+                    {% endif %}
+                    
+                    <!-- Show source/feed information if available -->
+                    {% if book.source %}
+                    <p style="margin: 0.5rem 0 0 0; padding-top: 0.5rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ book.source }}">
+                        📡 {{ book.source|truncate(40, True) }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--muted); text-align: center; padding: 2rem;">No books found.{% if source_filter %} Try clearing the feed filter.{% endif %}</p>
+    {% endif %}
+</div>
+
+<script>
+    // View toggle functionality for Recently Added view
+    const gridViewBtn = document.getElementById('library-view-grid');
+    const listViewBtn = document.getElementById('library-view-list');
+    const recentViewBtn = document.getElementById('library-view-recent');
+
+    function setGridView() {
+        gridViewBtn.classList.add('active');
+        listViewBtn.classList.remove('active');
+        recentViewBtn?.classList.remove('active');
+        localStorage.setItem('library-view', 'grid');
+        window.location = '{{ url_for("index", view="collection") }}';
+    }
+
+    function setListView() {
+        gridViewBtn.classList.remove('active');
+        listViewBtn.classList.add('active');
+        recentViewBtn?.classList.remove('active');
+        localStorage.setItem('library-view', 'list');
+        window.location = '{{ url_for("index", view="folder") }}';
+    }
+
+    if (gridViewBtn) gridViewBtn.addEventListener('click', setGridView);
+    if (listViewBtn) listViewBtn.addEventListener('click', setListView);
+</script>
+{% endblock %}

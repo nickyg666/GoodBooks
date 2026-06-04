@@ -1,0 +1,443 @@
+# Proposed GoodBooks.epub Content - FOR YOUR REVIEW
+
+## STRUCTURE
+- **Part 1**: User Guide (for end users)
+- **Part 2**: Admin Guide (for administrators)
+- **Changelog & Roadmap**: At the end
+
+---
+
+## PROPOSED CONTENT (Please review and edit)
+
+### PART 1: USER GUIDE
+
+**1. GETTING STARTED**
+
+GoodBooks is a personal ebook library that automatically finds and downloads books from your Goodreads reading lists and sends them to your Kindle.
+
+Key Features:
+- Find books from Goodreads lists
+- Download from Anna's Archive
+- Auto-convert formats
+- Send to Kindle
+- Track your library
+
+Access: http://localhost:5000 (or your public URL)
+
+**2. THE LIBRARY VIEW**
+
+Your main dashboard showing all downloaded books.
+
+Each book displays:
+- Cover image
+- Title & author
+- Date added
+- File format
+
+Actions you can do:
+- Browse your library
+- Send selected books to Kindle
+- View book details (rating, genres, description)
+- Send to Kindle via your device's browser
+
+**Understanding Metadata Refresh:**
+
+When GoodBooks runs, it processes your library to improve book information. For each book it checks:
+- Has this book been processed before? (Checking...)
+- Does it need updated information? (Fetching metadata...)
+- Save the new information to disk (Saving...)
+
+The progress bar at the top shows this real-time:
+- **Book Title**: Which book is currently being processed
+- **Step**: What stage (Checking, Fetching, Saving)
+- **Progress Bar**: Visual indicator of completion
+- **Percentage & ETA**: How far done and time remaining
+
+Click the arrow to collapse the bar and reclaim screen space.
+
+**3. SEARCHING FOR BOOKS**
+
+Use the Search page to find and download new books without using feeds.
+
+Steps:
+1. Click Search
+2. Enter book title or author name
+3. Choose your preferred format:
+   - EPUB (best for most devices - recommended)
+   - MOBI (native Kindle format)
+   - PDF (documents)
+4. (Optional) Select preferred genres to filter results
+5. Click Search
+6. Browse results and download books you want
+
+The genre filter helps you find books in specific categories while automatically excluding adult/explicit content for safety.
+
+**4. MANAGING YOUR FEEDS**
+
+Feeds are automatic book sources connected to your Goodreads lists.
+
+**What the Feeds page shows:**
+- List of your configured feeds
+- **Remaining Books**: How many books from that list haven't been downloaded yet
+- Last refresh date and time
+- Manual refresh button
+
+**To add a feed:**
+1. Go to Settings
+2. Add your Goodreads RSS URL or Goodreads list URL
+3. Choose your format preference (EPUB, MOBI, PDF order)
+4. Enable auto-send to Kindle (optional - sends books directly to your device)
+5. Save
+
+**To manually refresh:**
+- Go to Feeds page
+- Click "Refresh" next to a feed
+- Watch the progress bar as it processes the list
+- New books are automatically added to your Library
+
+**5. HISTORY & DOWNLOADS**
+
+View everything you've downloaded with detailed tracking.
+
+Each entry shows:
+- Book name
+- Author
+- Date downloaded
+- Source (which feed or search)
+- Status (completed, pending, failed)
+
+**Actions you can perform:**
+
+**Search History:**
+- Use the search box to find books by title or author
+- Quickly locate books you've previously downloaded
+
+**Filter by Date Range:**
+- View downloads from specific time periods
+- Organize by week, month, or year
+- See trends in your reading habits
+
+**Additional options:**
+- Click any entry to see full details
+- View download source and format
+- Re-download a book if needed
+
+**6. SETTINGS (USER)**
+
+Configure your account and preferences:
+
+**Your Profile:**
+- **Name**: Your username
+- **Save Directory**: Folder where books are stored on the system
+- **Kindle Email**: Your Kindle device email (get from Amazon account → Devices)
+- **Kindle Type**: Device model (Paperwhite, Oasis, etc.)
+  - Affects maximum file size allowed
+  - Paperwhite: ~8MB, Oasis: ~10MB
+- **Notification Email**: Where delivery confirmations are sent
+  - Can be different from Kindle email
+  - Receives summary of books sent
+
+**7. ADVANCED FEATURES**
+
+**Genre Filtering:**
+Adult and explicit content is automatically filtered from public genre lists for a safer browsing experience. You can still find all books through direct search if needed.
+
+**Cover Images:**
+GoodBooks automatically finds and caches book covers for:
+- Better library appearance
+- Email notifications with cover thumbnails
+- Device sync when sending to Kindle
+
+Priority order:
+1. Cached local copy (fastest)
+2. Extracted from the ebook file
+3. Downloaded from Goodreads
+4. Placeholder if none available
+
+**Format Conversion:**
+If a book is in a format your device can't read, GoodBooks automatically converts it using Calibre. Examples:
+- MOBI → EPUB (if you prefer EPUB)
+- AZW → MOBI → EPUB (format chain)
+
+Conversions may take 5-60 seconds depending on file size.
+
+**Batch Sending to Kindle:**
+When sending multiple books:
+- Books are grouped intelligently (max 25 per batch)
+- File sizes limited to 24MB per email
+- Respects device limits
+- You receive confirmation email
+- Books appear on device within 5-10 minutes
+
+**Multi-Format Support:**
+- EPUB (recommended - universal)
+- MOBI (Kindle native)
+- AZW3 (newer Kindle format)
+- PDF (documents and comics)
+
+**8. TROUBLESHOOTING**
+
+**Books won't download:**
+- Verify internet connection is active
+- Check that book title/author spelling is correct
+- Verify Anna's Archive is accessible and has the book
+- Try a different format or book
+
+**Kindle not receiving books:**
+- Verify Kindle email address in Settings (case-sensitive)
+- Check email spam folder
+- Ensure sender email is approved in Kindle account settings
+- Check if file size exceeds device limit
+- Wait 5-10 minutes (delivery can be slow)
+- Try sending again with different format
+
+**Missing cover images:**
+- Book may not have embedded cover
+- Goodreads source may not have cover available
+- Re-add the book to refresh metadata
+- Cover will be cached after successful fetch
+
+**Feed stops working:**
+- Goodreads link may have changed (re-copy from browser)
+- List may no longer be public (check permissions)
+- Try removing and re-adding the feed
+- Contact system administrator if persists
+
+---
+
+### PART 2: ADMIN GUIDE
+
+**9. SYSTEM ADMINISTRATION**
+
+**Requirements:**
+- Python 3.8+
+- Calibre (ebook-convert command-line tool)
+- 50GB+ disk space for library
+- Internet connection (for Anna's Archive)
+
+**Start application:**
+```
+python3 app.py
+```
+
+**Configuration (data/settings.json):**
+
+Global system settings:
+```
+server_port: 5000          # Web UI port
+log_level: INFO            # DEBUG for verbose logging
+enable_background_jobs: true   # Auto-run feeds
+max_feed_workers: 4        # Parallel feed processing
+max_concurrent_downloads: 2    # Download threads
+request_timeout: 30        # Seconds before timeout
+```
+
+**SMTP Setup (for email notifications):**
+
+```
+host: smtp.gmail.com       # Or your provider
+port: 587                  # TLS port
+username: your-email@gmail.com
+password: app-specific-password  # Gmail: generate in account settings
+from_email: sender@example.com
+```
+
+**User Configuration:**
+
+Each user needs in settings.json:
+- save_dir: Personal book folder path
+- kindle_email: Device email from Amazon account
+- notification_email: Confirmation email recipient
+- feeds: Array of configured Goodreads sources
+
+**Feed Configuration:**
+
+- url: Goodreads RSS feed URL or HTML list URL
+- mode: "rss" or "html"
+- auto_send_to_kindle: true/false (explicit per-feed control)
+- filetypes: ["epub", "mobi", "pdf"] (preference order)
+- save_dir: (HTML mode only) custom save location
+
+**Database Files:**
+
+- data/settings.json: User & feed configuration
+- data/library.json: Book metadata and details
+- data/history.json: Download history entries
+- data/covers/: Cached cover images (can grow large)
+
+**Key Modules:**
+
+- **app.py** (5,400+ lines): Flask server, feed processing, Kindle sending
+- **parser_engine.py**: RSS/HTML parsing, Goodreads scraping
+- **search_engine.py** (2,200+ lines): Anna's Archive search integration
+- **settings_manager.py**: Configuration management, user/feed CRUD
+- **ebook_metadata_extractor.py**: Metadata extraction, cover extraction, format conversion
+- **cover_cache_manager.py**: Cover image caching system
+
+**Logging:**
+
+- logs/info.log: Normal operation logs
+- logs/debug.log: Detailed debug output (enable with log_level: DEBUG)
+
+Monitor system:
+```
+tail -f logs/info.log | grep ERROR
+grep "Download" logs/info.log | tail -20
+```
+
+**Maintenance:**
+
+**Weekly:**
+- Review error logs for patterns
+- Check disk space usage
+- Monitor cover cache size
+
+**Monthly:**
+- Test SMTP settings (send test email)
+- Verify Goodreads sources still work
+- Check for stale files in data/temp/
+
+**As Needed:**
+- Clear data/temp/ (old temporary files)
+- Archive completed history entries
+- Update Goodreads scraping if page structure changes
+
+**Performance Tuning:**
+
+**For Faster Downloads:**
+- Increase max_concurrent_downloads (be careful with rate limiting)
+- Increase max_feed_workers
+- Decrease request_timeout
+
+**For More Stability:**
+- Decrease max_concurrent_downloads
+- Decrease max_feed_workers
+- Increase request_timeout
+
+**Disk Space Management:**
+- Monitor data/covers/ (can grow to 50GB+)
+- Archive old books regularly
+- Use external storage if needed
+
+**API Endpoints:**
+
+**Library & UI:**
+- GET / - Main library view
+- GET /search - Search interface
+- POST /search - Execute search
+- GET /feeds - Feed management page
+- GET /history - Download history
+- GET /settings - Settings page
+- POST /settings - Save user/feed settings
+
+**Backend:**
+- GET /metadata/progress - Server-Sent Events progress stream
+- POST /queue/kindle - Queue book for Kindle sending
+- GET /api/library - Raw library JSON data
+
+---
+
+### CHANGELOG & ROADMAP
+
+**Version 1.0 (December 11, 2025)**
+
+**Core Features:**
+✓ Goodreads RSS feed support
+✓ Goodreads HTML list parsing
+✓ Anna's Archive integration
+✓ Multi-format (EPUB, MOBI, AZW, PDF)
+✓ Auto format conversion
+✓ Kindle auto-send with batching
+✓ Email notifications
+✓ Cover extraction (all formats)
+✓ Goodreads metadata enrichment
+✓ Genre filtering
+✓ History tracking with search
+✓ Multi-user support
+✓ Real-time progress indicators
+
+**Recent Improvements:**
+✓ Progress bar consolidation (width-wise)
+✓ Current book display
+✓ Processing step indicator
+✓ Genre filtering consolidation
+✓ Requirements.txt with versions
+✓ Testing folder organization
+✓ Auto-send logic fix (feed-level False now works)
+✓ EPUB/MOBI/PDF cover extraction fixes
+✓ Email notification fixes
+✓ Reduced verbose logging
+✓ Genre select in search/browse
+✓ History search implementation
+✓ History date range filter implementation
+
+**Known Limitations:**
+- Anna's Archive availability varies by region
+- Goodreads HTML parsing fragile to page structure changes
+- PDF cover extraction limited (depends on PDF structure)
+- Large file conversions can take 5-60 seconds
+
+**Future Roadmap:**
+
+**Dark Mode**
+How it would work:
+- Add CSS variables for dark theme colors
+- JavaScript toggle button in navbar
+- localStorage to persist user preference
+- Works across all pages and components
+
+**Advanced Filtering (in Library)**
+How it would work:
+- Add filter sidebar with checkboxes:
+  - By genre (from Goodreads data)
+  - By format (EPUB, MOBI, PDF)
+  - By rating (from Goodreads)
+  - By date range
+- Database query optimization with indexes
+- Client-side filtering with JavaScript for responsiveness
+
+**Series Detection & Grouping**
+How it would work:
+- Scrape Goodreads for series information
+- Group books by detected series
+- Add series navigation (Book 1 of 5)
+- Series view page showing reading order
+- Batch download entire series
+
+**Reading Progress Tracking**
+How it would work:
+- Add current page input field on book details
+- Store progress in library.json
+- Show reading progress in library view
+- Calculate estimated completion time
+- Sync with Goodreads if API available
+
+**Social Features (Sharing)**
+How it would work:
+- Shareable book lists (generate unique URLs)
+- Export library as HTML/PDF catalog
+- Share recommendations via email
+- Public profile showing recent reads
+- Community ratings and reviews
+
+---
+
+## REVIEW CHECKLIST
+
+Please confirm:
+
+1. ✓ Genre select explained in Search and Browse sections
+2. ✓ Kindle browser download explained (not PC download)
+3. ✓ Metadata refresh explained plainly with examples
+4. ✓ Feeds page shows "remaining books to download"
+5. ✓ History search and date filter are real features (implemented)
+6. ✓ Progress bar consolidated width-wise
+7. ✓ Roadmap features have implementation details
+
+When approved, I will create the EPUB with:
+- Proper formatting with chapters
+- Table of contents and bookmarks
+- Cover image (kept as-is)
+- Links to local and public GoodBooks URLs
+- Professional styling
+

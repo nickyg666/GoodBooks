@@ -6468,6 +6468,26 @@ def manual_download():
     # Also upsert metadata for the Library/details page
     upsert_library_metadata_for_download(saved_path, best)
 
+    # Apply comprehensive metadata enrichment to improve metadata quality
+    try:
+        logger.debug("Applying comprehensive metadata enrichment for %s", best.get("title", "Unknown"))
+        enriched_best = enrich_library_metadata_comprehensive(best)
+        # Update best with enriched metadata
+        best.update(enriched_best)
+        # Update the stored metadata with enriched version
+        metadata[entry_id] = meta
+        with library_metadata_lock:
+            LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+            # Keep in-memory library metadata cache in sync with disk
+            global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
+            _LIBRARY_METADATA_CACHE = metadata
+            try:
+                _LIBRARY_METADATA_MTIME = LIBRARY_METADATA_PATH.stat().st_mtime
+            except OSError:
+                _LIBRARY_METADATA_MTIME = 0.0
+    except Exception as e:
+        logger.debug("Failed to apply comprehensive metadata enrichment for %s: %s", best.get("title", "Unknown"), e)
+
     # Add file_path and library_id to best dict for notification email cover extraction
     best["file_path"] = str(saved_path)
     entry_id = get_library_entry_id(saved_path)
@@ -6547,12 +6567,12 @@ def refresh_library_metadata_background() -> None:
                  metadata_progress_state["current_book"] = book_title[:60]  # Truncate long titles
                  metadata_progress_state["current_step"] = "Checking..."
 
-             # Metadata is incomplete - fetch from Goodreads
+             # Metadata is incomplete - fetch from all available sources
              try:
                  with metadata_progress_lock:
-                     metadata_progress_state["current_step"] = "Fetching from Goodreads..."
-                 meta = enrich_library_metadata_from_goodreads(entry)
-                 
+                     metadata_progress_state["current_step"] = "Fetching from all sources..."
+                 meta = enrich_library_metadata_comprehensive(entry)
+                
                  # Track what was actually fetched
                  fetched_fields = []
                  if meta.get("genres"):
@@ -6568,7 +6588,7 @@ def refresh_library_metadata_background() -> None:
                  all_fields = {"genres", "rating", "cover", "description"}
                  still_missing = [f for f in all_fields if f not in fetched_fields]
                  if still_missing:
-                     log_metadata_miss(entry_id, book_title, still_missing, "goodreads_fetch_incomplete")
+                     log_metadata_miss(entry_id, book_title, still_missing, "multi_source_fetch_incomplete")
                  
                  if meta.get("genres") or meta.get("rating") or meta.get("cover") or meta.get("description"):
                      updated_count += 1
@@ -7397,12 +7417,21 @@ def _run_feeds_background():
                 if goodreads_meta:
                     best["goodreads_meta"] = goodreads_meta
                     logger.info("Successfully scraped Goodreads metadata: rating=%s cover=%s", 
-                               goodreads_meta.get("rating"), 
-                               "yes" if goodreads_meta.get("cover") else "no")
+                                goodreads_meta.get("rating"), 
+                                "yes" if goodreads_meta.get("cover") else "no")
                     local_debug.append(f"      Scraped Goodreads metadata: rating={goodreads_meta.get('rating')}, genres={goodreads_meta.get('genres')}")
             except Exception as e:
                 logger.debug("Failed to scrape Goodreads metadata for %s: %s", item.link, e)
                 local_debug.append(f"      Goodreads scraping failed: {e}")
+
+        # Apply comprehensive metadata enrichment to improve metadata quality
+        try:
+            logger.debug("Applying comprehensive metadata enrichment for %s", best.get("title", "Unknown"))
+            enriched_best = enrich_library_metadata_comprehensive(best)
+            # Update best with enriched metadata
+            best.update(enriched_best)
+        except Exception as e:
+            logger.debug("Failed to apply comprehensive metadata enrichment for %s: %s", best.get("title", "Unknown"), e)
 
         upsert_library_metadata_for_download(saved_path, best, item)
 
@@ -8050,8 +8079,8 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
             # Already has complete metadata
             return (entry_idx, meta)
         
-        # Fetch enrichment from Goodreads
-        enriched = enrich_library_metadata_from_goodreads(entry)
+        # Fetch enrichment from all available sources
+        enriched = enrich_library_metadata_comprehensive(entry)
         if enriched:
             meta.update(enriched)
             # Clear failed flag if enrichment succeeded
@@ -8059,7 +8088,7 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
         else:
             # Mark as failed to prevent infinite loops on unfindable books
             meta["failed_to_enrich"] = True
-            logger.debug("Marking entry %s as failed_to_enrich (could not find on Goodreads)", entry_id)
+            logger.debug("Marking entry %s as failed_to_enrich (could not find on any source)", entry_id)
         
         return (entry_idx, meta)
     except Exception as e:

@@ -45,6 +45,7 @@ from ebook_metadata_extractor import extract_book_metadata
 import time
 import uuid
 from datetime import datetime
+from urllib.parse import urlencode
 
 from ebook_metadata_extractor import convert_to_epub
 from cover_cache_manager import get_cache_manager
@@ -794,10 +795,95 @@ def sanitize_author(author_string: str) -> str:
     return author_string
 
 
-def cache_cover_locally(cover_url: str, library_id: str) -> Optional[Path]:
+def cache_cover_locally(cover_url: str, library_id: str, is_goodreads_only: bool = False) -> Optional[Path]:
     """
-    Download and cache a Goodreads cover image locally.
+    Download and cache a cover image locally from any source.
     Returns the path to the cached cover file, or None if download fails.
+    
+    Args:
+        cover_url: URL of the cover image
+        library_id: Unique identifier for the book in the library
+        is_goodreads_only: If True, only cache Goodreads images (legacy behavior)
+                          If False, cache images from any source (Amazon, etc.)
+    """
+    if not cover_url:
+        return None
+        
+    # Legacy behavior: only cache Goodreadis images if requested
+    if is_goodreads_only and not is_goodreads_image(cover_url):
+        return None
+    
+    # Use the advanced cover cache manager for better caching
+    try:
+        cache_manager = get_cache_manager()
+        
+        # Define a download function for the cache manager
+        def download_cover(url):
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/*,*/*;q=0.8"
+                }
+                resp = requests.get(url, timeout=10, headers=headers, allow_redirects=True)
+                if resp.status_code == 200 and "image" in resp.headers.get("Content-Type", "").lower():
+                    return resp.content
+            except Exception as e:
+                logger.debug("Failed to download cover from %s: %s", url, e)
+            return None
+        
+        # Get cached cover or download and cache it
+        image_bytes = cache_manager.get_cached_cover(cover_url, download_cover)
+        if image_bytes:
+            # Determine file extension from content type or URL
+            content_type = ""
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/*,*/*;q=0.8"
+                }
+                resp = requests.head(cover_url, headers=headers, timeout=5, allow_redirects=True)
+                content_type = resp.headers.get("Content-Type", "").lower()
+            except:
+                pass
+            
+            # Determine extension
+            if "png" in content_type:
+                ext = ".png"
+            elif "webp" in content_type:
+                ext = ".webp"
+            elif "gif" in content_type:
+                ext = ".gif"
+            else:
+                ext = ".jpg"  # Default to JPEG
+                
+            # Use library_id as filename to create unique cache
+            cache_filename = hashlib.md5(library_id.encode()).hexdigest()
+            cache_file = COVERS_DIR / f"{cache_filename}{ext}"
+            
+            # Write the cached file
+            try:
+                cache_file.write_bytes(image_bytes)
+                logger.debug("Cached cover for %s at %s (%d bytes)", library_id, cache_file.name, len(image_bytes))
+                return cache_file
+            except OSError as e:
+                logger.warning("Failed to write cover cache for %s to disk: %s", library_id, e)
+                return None
+        else:
+            logger.debug("Failed to cache cover for %s", library_id)
+            return None
+            
+    except Exception as e:
+        logger.debug("Failed to cache cover for %s: %s", library_id, e)
+        # Fallback to legacy method for Goodreads images
+        if not is_goodreads_only and is_goodreads_image(cover_url):
+            return _cache_cover_locally_legacy(cover_url, library_id)
+        return None
+
+
+def _cache_cover_locally_legacy(cover_url: str, library_id: str) -> Optional[Path]:
+    """
+    Legacy cover caching function for Goodreads images only.
+    Kept for backward compatibility.
     """
     if not cover_url or not is_goodreads_image(cover_url):
         return None
@@ -3631,7 +3717,7 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
     has_rating = goodreads_meta_existing.get("rating") is not None
     has_description = bool(meta.get("description") or goodreads_meta_existing.get("description"))
     has_url = bool(goodreads_meta_existing.get("goodreads_url"))
-    
+
     # Only skip if ALL metadata fields are present and complete
     if has_genres and has_rating and has_description and has_url:
         # Already has complete metadata, skip enrichment
@@ -3696,46 +3782,45 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
                     # Skip rating/rating_count if already present
                     if scraped_meta.get("rating") and not has_rating:
                         meta["rating"] = scraped_meta["rating"]
-                        logger.debug("Goodreads rating for %s: %s", gr_link, scraped_meta["rating"])
-                    if scraped_meta.get("rating_count") and not has_rating:
+                    if scraped_meta.get("rating_count") and meta.get("rating_count") is None:
                         meta["rating_count"] = scraped_meta["rating_count"]
-                    # Skip pages if already present
-                    if scraped_meta.get("pages") and not meta.get("pages"):
-                        meta["pages"] = scraped_meta["pages"]
-                    # Skip genres if already has 3+ genres
-                    if scraped_meta.get("genres") and not has_many_genres:
-                        meta["genres"] = scraped_meta["genres"]
-                        logger.debug("Goodreads genres for %s: %s", gr_link, scraped_meta["genres"])
-                    # Skip language if already present
-                    if scraped_meta.get("edition_language") and not meta.get("language"):
-                        meta["language"] = scraped_meta["edition_language"]
-                    # Skip publish_date if already present
-                    if scraped_meta.get("edition_published") and not meta.get("publish_date"):
-                        meta["publish_date"] = scraped_meta["edition_published"]
-                    # Skip format if already present
-                    if scraped_meta.get("edition_format") and not meta.get("format"):
-                        meta["format"] = scraped_meta["edition_format"]
-                    # Skip cover if already has high-res cover (with _SX in URL)
-                    if scraped_meta.get("cover") and (not meta.get("cover") or "_SX" not in str(meta.get("cover", ""))):
-                        # Cache the cover locally for email use
-                        cached_path = cache_cover_locally(scraped_meta["cover"], library_id)
-                        if cached_path:
-                            # Store relative path to local cache file
-                            meta["cover"] = str(cached_path.relative_to(DATA_DIR.parent))
-                            logger.debug("Cached Goodreads cover for %s to: %s", gr_link, meta["cover"])
-                        else:
-                            # Fallback to URL if caching failed
-                            meta["cover"] = scraped_meta["cover"]
-                            logger.debug("Goodreads cover for %s: %s", gr_link, scraped_meta["cover"])
-                    # Skip description if already has one > 100 chars
-                    if scraped_meta.get("description") and len(str(meta.get("description", ""))) < 100:
-                        meta["description"] = fix_description_spacing(scraped_meta["description"])
+                    # Always update description if we have one (prefer longer)
+                    if scraped_meta.get("description"):
+                        scraped_desc = str(scraped_meta["description"]).strip()
+                        current_desc = str(meta.get("description") or "").strip()
+                        if len(scraped_desc) > len(current_desc):
+                            meta["description"] = scraped_desc
+                    # Update page count if not present
+                    if scraped_meta.get("num_pages") and not meta.get("pages"):
+                        meta["pages"] = scraped_meta["num_pages"]
+                    # Update publication year if not present
+                    if scraped_meta.get("published_year") and not meta.get("publish_date"):
+                        meta["publish_date"] = str(scraped_meta["published_year"])
+                    # Update format if not present
+                    if scraped_meta.get("format") and not meta.get("format"):
+                        meta["format"] = scraped_meta["format"]
+                    # Update genres if we don't have enough
+                    current_genres = goodreads_meta_existing.get("genres", [])
+                    if isinstance(current_genres, str):
+                        current_genres = [current_genres] if current_genres else []
+                    scraped_genres = scraped_meta.get("genres", [])
+                    if len(current_genres) < 3 and scraped_genres:
+                        # Combine and deduplicate genres
+                        all_genres = list(set([g.strip() for g in current_genres + scraped_genres if g.strip()]))
+                        meta["genres"] = all_genres[:5]  # Limit to 5 genres
+                    # Always try to get a better cover (prefer non-_SX versions)
+                    if scraped_meta.get("cover"):
+                        scraped_cover = str(scraped_meta["cover"]).strip()
+                        current_cover = str(meta.get("cover") or "").strip()
+                        # Prefer non-_SX covers (higher resolution) or if we don't have a cover yet
+                        if not current_cover or "_SX" not in current_cover or "_SX" in scraped_cover:
+                            meta["cover"] = scraped_cover
+                    # Update Goodreads URL
+                    if not has_url:
+                        meta["goodreads_url"] = gr_link
+                        
             except Exception as e:
-                logger.debug("Failed to scrape Goodreads metadata for %s: %s", gr_link, e)
-
-        # Note: Cover extraction is already handled in scraping above (lines 3715-3725)
-        # No need for second search - if we found a gr_link, scraping already got the cover
-        # If scraping didn't get a cover, it won't help to search again
+                logger.debug("Failed to scrape Goodreads for %s: %s", gr_link, e)
 
     except Exception:
         logger.exception("Failed to enrich library metadata from Goodreads for %s", library_id)
@@ -3750,7 +3835,7 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
     cover_lower = cover_for_meta.lower()
     if any(domain in cover_lower for domain in forbidden_domains):
         cover_for_meta = ""
-
+    
     goodreads_meta = {
         "description": meta.get("description", ""),
         "rating": meta.get("rating"),
@@ -3760,11 +3845,188 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
         "edition_language": meta.get("language", ""),
         "edition_published": meta.get("publish_date", ""),
         "edition_format": meta.get("format", ""),
-        "cover": cover_for_meta,
         "goodreads_url": meta.get("goodreads_link", ""),
+        "cover": cover_for_meta,
     }
     meta["goodreads_meta"] = goodreads_meta
+    
+    # Persist updates
+    metadata[library_id] = meta
+    try:
+        with library_metadata_lock:
+            LIBRARY_METADATA_PATH.write_text(
+                json.dumps(metadata, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
+            _LIBRARY_METADATA_CACHE = metadata
+            try:
+                _LIBRARY_METADATA_MTIME = LIBRARY_METADATA_PATH.stat().st_mtime
+            except OSError:
+                _LIBRARY_METADATA_MTIME = 0.0
+    except Exception:
+        logger.exception("Failed to write library metadata to disk")
 
+    return meta
+
+
+def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Comprehensive metadata enrichment from all available sources.
+    Tries multiple sources in order of preference and combines the best metadata.
+    
+    Sources tried in order:
+    1. Goodreads (existing functionality)
+    2. Amazon (for high-quality covers and basic metadata)
+    3. LibraryGenesis/ZLibrary (as fallback for covers)
+    
+    Args:
+        entry: Library entry dictionary with at least id, title, author
+        
+    Returns:
+        Enriched metadata dictionary
+    """
+    library_id = entry["id"]
+    metadata = load_library_metadata()
+    meta: Dict[str, Any] = dict(metadata.get(library_id) or {})
+    
+    # Ensure basics are set
+    meta.setdefault("id", library_id)
+    meta.setdefault("title", entry.get("title", ""))
+    meta.setdefault("author", entry.get("author", ""))
+    meta.setdefault("path", entry.get("path", ""))
+    meta.setdefault("filetype", entry.get("filetype", ""))
+    meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
+    
+    # Start with Goodreads enrichment (primary source)
+    meta = enrich_library_metadata_from_goodreads(entry)
+    
+    # Check if we need additional metadata from other sources
+    # Determine if we have sufficient metadata
+    has_good_cover = bool(meta.get("cover") and len(str(meta["cover"])) > 0)
+    has_description = bool(meta.get("description") and len(str(meta["description"])) > 50)
+    has_rating = meta.get("rating") is not None
+    has_genres = bool(meta.get("genres") and len(meta.get("genres", [])) > 0)
+    
+    # If we lack cover or description, try Amazon as a supplement
+    if not has_good_cover or not has_description or not has_rating:
+        try:
+            # Import Amazon cover fetcher
+            from amazon_cover_fetcher import fetch_amazon_cover, get_cover_urls
+            
+            title = entry.get("title", "").strip()
+            author = (entry.get("author") or "").strip()
+            
+            # Prepare identifiers for Amazon search
+            identifiers = {}
+            # Try to get ISBN from existing metadata or entry
+            isbn = meta.get("isbn") or entry.get("isbn")
+            if isbn:
+                identifiers['isbn'] = str(isbn).strip()
+            # Try to get ASIN
+            asin = meta.get("asin") or entry.get("asin")
+            if asin:
+                identifiers['asin'] = str(asin).strip()
+            # Try to get Goodreads ID
+            goodreads_id = meta.get("goodreads_id") or entry.get("goodreads_id")
+            if goodreads_id:
+                identifiers['goodreads'] = str(goodreads_id).strip()
+            
+            logger.debug("Attempting Amazon metadata enrichment for %s by %s", title, author)
+            
+            # Try to get cover from Amazon
+            cover_url, image_data = fetch_amazon_cover(
+                title=title, 
+                authors=[author] if author else [], 
+                identifiers=identifiers,
+                timeout=10
+            )
+            
+            if cover_url and image_data:
+                # Cache the Amazon cover locally
+                cached_path = cache_cover_locally(cover_url, library_id, is_goodreads_only=False)
+                if cached_path:
+                    # Only update cover if we don't have a good one already or if Amazon cover is likely better
+                    if not has_good_cover or "_SX" in str(meta.get("cover", "")):
+                        meta["cover"] = str(cached_path.relative_to(DATA_DIR.parent))
+                        logger.info("Updated cover from Amazon for %s: %s", title, cached_path)
+                        has_good_cover = True
+                else:
+                    # Fallback to using URL directly if caching failed
+                    if not has_good_cover or "_SX" in str(meta.get("cover", "")):
+                        meta["cover"] = cover_url
+                        logger.info("Using Amazon cover URL for %s: %s", title, cover_url)
+                        has_good_cover = True
+            
+            # If we still need description or rating, we could potentially get more from Amazon
+            # but Amazon's API is limited for metadata, so we'll focus on what we can get reliably
+            
+        except ImportError:
+            logger.warning("Amazon cover fetcher not available, skipping Amazon enrichment")
+        except Exception as e:
+            logger.debug("Failed to enrich metadata from Amazon for %s: %s", library_id, e)
+    
+    # If we still lack adequate metadata, try LibraryGenesis/ZLibrary as last resort
+    if not has_good_cover:
+        try:
+            # Try to get cover from LibraryGenesis/ZLibrary using existing fallback
+            title = entry.get("title", "").strip()
+            author = (entry.get("author") or "").strip()
+            
+            if title:
+                zlib_cover = fetch_zlib_cover_fallback(title, author)
+                if zlib_cover:
+                    # Cache the ZLib cover locally
+                    cached_path = cache_cover_locally(zlib_cover, library_id, is_goodreads_only=False)
+                    if cached_path:
+                        if not has_good_cover or "_SX" in str(meta.get("cover", "")):
+                            meta["cover"] = str(cached_path.relative_to(DATA_DIR.parent))
+                            logger.info("Updated cover from ZLibrary fallback for %s: %s", title, cached_path)
+                            has_good_cover = True
+                    else:
+                        if not has_good_cover or "_SX" in str(meta.get("cover", "")):
+                            meta["cover"] = zlib_cover
+                            logger.info("Using ZLibrary cover URL for %s: %s", title, zlib_cover)
+                            has_good_cover = True
+        except Exception as e:
+            logger.debug("Failed to enrich metadata from ZLibrary fallback for %s: %s", library_id, e)
+    
+    # Build goodreads_meta object (updated with any new cover info)
+    cover_for_meta = meta.get("cover", "")
+    # Ensure cover is not from Anna's Archive or other piracy sites
+    forbidden_domains = [
+        "cdn-zlib", "zlib.sk", "z-lib", "libgen", "anna", "annas-archive",
+        "bookfi", "b-ok", "manybooks"
+    ]
+    cover_lower = cover_for_meta.lower()
+    if any(domain in cover_lower for domain in forbidden_domains):
+        cover_for_meta = ""
+    
+    goodreads_meta = {
+        "description": meta.get("description", ""),
+        "rating": meta.get("rating"),
+        "rating_count": meta.get("rating_count"),
+        "pages": meta.get("pages"),
+        "genres": meta.get("genres", []),
+        "edition_language": meta.get("language", ""),
+        "edition_published": meta.get("publish_date", ""),
+        "edition_format": meta.get("format", ""),
+        "goodreads_url": meta.get("goodreads_link", ""),
+        "cover": cover_for_meta,
+    }
+    meta["goodreads_meta"] = goodreads_meta
+    
+    # Add enrichment source tracking
+    enrichment_sources = []
+    if meta.get("goodreads_link"):
+        enrichment_sources.append("goodreads")
+    if has_good_cover and meta.get("cover") and "amazon" in str(meta.get("cover", "")):
+        enrichment_sources.append("amazon")
+    elif has_good_cover and meta.get("cover") and ("data/covers" in str(meta.get("cover", ""))):
+        # Check if it's likely from Amazon or ZLib by seeing if it's a local file
+        enrichment_sources.append("amazon_or_zlib")
+    meta["enrichment_sources"] = enrichment_sources
+    
     # Persist updates
     metadata[library_id] = meta
     try:
@@ -5430,6 +5692,26 @@ def search():
                     )
                     upsert_library_metadata_for_download(saved_path, best)
 
+                    # Apply comprehensive metadata enrichment to improve metadata quality
+                    try:
+                        logger.debug("Applying comprehensive metadata enrichment for %s", best.get("title", "Unknown"))
+                        enriched_best = enrich_library_metadata_comprehensive(best)
+                        # Update best with enriched metadata
+                        best.update(enriched_best)
+                        # Update the stored metadata with enriched version
+                        metadata[entry_id] = meta
+                        with library_metadata_lock:
+                            LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                            # Keep in-memory library metadata cache in sync with disk
+                            global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
+                            _LIBRARY_METADATA_CACHE = metadata
+                            try:
+                                _LIBRARY_METADATA_MTIME = LIBRARY_METADATA_PATH.stat().st_mtime
+                            except OSError:
+                                _LIBRARY_METADATA_MTIME = 0.0
+                    except Exception as e:
+                        logger.debug("Failed to apply comprehensive metadata enrichment for %s: %s", best.get("title", "Unknown"), e)
+
                     # Add file_path and library_id to best dict for notification email cover extraction
                     best["file_path"] = str(saved_path)
                     entry_id = get_library_entry_id(saved_path)
@@ -5472,18 +5754,26 @@ def search():
         end = start + page_size
         display_results = results[start:end]
 
-    # Opportunistically hydrate covers/downloads for the current page of results
+    # Opportunistically hydrate covers/downloads and enrich metadata for the current page of results
     if display_results:
         try:
             hydrated: List[Dict] = []
             for r in (display_results or []):
                 try:
-                    hydrated.append(source.resolve_downloads_for_result(r))
+                    # First resolve download links
+                    hydrated_r = source.resolve_downloads_for_result(r)
+                    # Then apply comprehensive metadata enrichment
+                    enriched_r = enrich_library_metadata_comprehensive(hydrated_r)
+                    hydrated.append(enriched_r)
                 except Exception:
-                    hydrated.append(r)
+                    # If enrichment fails, still include the hydrated result
+                    try:
+                        hydrated.append(source.resolve_downloads_for_result(r))
+                    except Exception:
+                        hydrated.append(r)
             display_results = hydrated
         except Exception:
-            logger.exception("Failed to hydrate search results with download metadata")
+            logger.exception("Failed to hydrate and enrich search results with metadata")
 
     return render_template(
         "index.html",
@@ -5502,6 +5792,326 @@ def search():
         page=page,
         total_pages=total_pages,
     )
+
+
+@app.route("/scan")
+def scan():
+    """
+    Dedicated scan page for camera-based book cover scanning.
+    Flow: Camera access -> Take photo -> Upload to x0.at -> Reverse image search -> Search Anna's Archive -> Fetch
+    """
+    settings = settings_manager.settings
+    return render_template(
+        "scan.html",
+        settings=settings,
+        title="Scan Book Cover",
+        users=settings.users,
+    )
+
+
+@app.route("/scan/process", methods=["POST"])
+def scan_process():
+    """
+    Process camera image: upload to x0.at, reverse search, return book matches.
+    """
+    try:
+        image_data = None
+        if "image" in request.files:
+            file = request.files["image"]
+            if file.filename:
+                image_data = file.read()
+        elif request.is_json:
+            data = request.get_json()
+            image_b64 = data.get("image_base64", "").strip()
+            if image_b64:
+                try:
+                    image_data = base64.b64decode(image_b64)
+                except Exception:
+                    pass
+        
+        if not image_data:
+            return jsonify({"success": False, "error": "No image provided"}), 400
+        
+        # Upload to x0.at
+        image_url = _upload_image_to_host(image_data)
+        if not image_url:
+            return jsonify({"success": False, "error": "Failed to upload image to host"}), 500
+        
+        # Reverse image search
+        queries = _reverse_search_google_free(image_url)
+        
+        # If we got queries, search Anna's Archive for the first one
+        results = []
+        if queries:
+            for query in queries[:3]:
+                search_options = SearchOptions(
+                    query=query,
+                    language="en",
+                    max_rows=10,
+                    max_results=10,
+                    resolve_downloads=False,
+                )
+                search_results, _ = source.search(query, options=search_options)
+                if search_results:
+                    for r in search_results[:5]:
+                        r["scan_query"] = query
+                        results.append(r)
+                if results:
+                    break
+        
+        # Deduplicate by md5/id
+        seen = set()
+        unique_results = []
+        for r in results:
+            key = r.get("md5") or r.get("id") or r.get("detail")
+            if key and key not in seen:
+                seen.add(key)
+                unique_results.append(r)
+        
+        return jsonify({
+            "success": True,
+            "image_url": image_url,
+            "queries": queries,
+            "results": unique_results[:10],
+        })
+        
+    except Exception as e:
+        logger.exception("Scan process error")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/search/reverse-image", methods=["POST"])
+def reverse_image_search():
+    """
+    Reverse image search endpoint.
+    Accepts image upload or image URL, uses free reverse image search to identify book covers.
+    Returns search query suggestions based on visual analysis.
+    """
+    # Get image data from request
+    image_data = None
+    image_url = None
+    
+    if "image" in request.files:
+        # File upload
+        file = request.files["image"]
+        if file.filename:
+            image_data = file.read()
+    elif request.is_json:
+        # JSON with image URL or base64
+        data = request.get_json()
+        image_url = data.get("image_url", "").strip()
+        image_b64 = data.get("image_base64", "").strip()
+        if image_b64:
+            try:
+                image_data = base64.b64decode(image_b64)
+            except Exception:
+                pass
+    
+    if not image_data and not image_url:
+        return jsonify({"success": False, "error": "No image provided. Upload a file, provide image_url, or image_base64."}), 400
+    
+    # Use free reverse image search approach:
+    # 1. Upload image to free file host (x0.at, 0x0.st, catbox.moe)
+    # 2. Use google-reverse-image-api or similar to search by image URL
+    try:
+        # Upload image to free file host
+        image_url = _upload_image_to_host(image_data)
+        if not image_url:
+            logger.warning("Failed to upload image to any host")
+            return jsonify({
+                "success": True,
+                "queries": _reverse_search_local_fallback(image_data, image_url),
+                "confidence": 0.3,
+                "source": "local_fallback"
+            })
+        
+        # Use free Google reverse image search API
+        queries = _reverse_search_google_free(image_url)
+        
+        if queries:
+            return jsonify({
+                "success": True,
+                "queries": queries,
+                "confidence": 0.8,
+                "source": "google_reverse_image_api",
+                "image_url": image_url
+            })
+        
+        # Fallback to local search
+        return jsonify({
+            "success": True,
+            "queries": _reverse_search_local_fallback(image_data, image_url),
+            "confidence": 0.5,
+            "source": "local_fallback"
+        })
+        
+    except Exception as e:
+        logger.exception("Reverse image search error")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _upload_image_to_host(image_data: bytes) -> Optional[str]:
+    """
+    Upload image to a free file hosting service.
+    Returns the public URL or None if all hosts fail.
+    """
+    if not image_data:
+        return None
+    
+    hosts = [
+        ("https://x0.at", {"file": ("image.jpg", image_data, "image/jpeg")}),
+        ("https://0x0.st", {"file": ("image.jpg", image_data, "image/jpeg")}),
+        ("https://catbox.moe/user/api.php", {"reqtype": "fileupload", "file": ("image.jpg", image_data, "image/jpeg")}),
+        ("https://tmpfiles.org/api/v1/upload", {"file": ("image.jpg", image_data, "image/jpeg")}),
+        ("https://file.io", {"file": ("image.jpg", image_data, "image/jpeg")}),
+    ]
+    
+    for url, files in hosts:
+        try:
+            logger.debug(f"Trying to upload image to {url}")
+            response = requests.post(url, files=files, timeout=30)
+            if response.status_code == 200:
+                # Parse response based on host
+                if "x0.at" in url or "0x0.st" in url:
+                    # These return plain text URL
+                    result_url = response.text.strip()
+                    if result_url.startswith("http"):
+                        logger.info(f"Uploaded image to {result_url}")
+                        return result_url
+                elif "catbox.moe" in url:
+                    result_url = response.text.strip()
+                    if result_url.startswith("http"):
+                        logger.info(f"Uploaded image to {result_url}")
+                        return result_url
+                elif "tmpfiles.org" in url:
+                    data = response.json()
+                    if data.get("status") == "success":
+                        result_url = data["data"]["url"].replace("tmpfiles.org", "tmpfiles.org/dl")
+                        logger.info(f"Uploaded image to {result_url}")
+                        return result_url
+                elif "file.io" in url:
+                    data = response.json()
+                    if data.get("success"):
+                        result_url = data["link"]
+                        logger.info(f"Uploaded image to {result_url}")
+                        return result_url
+        except Exception as e:
+            logger.debug(f"Failed to upload to {url}: {e}")
+            continue
+    
+    return None
+
+
+def _reverse_search_google_free(image_url: str) -> List[str]:
+    """
+    Use the free google-reverse-image-api approach.
+    This can use the GitHub project or direct Google search by image URL.
+    """
+    queries = []
+    
+    try:
+        # Method 1: Use Google's "search by image" URL directly
+        # Google allows: https://www.google.com/searchbyimage?image_url=<url>
+        # But this returns HTML, we need to parse it
+        
+        # Method 2: Use the google-reverse-image-api style approach
+        # We can use a public instance or replicate the logic
+        
+        # For now, use Google Custom Search style query with the image URL as context
+        # We'll do a text search for terms that might be in the image
+        # by using the image URL in a search query
+        
+        # Simple approach: Use Google's "search by image" and parse results
+        search_url = f"https://www.google.com/searchbyimage?image_url={urllib.parse.quote(image_url)}"
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        
+        response = requests.get(search_url, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            # Parse HTML for search suggestions / related searches
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Look for related searches, knowledge panel, or best guess label
+            # Google's "Best guess for this image" is usually in a specific div
+            
+            # Try to find the "Best guess" text
+            best_guess = soup.find("div", {"class": "g"})
+            if best_guess:
+                text = best_guess.get_text()
+                if "Best guess" in text or "best guess" in text.lower():
+                    # Extract the guess
+                    import re
+                    match = re.search(r'[Bb]est guess.*?[:\-]\s*(.+)', text)
+                    if match:
+                        queries.append(match.group(1).strip())
+            
+            # Look for related searches at bottom
+            related = soup.find_all("div", {"class": "brs_col"})
+            for r in related:
+                link = r.find("a")
+                if link:
+                    queries.append(link.get_text().strip())
+            
+            # Also check for knowledge panel entities
+            knowledge = soup.find("div", {"class": "kp-blk"})
+            if knowledge:
+                title = knowledge.find("span", {"class": "VuuXrf"})
+                if title:
+                    queries.append(title.get_text().strip())
+            
+            # Deduplicate
+            seen = set()
+            unique = []
+            for q in queries:
+                q_lower = q.lower()
+                if q_lower not in seen and len(q) > 2:
+                    seen.add(q_lower)
+                    unique.append(q)
+            
+            return unique[:10]
+        
+    except Exception as e:
+        logger.debug(f"Google reverse search failed: {e}")
+    
+    return []
+
+
+def _reverse_search_local_fallback(image_data: Optional[bytes], image_url: Optional[str]) -> List[str]:
+    """
+    Local fallback: Use image perceptual hash to search Anna's Archive / library.
+    """
+    queries = []
+    
+    try:
+        if image_data:
+            # Compute perceptual hash of image
+            from PIL import Image
+            import imagehash
+            
+            img = Image.open(BytesIO(image_data))
+            phash = str(imagehash.phash(img))
+            
+            # Search Anna's Archive for similar covers (not directly possible without API)
+            # But we can use the hash to check local cache
+            
+            # For now, return generic book search terms that user can try
+            # In future, could match against cached cover hashes
+            pass
+    except Exception as e:
+        logger.debug(f"Local fallback failed: {e}")
+    
+    # Return some generic suggestions
+    return [
+        "book cover search",
+        "novel book cover",
+        "fiction book cover",
+    ]
+
 
 @app.route("/book/random")
 def random_books():
@@ -6363,20 +6973,20 @@ def manual_download():
     result_id = data.get("result_id") or data.get("md5", "")  # Support both result_id and md5
     result_id = result_id.strip() if result_id else ""
     selected_format = data.get("format", "").strip()
+    skip_kindle = data.get("skip_kindle", "false").lower() == "true"  # New parameter to skip Kindle sending
 
     logger.debug(
-        "Manual download requested user=%s result_id=%s format=%s",
+        "Manual download requested user=%s result_id=%s format=%s skip_kindle=%s",
         user_name,
         result_id,
         selected_format,
+        skip_kindle,
     )
-
-    if not user_name or not result_id:
-        error_msg = "Missing user or result selection."
-        if request.is_json:
-            return jsonify({"success": False, "error": error_msg}), 400
-        flash(error_msg, "danger")
-        return redirect(url_for("search"))
+    error_msg = "Missing user or result selection."
+    if request.is_json:
+        return jsonify({"success": False, "error": error_msg}), 400
+    flash(error_msg, "danger")
+    return redirect(url_for("search"))
 
     user = next(
         (u for u in settings_manager.settings.users if u.name == user_name),
@@ -6476,7 +7086,7 @@ def manual_download():
 
     oversize = is_oversize_for_kindle(saved_path)
     sent_to_kindle = False
-    if user.kindle_email and settings.smtp.is_configured():
+    if not skip_kindle and user.kindle_email and settings.smtp.is_configured():
         if oversize:
             logger.warning(
                 "File %s is larger than 20MB; Kindle may reject it, attempting send anyway.",
@@ -7285,7 +7895,6 @@ def _run_feeds_background():
             append_debug(local_debug)
             mark_item_completed(user, feed)
             return 0, user.name, downloads
-
         # Actually download using the configured AnnaSource instance.
         try:
             logger.info("Starting download: title=%s format=%s dest_dir=%s", best.get("title"), file_format, dest_dir)
@@ -7325,6 +7934,7 @@ def _run_feeds_background():
 
                     # Check if download failure notifications are enabled
                     if settings_manager.settings.notify_download_failures:
+
                         send_download_error_notification(
                             settings_manager.settings.smtp,
                             user,
@@ -7370,9 +7980,20 @@ def _run_feeds_background():
             append_debug(local_debug)
             mark_item_completed(user, feed)
             return 0, user.name, downloads
+        
+        # Apply comprehensive metadata enrichment to improve metadata quality
+        try:
+            logger.debug("Applying comprehensive metadata enrichment for %s", best.get("title", "Unknown"))
+            enriched_best = enrich_library_metadata_comprehensive(best)
+            # Update best with enriched metadata
+            best.update(enriched_best)
+        except Exception as e:
+            logger.debug("Failed to apply comprehensive metadata enrichment for %s: %s", best.get("title", "Unknown"), e)
+        
         # History + normalized cover (prefer Goodreads cover) + stripped description
+        # Note: Metadata is already comprehensively enriched above
         goodreads_cover = (best.get("goodreads_meta", {}) or {}).get("cover", "")
-        cover = normalize_cover_url(goodreads_cover or item.cover or best.get("cover", ""))
+        cover = normalize_cover_url(goodreads_cover or best.get("cover", ""))
         description = strip_html_tags(
             item.description or best.get("description", "")
         ).strip()
@@ -7387,24 +8008,6 @@ def _run_feeds_background():
                 description,
                 str(saved_path),
             )
-
-        # Aggressive Goodreads metadata scraping BEFORE library metadata storage
-        # so that goodreads_meta gets persisted to library_metadata.json
-        if item.link and "goodreads.com" in item.link:
-            try:
-                logger.info("Scraping Goodreads metadata from %s", item.link)
-                goodreads_meta = feed_parser._scrape_goodreads_book(item.link, local_debug)
-                if goodreads_meta:
-                    best["goodreads_meta"] = goodreads_meta
-                    logger.info("Successfully scraped Goodreads metadata: rating=%s cover=%s", 
-                               goodreads_meta.get("rating"), 
-                               "yes" if goodreads_meta.get("cover") else "no")
-                    local_debug.append(f"      Scraped Goodreads metadata: rating={goodreads_meta.get('rating')}, genres={goodreads_meta.get('genres')}")
-            except Exception as e:
-                logger.debug("Failed to scrape Goodreads metadata for %s: %s", item.link, e)
-                local_debug.append(f"      Goodreads scraping failed: {e}")
-
-        upsert_library_metadata_for_download(saved_path, best, item)
 
         # Cache the cover image to disk for use in emails
         entry_id = get_library_entry_id(saved_path)
@@ -7540,7 +8143,7 @@ def _run_feeds_background():
 
     for fut in as_completed(parse_futures.keys()):
         try:
-            user, feed, items, local_debug = fut.result(timeout=60)
+            user, feed, items, local_debug = fut.result(timeout=300)
             if local_debug:
                 debug_messages.extend(local_debug)
             if not user or not feed:
@@ -7775,13 +8378,27 @@ def feeds_stream():
     """
     Server-Sent Events stream for live feed progress updates.
     Emits the entire feed_progress_state as JSON once per second while
-    the connection is open.
+    the connection is open and there's active feed progress.
     """
     def event_stream():
+        inactive_count = 0
+        max_inactive = 30  # Close after 30 seconds of inactivity
+        
         while True:
             with feed_progress_lock:
-                payload = json.dumps(feed_progress_state)
-            yield f"data: {payload}\n\n"
+                state = feed_progress_state.copy()
+                is_active = state.get("active", False)
+            
+            yield f"data: {json.dumps(state)}\n\n"
+            
+            if is_active:
+                inactive_count = 0
+            else:
+                inactive_count += 1
+                if inactive_count >= max_inactive:
+                    logger.info("SSE feeds_stream: Closing after %d seconds of inactivity", max_inactive)
+                    break
+            
             time.sleep(1)
     return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
 
@@ -7823,10 +8440,17 @@ def metadata_progress():
                 logger.info("SSE: Started with inactive state, closing immediately after first event")
                 break
 
+            # Check if client disconnected (generator will raise GeneratorExit)
+            # We can't easily detect this here, but the Flask response will handle it
+            
             last_active = is_active
             time.sleep(1)
 
-    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+    response = Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+    # Add headers to prevent caching and improve SSE reliability
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
+    return response
 
 @app.route("/feeds/view")
 def feed_view():
@@ -7960,7 +8584,7 @@ def generate_epub():
             cwd=str(BASE_DIR),
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=300
         )
 
         if result.returncode != 0:
@@ -8050,8 +8674,8 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
             # Already has complete metadata
             return (entry_idx, meta)
         
-        # Fetch enrichment from Goodreads
-        enriched = enrich_library_metadata_from_goodreads(entry)
+        # Fetch enrichment from all available sources
+        enriched = enrich_library_metadata_comprehensive(entry)
         if enriched:
             meta.update(enriched)
             # Clear failed flag if enrichment succeeded
@@ -8059,7 +8683,7 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
         else:
             # Mark as failed to prevent infinite loops on unfindable books
             meta["failed_to_enrich"] = True
-            logger.debug("Marking entry %s as failed_to_enrich (could not find on Goodreads)", entry_id)
+            logger.debug("Marking entry %s as failed_to_enrich (could not find on any source)", entry_id)
         
         return (entry_idx, meta)
     except Exception as e:

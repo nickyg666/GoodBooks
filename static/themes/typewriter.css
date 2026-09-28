@@ -1,0 +1,141 @@
+/* ============================================================================
+   TYPEWRITER THEME
+   Paper background, serif body font, mechanical typewriter feel.
+   - Crimson Pro (reading-optimized serif) + Special Elite (typewriter headings)
+   - Slightly off-white paper background, warm dark text
+   - Generous line-height, hanging punctuation via font-feature-settings
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=Special+Elite&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root,
+[data-theme="typewriter"] {
+    --primary: #6b3410;
+    --primary-light: #c19a6b;
+    --primary-dark: #3d1c05;
+    --secondary: #5a4a3a;
+    --success: #3d5a1a;
+    --warning: #a06b00;
+    --danger: #8a2820;
+    --text-dark: #2b1f12;
+    --text-light: #6e5a3e;
+    --bg-light: #ebe0c5;       /* aged paper */
+    --bg-white: #f6efd9;       /* cleaner page */
+    --border: #b8a47a;
+    --shadow-sm: 1px 1px 0 rgba(60, 40, 15, 0.08);
+    --shadow-md: 2px 2px 0 rgba(60, 40, 15, 0.10);
+    --shadow-lg: 3px 3px 0 rgba(60, 40, 15, 0.12);
+    --shadow-xl: 4px 4px 0 rgba(60, 40, 15, 0.14);
+}
+
+[data-theme="typewriter"] body,
+[data-theme="typewriter"] html {
+    background-color: var(--bg-light);
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(120, 80, 30, 0.05) 0px, transparent 60%),
+        radial-gradient(circle at 80% 70%, rgba(120, 80, 30, 0.06) 0px, transparent 60%),
+        repeating-linear-gradient(
+            0deg,
+            transparent 0px,
+            transparent 28px,
+            rgba(120, 80, 30, 0.04) 28px,
+            rgba(120, 80, 30, 0.04) 29px
+        );
+    color: var(--text-dark);
+    font-family: "Crimson Pro", "Georgia", "Times New Roman", serif;
+    font-feature-settings: "kern", "liga", "onum";
+    line-height: 1.55;
+}
+
+[data-theme="typewriter"] h1, [data-theme="typewriter"] h2, [data-theme="typewriter"] h3,
+[data-theme="typewriter"] .typewriter-heading {
+    font-family: "Special Elite", "Courier New", monospace;
+    color: var(--primary-dark);
+    letter-spacing: 0.02em;
+    font-weight: 400;
+}
+
+[data-theme="typewriter"] h1 {
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+[data-theme="typewriter"] code,
+[data-theme="typewriter"] pre,
+[data-theme="typewriter"] .mono {
+    font-family: "JetBrains Mono", "Courier New", monospace;
+    font-size: 0.92em;
+}
+
+[data-theme="typewriter"] nav,
+[data-theme="typewriter"] .navbar,
+[data-theme="typewriter"] .card,
+[data-theme="typewriter"] .panel,
+[data-theme="typewriter"] .settings-card,
+[data-theme="typewriter"] .modal-content,
+[data-theme="typewriter"] table,
+[data-theme="typewriter"] .form-control,
+[data-theme="typewriter"] input,
+[data-theme="typewriter"] select,
+[data-theme="typewriter"] textarea {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+    box-shadow: 1px 1px 0 rgba(60, 40, 15, 0.08);
+}
+
+[data-theme="typewriter"] input,
+[data-theme="typewriter"] select,
+[data-theme="typewriter"] textarea {
+    font-family: "JetBrains Mono", "Courier New", monospace;
+    font-size: 0.95em;
+}
+
+[data-theme="typewriter"] a {
+    color: var(--primary-dark);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+}
+[data-theme="typewriter"] a:hover { color: var(--primary); text-decoration-style: solid; }
+
+[data-theme="typewriter"] .btn-primary,
+[data-theme="typewriter"] button.primary,
+[data-theme="typewriter"] .primary {
+    background: var(--primary);
+    color: var(--bg-white);
+    border: 1px solid var(--primary-dark);
+    font-family: "Special Elite", "Courier New", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    box-shadow: 2px 2px 0 var(--primary-dark);
+}
+[data-theme="typewriter"] .btn-primary:hover,
+[data-theme="typewriter"] button.primary:hover {
+    background: var(--primary-dark);
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--primary-dark);
+}
+
+[data-theme="typewriter"] .btn-secondary,
+[data-theme="typewriter"] button.secondary {
+    background: transparent;
+    color: var(--primary-dark);
+    border: 1px solid var(--primary-dark);
+    font-family: "Special Elite", "Courier New", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+[data-theme="typewriter"] ::placeholder {
+    color: var(--text-light);
+    font-style: italic;
+}
+[data-theme="typewriter"] code,
+[data-theme="typewriter"] pre {
+    background: rgba(60, 40, 15, 0.05);
+    color: var(--primary-dark);
+    border: 1px solid var(--border);
+}
+[data-theme="typewriter"] hr { border-color: var(--border); }

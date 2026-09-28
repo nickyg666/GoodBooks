@@ -1,0 +1,468 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <h1>📷 Scan Book Cover</h1>
+    <p class="muted">
+        Take a photo of a book cover or upload an image to search for the book.
+        The system will use reverse image search to identify the book and show you where to get it.
+    </p>
+    
+    <!-- Reverse Image Search Section -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+        <h3 style="margin-bottom: 1rem; font-size: 1.2rem;">📷 Scan Book Cover</h3>
+        <p class="muted" style="font-size: 0.9rem; margin-bottom: 1rem;">
+            Point your camera at a book cover or upload an image to identify the book.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="primary" id="camera-btn" onclick="openCamera()">
+                    📸 Take Photo
+                </button>
+                <label class="secondary" style="cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    📁 Upload Image
+                    <input type="file" id="image-upload" accept="image/*" capture="environment" style="display: none;" onchange="handleImageUpload(this.files[0])">
+                </label>
+                <button type="button" class="secondary" id="paste-btn" onclick="pasteImage()">
+                    📋 Paste from Clipboard
+                </button>
+            </div>
+            <div id="image-preview" style="display: none;">
+                <img id="preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button type="button" class="primary" id="search-image-btn" onclick="searchByImage()">
+                        🔍 Search by Image
+                    </button>
+                    <button type="button" class="secondary" onclick="clearImagePreview()">
+                        ✕ Clear
+                    </button>
+                </div>
+            </div>
+            <div id="image-search-results" style="display: none;">
+                <h4 style="margin: 0.75rem 0 0.5rem 0; font-size: 1rem;">Suggested Searches:</h4>
+                <div id="suggested-queries" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+            </div>
+            <div id="image-search-status" class="muted" style="font-size: 0.85rem; min-height: 1.25rem;"></div>
+        </div>
+    </div>
+</div>
+
+{% if results %}
+<div class="card">
+    <h2>📚 Search Results</h2>
+    <div class="grid results-grid">
+        {% for result in results %}
+        <div class="result" data-md5="{{ result.md5 or result.id }}">
+            <div class="result-cover">
+                {% if result.cover %}
+                <img src="{{ result.cover }}" alt="{{ result.title }}" {% if not is_kindle %}loading="lazy"{% endif %} onerror="this.style.display='none'" />
+                {% else %}
+                <div style="width: 100%; min-height: 200px; background: #e5e7eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 0.75rem; font-size: 0.9rem;">
+                    📚
+                </div>
+                {% endif %}
+            </div>
+            <div class="meta">
+                <h3 class="result-title">{{ result.title or result.id[:16] }}</h3>
+                {% if result.author %}
+                <p class="muted result-author">by {{ result.author }}</p>
+                {% else %}
+                <p class="muted result-author" style="opacity: 0.5;">by...</p>
+                {% endif %}
+                {% if result.rating %}
+                <p class="muted result-rating">⭐ {{ result.rating }}/10</p>
+                {% endif %}
+                {% if result.year %}
+                <p class="muted result-year">{{ result.year }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Action buttons -->
+            <div style="margin-top: 1rem;">
+                {% if result.md5 or result.id %}
+                <button type="button" class="primary" data-action="get" data-md5="{{ result.md5 or result.id }}" data-title="{{ result.title or result.id[:16] }}">
+                    📖 Get This Book
+                </button>
+                {% endif %}
+                {% if result.md5 or result.id %}
+                <button type="button" class="secondary" data-action="queue-download" data-md5="{{ result.md5 or result.id }}" data-title="{{ result.title or result.id[:16] }}">
+                    ⬇️ Add to Queue
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for(
+            'scan',
+            q=query,
+            page=page-1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none
+        ) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ url_for(
+            'scan',
+            q=query,
+            page=page+1,
+            autodownload='1' if autodownload else none,
+            autosend='1' if autosend else none
+        ) }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if debug_log %}
+<div class="card">
+    <h2>🐛 Debug Information</h2>
+    <pre class="debug">{{ debug_log|join('\n') }}</pre>
+</div>
+{% endif %}
+
+<!-- Confirmation Modal -->
+<div id="confirmation-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px;">
+        <h2>📖 Confirm Book Selection</h2>
+        <p id="confirmation-question">Is this the book you wanted?</p>
+        <p id="confirmation-details" style="font-weight: bold; margin: 10px 0;"></p>
+        
+        <!-- User Selection -->
+        <div style="margin: 15px 0;">
+            <label for="confirm-user-select" style="display: block; margin-bottom: 5px; font-weight: bold;">Select User:</label>
+            <select id="confirm-user-select" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                {% for user in settings.users %}
+                <option value="{{ user.name }}">{{ user.name }}{% if user.kindle_email %} ({{ user.kindle_email }}){% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="margin: 20px 0; text-align: center;">
+            <button type="button" class="primary" id="confirm-yes-kindle" style="margin: 0 10px; padding: 10px 20px;">
+                ✅ Yes, Send to Kindle
+            </button>
+            <button type="button" class="secondary" id="confirm-yes-queue" style="margin: 0 10px; padding: 10px 20px;">
+                ⬇️ Yes, Add to Queue
+            </button>
+            <button type="button" class="secondary" id="confirm-no" style="margin: 0 10px; padding: 10px 20px;">
+                ❌ No, Try Another
+            </button>
+            <button type="button" class="secondary" id="confirm-cancel" style="margin: 0 10px; padding: 10px 20px;">
+                🚫 Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Reverse Image Search handlers
+let currentImageBlob = null;
+let pendingResult = null; // Store the result waiting for confirmation
+
+function openCamera() {
+    const input = document.getElementById('image-upload');
+    input.click();
+}
+
+function handleImageUpload(file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    currentImageBlob = file;
+    showImagePreview(URL.createObjectURL(file));
+}
+
+function pasteImage() {
+    navigator.clipboard.read().then(items => {
+        for (const item of items) {
+            if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                item.getType('image/png').then(blob => {
+                    currentImageBlob = blob;
+                    showImagePreview(URL.createObjectURL(blob));
+                }).catch(() => {
+                    item.getType('image/jpeg').then(blob => {
+                        currentImageBlob = blob;
+                        showImagePreview(URL.createObjectURL(blob));
+                    });
+                });
+                return;
+            }
+        }
+        alert('No image found in clipboard');
+    }).catch(err => {
+        console.error('Clipboard read failed:', err);
+        alert('Failed to read clipboard. Please use the upload button instead.');
+    });
+}
+
+function showImagePreview(url) {
+    document.getElementById('preview-img').src = url;
+    document.getElementById('image-preview').style.display = 'block';
+    document.getElementById('image-search-results').style.display = 'none';
+    document.getElementById('image-search-status').textContent = '';
+}
+
+function clearImagePreview() {
+    currentImageBlob = null;
+    document.getElementById('image-preview').style.display = 'none';
+    document.getElementById('image-search-results').style.display = 'none';
+    document.getElementById('image-search-status').textContent = '';
+}
+
+async function searchByImage() {
+    if (!currentImageBlob) {
+        alert('No image selected');
+        return;
+    }
+    
+    const btn = document.getElementById('search-image-btn');
+    const status = document.getElementById('image-search-status');
+    const resultsDiv = document.getElementById('image-search-results');
+    const queriesDiv = document.getElementById('suggested-queries');
+    
+    btn.disabled = true;
+    btn.textContent = '🔍 Searching...';
+    status.textContent = 'Uploading image...';
+    resultsDiv.style.display = 'none';
+    queriesDiv.innerHTML = '';
+    
+    try {
+        const formData = new FormData();
+        formData.append('image', currentImageBlob, 'book-cover.jpg');
+        
+        const response = await fetch('{{ url_for("scan_process") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            status.textContent = `Found ${data.queries.length} suggestions (via ${data.source || 'unknown'})`;
+            if (data.queries.length > 0) {
+                resultsDiv.style.display = 'block';
+                data.queries.forEach(query => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'chip';
+                    chip.style.cssText = 'background: var(--primary); color: white; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.4rem 0.8rem;';
+                    chip.textContent = query;
+                    chip.onclick = () => {
+                        document.querySelector('input[name="q"]').value = query;
+                        document.getElementById('search-form').submit();
+                    };
+                    queriesDiv.appendChild(chip);
+                });
+            } else {
+                status.textContent = 'No suggestions found. Try a clearer photo.';
+            }
+        } else {
+            status.textContent = 'Error: ' + (data.error || 'Search failed');
+        }
+    } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Search by Image';
+    }
+}
+
+// Confirmation Modal Functions
+function openConfirmationModal(result) {
+    pendingResult = result;
+    const modal = document.getElementById('confirmation-modal');
+    const question = document.getElementById('confirmation-question');
+    const details = document.getElementById('confirmation-details');
+    
+    question.textContent = 'Is this the book you wanted?';
+    details.textContent = `"${result.title || 'Unknown Title'}" by ${result.author || 'Unknown Author'}`;
+    
+    modal.style.display = 'block';
+}
+
+function closeConfirmationModal() {
+    const modal = document.getElementById('confirmation-modal');
+    modal.style.display = 'none';
+    pendingResult = null;
+}
+
+// Event Listeners for Confirmation Buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle "Get This Book" button clicks
+    document.body.addEventListener('click', function(e) {
+        const getBtn = e.target.closest('[data-action="get"]');
+        if (getBtn) {
+            e.preventDefault();
+            const md5 = getBtn.getAttribute('data-md5');
+            const title = getBtn.getAttribute('data-title');
+            
+            // Find the corresponding result
+            const result = window.searchResults?.find(r => 
+                (r.md5 || r.id) === md5 && 
+                (r.title || r.id).toString().startsWith(title)
+            ) || {};
+            
+            if (result) {
+                openConfirmationModal(result);
+            }
+        }
+    });
+    
+    // Handle confirmation button clicks
+    document.getElementById('confirm-yes-kindle').addEventListener('click', async function() {
+        if (pendingResult) {
+            try {
+                // Show sending state
+                const btn = this;
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                
+                // Get selected user
+                const userSelect = document.getElementById('confirm-user-select');
+                const userName = userSelect.value;
+                
+                if (!userName) {
+                    alert('Please select a user');
+                    btn.disabled = false;
+                    btn.textContent = '✅ Yes, Send to Kindle';
+                    return;
+                }
+                
+                // Find the user object
+                const userOption = Array.from(userSelect.options).find(opt => opt.value === userName);
+                const userKindleEmail = userOption ? userOption.text.match(/\(([^)]+)\)/)?.[1] : '';
+                
+                // Prepare result data for Kindle sending
+                const resultData = {
+                    title: pendingResult.title || '',
+                    author: pendingResult.author || '',
+                    selected_format: pendingResult.selected_format || pendingResult.filetype || 'epub',
+                    cover: pendingResult.cover || '',
+                    description: pendingResult.description || '',
+                    file_path: pendingResult.file_path || '', // Will be filled during download
+                    library_id: pendingResult.library_id || pendingResult.md5 || pendingResult.id || '',
+                    goodreads_meta: pendingResult.goodreads_meta || {}
+                };
+                
+                 // Send request to send to Kindle
+                 const response = await fetch('{{ url_for("manual_download") }}', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         user: userName,
+                         result_id: pendingResult.md5 || pendingResult.id,
+                         format: pendingResult.selected_format || pendingResult.filetype || 'epub',
+                         skip_kindle: false
+                     })
+                 });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Book sent to Kindle successfully!');
+                } else {
+                    alert('Error sending to Kindle: ' + (data.error || 'Unknown error'));
+                }
+                
+                btn.disabled = false;
+                btn.textContent = '✅ Yes, Send to Kindle';
+                closeConfirmationModal();
+            } catch (err) {
+                console.error('Error sending to Kindle:', err);
+                alert('Failed to send to Kindle: ' + err.message);
+                
+                const btn = this;
+                btn.disabled = false;
+                btn.textContent = '✅ Yes, Send to Kindle';
+            }
+        }
+    });
+    
+    document.getElementById('confirm-yes-queue').addEventListener('click', async function() {
+        if (pendingResult) {
+            try {
+                // Show queuing state
+                const btn = this;
+                btn.disabled = true;
+                btn.textContent = 'Queuing...';
+                
+                // Get selected user
+                const userSelect = document.getElementById('confirm-user-select');
+                const userName = userSelect.value;
+                
+                if (!userName) {
+                    alert('Please select a user');
+                    btn.disabled = false;
+                    btn.textContent = '⬇️ Yes, Add to Queue';
+                    return;
+                }
+                
+                 // Send request to queue for download
+                 const response = await fetch('{{ url_for("manual_download") }}', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         user: userName,
+                         result_id: pendingResult.md5 || pendingResult.id,
+                         format: pendingResult.selected_format || pendingResult.filetype || 'epub',
+                         skip_kindle: true
+                     })
+                 });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Book added to download queue!');
+                } else {
+                    alert('Error queuing download: ' + (data.error || 'Unknown error'));
+                }
+                
+                btn.disabled = false;
+                btn.textContent = '⬇️ Yes, Add to Queue';
+                closeConfirmationModal();
+            } catch (err) {
+                console.error('Error queuing download:', err);
+                alert('Failed to queue download: ' + err.message);
+                
+                const btn = this;
+                btn.disabled = false;
+                btn.textContent = '⬇️ Yes, Add to Queue';
+            }
+        }
+    });
+    
+    document.getElementById('confirm-no').addEventListener('click', function() {
+        closeConfirmationModal();
+        // In a real implementation, we might allow trying another result or going back to search
+    });
+    
+    document.getElementById('confirm-cancel').addEventListener('click', function() {
+        closeConfirmationModal();
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('confirmation-modal');
+        if (event.target === modal) {
+            closeConfirmationModal();
+        }
+    });
+});
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+    // Focus on the search input when page loads
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput) {
+        searchInput.focus();
+    }
+});
+</script>
+{% endblock %}

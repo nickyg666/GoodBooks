@@ -1,0 +1,160 @@
+/* ============================================================================
+   SYNTHWAVE / OUTRUN THEME
+   80s retro-futurism. Purple-cyan gradient skies, geometric retro font.
+   - Audiowide (geometric retro) + Orbitron (sci-fi numerals)
+   - Magenta/cyan accents
+   - Subtle scanline + grid background
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500&display=swap');
+
+:root,
+[data-theme="synthwave"] {
+    --primary: #ff6ad5;        /* hot pink */
+    --primary-light: #ffb3e6;
+    --primary-dark: #c93aa6;
+    --secondary: #00f0ff;      /* electric cyan */
+    --success: #94ff1f;        /* lime */
+    --warning: #ffdb1f;
+    --danger: #ff1f5a;
+    --text-dark: #f5e9ff;
+    --text-light: #b8a3d4;
+    --bg-light: #1a0a2e;       /* deep purple */
+    --bg-white: #261148;
+    --border: #4a2070;
+    --shadow-sm: 0 0 6px rgba(255, 106, 213, 0.3);
+    --shadow-md: 0 0 12px rgba(255, 106, 213, 0.4);
+    --shadow-lg: 0 0 24px rgba(0, 240, 255, 0.4);
+    --shadow-xl: 0 0 40px rgba(255, 106, 213, 0.5);
+}
+
+[data-theme="synthwave"] body,
+[data-theme="synthwave"] html {
+    background:
+        linear-gradient(180deg,
+            #1a0a2e 0%,
+            #2d0a4e 35%,
+            #4a1a6a 60%,
+            #6a2a8a 80%,
+            #0a0a1a 100%),
+        var(--bg-light);
+    color: var(--text-dark);
+    font-family: "Rajdhani", "Helvetica Neue", Arial, sans-serif;
+    position: relative;
+}
+
+/* Subtle perspective grid at the bottom */
+[data-theme="synthwave"] body::before {
+    content: "";
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 40vh;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        linear-gradient(180deg, transparent 0%, rgba(255, 106, 213, 0.05) 100%),
+        repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 38px,
+            rgba(0, 240, 255, 0.15) 38px,
+            rgba(0, 240, 255, 0.15) 40px
+        ),
+        repeating-linear-gradient(
+            0deg,
+            transparent 0px,
+            transparent 38px,
+            rgba(0, 240, 255, 0.15) 38px,
+            rgba(0, 240, 255, 0.15) 40px
+        );
+    transform: perspective(400px) rotateX(60deg);
+    transform-origin: bottom center;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 40%, #000 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 40%, #000 100%);
+}
+
+[data-theme="synthwave"] .container,
+[data-theme="synthwave"] nav,
+[data-theme="synthwave"] .navbar {
+    position: relative;
+    z-index: 1;
+}
+
+[data-theme="synthwave"] .display-font,
+[data-theme="synthwave"] h1, [data-theme="synthwave"] h2 {
+    font-family: "Audiowide", "Orbitron", sans-serif;
+    letter-spacing: 0.1em;
+}
+
+[data-theme="synthwave"] h1, [data-theme="synthwave"] h2, [data-theme="synthwave"] h3 {
+    color: #ffffff;
+    text-shadow:
+        0 0 8px var(--primary),
+        0 0 16px var(--primary);
+}
+
+[data-theme="synthwave"] h3 {
+    font-family: "Orbitron", "Rajdhani", sans-serif;
+    font-weight: 700;
+    text-shadow: 0 0 6px var(--secondary);
+    color: var(--secondary);
+}
+
+[data-theme="synthwave"] nav,
+[data-theme="synthwave"] .navbar,
+[data-theme="synthwave"] .card,
+[data-theme="synthwave"] .panel,
+[data-theme="synthwave"] .settings-card,
+[data-theme="synthwave"] .modal-content,
+[data-theme="synthwave"] table,
+[data-theme="synthwave"] .form-control,
+[data-theme="synthwave"] input,
+[data-theme="synthwave"] select,
+[data-theme="synthwave"] textarea {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.08);
+}
+
+[data-theme="synthwave"] a { color: var(--secondary); text-shadow: 0 0 6px rgba(0, 240, 255, 0.5); }
+[data-theme="synthwave"] a:hover { color: var(--primary); text-shadow: 0 0 8px rgba(255, 106, 213, 0.7); }
+
+[data-theme="synthwave"] .btn-primary,
+[data-theme="synthwave"] button.primary,
+[data-theme="synthwave"] .primary {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    color: #1a0a2e;
+    border: none;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: "Orbitron", sans-serif;
+    box-shadow: 0 0 16px rgba(255, 106, 213, 0.5);
+}
+[data-theme="synthwave"] .btn-primary:hover,
+[data-theme="synthwave"] button.primary:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 24px rgba(0, 240, 255, 0.6);
+}
+
+[data-theme="synthwave"] .btn-secondary,
+[data-theme="synthwave"] button.secondary {
+    background: transparent;
+    color: var(--secondary);
+    border: 1px solid var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+[data-theme="synthwave"] ::placeholder { color: rgba(184, 163, 212, 0.5); }
+[data-theme="synthwave"] code,
+[data-theme="synthwave"] pre {
+    background: #0a0a1a;
+    color: var(--secondary);
+    border: 1px solid var(--border);
+    font-family: "Share Tech Mono", "Courier New", monospace;
+}
+[data-theme="synthwave"] hr { border-color: var(--border); }

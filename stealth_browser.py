@@ -84,7 +84,7 @@ def launch_stealth_browser(
             browser.close()
 
 
-def fetch_with_stealth(url: str, timeout: int = 60, browser_type: str = DEFAULT_BROWSER) -> str:
+def fetch_with_stealth(url: str, timeout: int = 300, browser_type: str = DEFAULT_BROWSER) -> str:
     logger.debug("Stealth fetching url=%s with browser=%s", url, browser_type)
     with launch_stealth_browser(browser_type, headless=False) as browser: 
         context = browser.new_context(user_agent=WINDOWS_USER_AGENT)
@@ -98,7 +98,7 @@ def fetch_with_stealth(url: str, timeout: int = 60, browser_type: str = DEFAULT_
         return html
 
 
-def download_binary_with_stealth(url: str, timeout: int = 60, browser_type: str = DEFAULT_BROWSER) -> Optional[bytes]:
+def download_binary_with_stealth(url: str, timeout: int = 300, browser_type: str = DEFAULT_BROWSER) -> Optional[bytes]:
     """
     Download a binary file (like EPUB) using Playwright's response interception.
     This captures the actual file content from /get.php redirects by monitoring network responses.

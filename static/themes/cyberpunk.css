@@ -1,0 +1,119 @@
+/* ============================================================================
+   CYBERPUNK THEME
+   Neon yellow/cyan/magenta with monospace and glow. Vaporwave-meets-Blade-Runner.
+   - Rajdhani (geometric sans) + Share Tech Mono for accent
+   - High-contrast text with neon drop-shadows
+   - Pink primary, cyan secondary
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root,
+[data-theme="cyberpunk"] {
+    --primary: #fcee0a;        /* neon yellow */
+    --primary-light: #fff89c;
+    --primary-dark: #c9bd00;
+    --secondary: #00f0ff;      /* electric cyan */
+    --success: #00ff9c;
+    --warning: #ff9d00;
+    --danger: #ff2975;         /* hot magenta */
+    --text-dark: #f5f5f7;
+    --text-light: #9ba0b0;
+    --bg-light: #0a0a1a;
+    --bg-white: #14142b;
+    --border: #2a2a4a;
+    --shadow-sm: 0 0 4px rgba(252, 238, 10, 0.3);
+    --shadow-md: 0 0 10px rgba(252, 238, 10, 0.4);
+    --shadow-lg: 0 0 20px rgba(252, 238, 10, 0.5);
+    --shadow-xl: 0 0 32px rgba(252, 238, 10, 0.6);
+}
+
+[data-theme="cyberpunk"] body,
+[data-theme="cyberpunk"] html {
+    background:
+        radial-gradient(ellipse at top, rgba(252, 238, 10, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom, rgba(0, 240, 255, 0.05) 0%, transparent 50%),
+        var(--bg-light);
+    color: var(--text-dark);
+    font-family: "Rajdhani", "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: 0.01em;
+}
+
+[data-theme="cyberpunk"] code,
+[data-theme="cyberpunk"] .mono,
+[data-theme="cyberpunk"] pre {
+    font-family: "Share Tech Mono", "Courier New", monospace;
+}
+
+[data-theme="cyberpunk"] nav,
+[data-theme="cyberpunk"] .navbar,
+[data-theme="cyberpunk"] .card,
+[data-theme="cyberpunk"] .panel,
+[data-theme="cyberpunk"] .settings-card,
+[data-theme="cyberpunk"] .modal-content,
+[data-theme="cyberpunk"] table,
+[data-theme="cyberpunk"] .form-control,
+[data-theme="cyberpunk"] input,
+[data-theme="cyberpunk"] select,
+[data-theme="cyberpunk"] textarea {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+}
+
+[data-theme="cyberpunk"] a {
+    color: var(--secondary);
+    text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+    text-decoration: none;
+}
+[data-theme="cyberpunk"] a:hover {
+    color: var(--primary);
+    text-shadow: 0 0 8px rgba(252, 238, 10, 0.8);
+}
+
+[data-theme="cyberpunk"] .btn-primary,
+[data-theme="cyberpunk"] button.primary,
+[data-theme="cyberpunk"] .primary {
+    background: var(--primary);
+    color: #0a0a1a;
+    border: 1px solid var(--primary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    box-shadow: 0 0 12px rgba(252, 238, 10, 0.5);
+}
+[data-theme="cyberpunk"] .btn-primary:hover,
+[data-theme="cyberpunk"] button.primary:hover {
+    background: var(--secondary);
+    border-color: var(--secondary);
+    color: #0a0a1a;
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.7);
+}
+
+[data-theme="cyberpunk"] .btn-secondary,
+[data-theme="cyberpunk"] button.secondary {
+    background: transparent;
+    color: var(--secondary);
+    border: 1px solid var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+[data-theme="cyberpunk"] ::placeholder { color: rgba(155, 160, 176, 0.6); }
+[data-theme="cyberpunk"] code,
+[data-theme="cyberpunk"] pre {
+    background: #0a0a1a;
+    color: var(--primary);
+    border: 1px solid var(--border);
+}
+
+[data-theme="cyberpunk"] h1, [data-theme="cyberpunk"] h2, [data-theme="cyberpunk"] h3 {
+    color: #ffffff;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-shadow:
+        2px 0 0 rgba(255, 41, 117, 0.7),
+        -2px 0 0 rgba(0, 240, 255, 0.7);
+}
+[data-theme="cyberpunk"] hr { border-color: var(--border); }

@@ -2,7 +2,7 @@
 {% block content %}
 <div class="card">
     <h1>Search Anna's Archive</h1>
-    <form method="get" class="form-grid">
+    <form method="get" class="form-grid" id="search-form">
         <label>
             <span>Query</span>
             <input type="text" name="q" value="{{ query }}" placeholder="Title, author, keyword" required>
@@ -35,6 +35,44 @@
         <button type="submit" class="primary">Search</button>
         <button type="reset" class="secondary">Clear</button>
     </form>
+    
+    <!-- Reverse Image Search Section -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+        <h3 style="margin-bottom: 1rem; font-size: 1rem;">📷 Reverse Image Search</h3>
+        <p class="muted" style="font-size: 0.85rem; margin-bottom: 1rem;">
+            Take a photo of a book cover or upload an image to search for the book.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="secondary" id="camera-btn" onclick="openCamera()">
+                    📸 Take Photo
+                </button>
+                <label class="secondary" style="cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    📁 Upload Image
+                    <input type="file" id="image-upload" accept="image/*" capture="environment" style="display: none;" onchange="handleImageUpload(this.files[0])">
+                </label>
+                <button type="button" class="secondary" id="paste-btn" onclick="pasteImage()">
+                    📋 Paste from Clipboard
+                </button>
+            </div>
+            <div id="image-preview" style="display: none;">
+                <img id="preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button type="button" class="primary" id="search-image-btn" onclick="searchByImage()">
+                        🔍 Search by Image
+                    </button>
+                    <button type="button" class="secondary" onclick="clearImagePreview()">
+                        ✕ Clear
+                    </button>
+                </div>
+            </div>
+            <div id="image-search-results" style="display: none;">
+                <h4 style="margin: 0.75rem 0 0.5rem 0; font-size: 0.9rem;">Suggested Searches:</h4>
+                <div id="suggested-queries" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+            </div>
+            <div id="image-search-status" class="muted" style="font-size: 0.85rem; min-height: 1.25rem;"></div>
+        </div>
+    </div>
 </div>
 
 {% if results %}
@@ -196,6 +234,119 @@ document.body.addEventListener('click', async function(e) {
         btn.textContent = originalText;
     }
 });
+
+// Reverse Image Search handlers
+let currentImageBlob = null;
+
+function openCamera() {
+    const input = document.getElementById('image-upload');
+    input.click();
+}
+
+function handleImageUpload(file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    currentImageBlob = file;
+    showImagePreview(URL.createObjectURL(file));
+}
+
+function pasteImage() {
+    navigator.clipboard.read().then(items => {
+        for (const item of items) {
+            if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                item.getType('image/png').then(blob => {
+                    currentImageBlob = blob;
+                    showImagePreview(URL.createObjectURL(blob));
+                }).catch(() => {
+                    item.getType('image/jpeg').then(blob => {
+                        currentImageBlob = blob;
+                        showImagePreview(URL.createObjectURL(blob));
+                    });
+                });
+                return;
+            }
+        }
+        alert('No image found in clipboard');
+    }).catch(err => {
+        console.error('Clipboard read failed:', err);
+        alert('Failed to read clipboard. Please use the upload button instead.');
+    });
+}
+
+function showImagePreview(url) {
+    document.getElementById('preview-img').src = url;
+    document.getElementById('image-preview').style.display = 'block';
+    document.getElementById('image-search-results').style.display = 'none';
+    document.getElementById('image-search-status').textContent = '';
+}
+
+function clearImagePreview() {
+    currentImageBlob = null;
+    document.getElementById('image-preview').style.display = 'none';
+    document.getElementById('image-search-results').style.display = 'none';
+    document.getElementById('image-search-status').textContent = '';
+}
+
+async function searchByImage() {
+    if (!currentImageBlob) {
+        alert('No image selected');
+        return;
+    }
+    
+    const btn = document.getElementById('search-image-btn');
+    const status = document.getElementById('image-search-status');
+    const resultsDiv = document.getElementById('image-search-results');
+    const queriesDiv = document.getElementById('suggested-queries');
+    
+    btn.disabled = true;
+    btn.textContent = '🔍 Searching...';
+    status.textContent = 'Uploading image...';
+    resultsDiv.style.display = 'none';
+    queriesDiv.innerHTML = '';
+    
+    try {
+        const formData = new FormData();
+        formData.append('image', currentImageBlob, 'book-cover.jpg');
+        
+        const response = await fetch('{{ url_for("reverse_image_search") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            status.textContent = `Found ${data.queries.length} suggestions (via ${data.source})`;
+            if (data.queries.length > 0) {
+                resultsDiv.style.display = 'block';
+                data.queries.forEach(query => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'chip';
+                    chip.style.cssText = 'background: var(--primary); color: white; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.4rem 0.8rem;';
+                    chip.textContent = query;
+                    chip.onclick = () => {
+                        document.querySelector('input[name="q"]').value = query;
+                        document.getElementById('search-form').submit();
+                    };
+                    queriesDiv.appendChild(chip);
+                });
+            } else {
+                status.textContent = 'No suggestions found. Try a clearer photo.';
+            }
+        } else {
+            status.textContent = 'Error: ' + (data.error || 'Search failed');
+        }
+    } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Search by Image';
+    }
+}
 </script>
 
 {% endblock %}

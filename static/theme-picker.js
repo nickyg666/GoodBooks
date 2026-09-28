@@ -4,6 +4,11 @@
     { id: "dark", label: "Dark" },
     { id: "sepia", label: "Sepia" },
     { id: "high-contrast", label: "High contrast" },
+    { id: "matrix", label: "Matrix" },
+    { id: "cyberpunk", label: "Cyberpunk" },
+    { id: "synthwave", label: "Synthwave" },
+    { id: "typewriter", label: "Typewriter" },
+    { id: "solarized-dark", label: "Solarized Dark" },
   ];
 
   function apply(theme) {

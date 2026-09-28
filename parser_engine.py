@@ -203,7 +203,7 @@ class FeedMetadataStore:
 
 
 class FeedParser:
-    def __init__(self, cache_path: Path, timeout: int = 30):
+    def __init__(self, cache_path: Path, timeout: int = 300):
         self.cache = FeedMetadataStore(cache_path)
         self.timeout = timeout
          # Per-run in-memory cache: (url, mode) -> List[ParsedItem]

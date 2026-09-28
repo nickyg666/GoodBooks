@@ -9,6 +9,8 @@
     <title>{{ app_name }} - {{ title if title else 'Home' }}</title>
     <script src="{{ url_for('static', filename='theme-loader.js') }}"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <!-- Conditional CSS loading based on device type -->
     {% if is_kindle %}
@@ -19,10 +21,15 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='desktop.css') }}">
     {% endif %}
 
-    <!-- Theme overrides: dark / sepia / high-contrast -->
+    <!-- Theme overrides -->
     <link rel="stylesheet" href="{{ url_for('static', filename='themes/dark.css') }}" disabled data-theme-stylesheet="dark">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes/sepia.css') }}" disabled data-theme-stylesheet="sepia">
     <link rel="stylesheet" href="{{ url_for('static', filename='themes/high-contrast.css') }}" disabled data-theme-stylesheet="high-contrast">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/matrix.css') }}" disabled data-theme-stylesheet="matrix">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/cyberpunk.css') }}" disabled data-theme-stylesheet="cyberpunk">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/synthwave.css') }}" disabled data-theme-stylesheet="synthwave">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/typewriter.css') }}" disabled data-theme-stylesheet="typewriter">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/solarized-dark.css') }}" disabled data-theme-stylesheet="solarized-dark">
     <script>
     (function () {
         function applyThemeStylesheets() {

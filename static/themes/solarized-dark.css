@@ -1,0 +1,85 @@
+/* ============================================================================
+   SOLARIZED DARK THEME
+   Ethan Schoonover's classic dev color scheme, dark variant.
+   Carefully chosen low-contrast colors for long coding/reading sessions.
+   - System monospace (no remote font - keeps page weight down and is
+     instant on any device)
+   - Dark teal background, warm cream text
+   ============================================================================ */
+
+:root,
+[data-theme="solarized-dark"] {
+    --primary: #268bd2;        /* solarized blue */
+    --primary-light: #6c9ec6;
+    --primary-dark: #1d6ca8;
+    --secondary: #6c71c4;      /* solarized violet */
+    --success: #859900;        /* solarized green */
+    --warning: #b58900;        /* solarized yellow */
+    --danger: #dc322f;         /* solarized red */
+    --text-dark: #93a1a1;      /* solarized base1 - the body text */
+    --text-light: #586e75;     /* solarized base01 - muted */
+    --bg-light: #002b36;       /* solarized base03 - background */
+    --bg-white: #073642;       /* solarized base02 - panels */
+    --border: #094049;         /* slightly lighter than base02 */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.45);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="solarized-dark"] body,
+[data-theme="solarized-dark"] html {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-feature-settings: "kern", "liga", "calt";
+}
+
+[data-theme="solarized-dark"] nav,
+[data-theme="solarized-dark"] .navbar,
+[data-theme="solarized-dark"] .card,
+[data-theme="solarized-dark"] .panel,
+[data-theme="solarized-dark"] .settings-card,
+[data-theme="solarized-dark"] .modal-content,
+[data-theme="solarized-dark"] table,
+[data-theme="solarized-dark"] .form-control,
+[data-theme="solarized-dark"] input,
+[data-theme="solarized-dark"] select,
+[data-theme="solarized-dark"] textarea {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    border-color: var(--border);
+}
+
+[data-theme="solarized-dark"] a { color: var(--primary); }
+[data-theme="solarized-dark"] a:hover { color: var(--primary-light); }
+
+[data-theme="solarized-dark"] .btn-primary,
+[data-theme="solarized-dark"] button.primary,
+[data-theme="solarized-dark"] .primary {
+    background: var(--primary);
+    color: var(--bg-light);
+    border-color: var(--primary);
+}
+[data-theme="solarized-dark"] .btn-primary:hover,
+[data-theme="solarized-dark"] button.primary:hover { background: var(--primary-light); }
+
+[data-theme="solarized-dark"] .btn-secondary,
+[data-theme="solarized-dark"] button.secondary {
+    background: transparent;
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+}
+
+[data-theme="solarized-dark"] ::placeholder { color: var(--text-light); }
+[data-theme="solarized-dark"] code,
+[data-theme="solarized-dark"] pre {
+    background: #001f27;
+    color: #b58900;             /* solarized yellow - good for code */
+    border: 1px solid var(--border);
+}
+[data-theme="solarized-dark"] h1, [data-theme="solarized-dark"] h2, [data-theme="solarized-dark"] h3 {
+    color: #eee8d5;             /* solarized base2 - bright for headings */
+    font-weight: 600;
+}
+[data-theme="solarized-dark"] hr { border-color: var(--border); }

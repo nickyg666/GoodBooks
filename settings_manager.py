@@ -83,7 +83,7 @@ class Settings:
     smtp: SMTPSettings = field(default_factory=SMTPSettings)
     log_level: str = "INFO"
     server_port: int = 5000
-    request_timeout: int = 60
+    request_timeout: int = 300
     # Legacy Goodreads users list (kept for backward compatibility)
     goodreads_users: List[str] = field(default_factory=list)
 
@@ -176,7 +176,7 @@ class SettingsManager:
         default_download_dir = data.get("default_download_dir", "downloads")
         log_level = data.get("log_level", "INFO")
         server_port = int(data.get("server_port", 5000))
-        request_timeout = int(data.get("request_timeout", 60))
+        request_timeout = int(data.get("request_timeout", 300))
 
         library_root = data.get("library_root", "")
         library_extra_dirs = data.get("library_extra_dirs", []) or []

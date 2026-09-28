@@ -23,7 +23,7 @@
     
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
         {% for book in books %}
-        <div class="card" style="padding: 1rem; text-align: center; cursor: pointer; position: relative;" onclick="toggleBookSelection('{{ book.title | replace(\"'\", \"\\\\\") }}', this)">
+        <div class="card" style="padding: 1rem; text-align: center; cursor: pointer; position: relative;" onclick="toggleBookSelection({{ book.title|tojson }}, this)">
             <input type="checkbox" class="book-checkbox" data-book="{{ book.title }}" style="position: absolute; top: 1rem; left: 1rem; cursor: pointer; zoom: 1.5;" onchange="updateSelectionButtons()">
             
             {% if book.cover %}

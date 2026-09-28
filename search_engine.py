@@ -20,10 +20,24 @@ try:
 except ImportError:
     LIBGEN_AVAILABLE = False
 
-# Set global socket timeout to prevent hung connections
-socket.setdefaulttimeout(20)
-
 logger = logging.getLogger(__name__)
+
+try:
+    from slum_monitor import (
+        get_slum_monitor,
+        rank_aa_mirrors,
+        rank_libgen_mirrors,
+        SlumMonitor,
+    )
+    SLUM_AVAILABLE = True
+except ImportError:
+    SLUM_AVAILABLE = False
+    # NOTE: logger must be defined before this handler runs, otherwise the
+    # graceful-fallback path itself raises NameError and kills the import.
+    logger.debug("SLUM monitor not available, using fallback mirror selection")
+
+# Set global socket timeout to prevent hung connections
+socket.setdefaulttimeout(300)
 
 ENABLE_ZLIB = True  # Z-lib re-enabled now that it's back up
 SAFE_FILENAME_CHARS = set(
@@ -438,7 +452,7 @@ class AnnaSource:
 
     def __init__(
         self,
-        timeout: int = 30,
+        timeout: int = 300,
         base_url: str = "https://annas-archive.org",
         max_results: int = 10,
         max_concurrent_downloads: int = 2,
@@ -493,6 +507,15 @@ class AnnaSource:
 
         if enable_zlib is not None:
             ENABLE_ZLIB = bool(enable_zlib)
+
+        # Initialize SLUM monitor for mirror ranking
+        self.slum_monitor: Optional[SlumMonitor] = None
+        if SLUM_AVAILABLE:
+            try:
+                self.slum_monitor = get_slum_monitor()
+                logger.info("SLUM monitor initialized for mirror ranking")
+            except Exception as e:
+                logger.warning("Failed to initialize SLUM monitor: %s", e)
 
         # Wire up global concurrency control from constructor argument
         set_download_concurrency(max_concurrent_downloads)
@@ -1592,7 +1615,18 @@ class AnnaSource:
             logger.debug("AA slow_download links failed for md5=%s; trying external mirrors", md5)
             debug_log.append(f"AA slow_download links failed; trying external mirrors")
             
-            # Check health of external mirrors before attempting resolution
+            # Use SLUM to rank external mirrors by availability
+            if self.slum_monitor and SLUM_AVAILABLE:
+                try:
+                    ranked_external = rank_aa_mirrors(external_links, slum=self.slum_monitor)
+                    logger.info("SLUM-ranked external mirrors: %s", 
+                               ', '.join([urlparse(m).hostname or m for m in ranked_external[:5]]))
+                    debug_log.append(f"SLUM-ranked external mirrors: {', '.join([urlparse(m).hostname or m for m in ranked_external[:5]])}")
+                    external_links = ranked_external
+                except Exception as e:
+                    logger.warning("SLUM ranking failed for external mirrors: %s", e)
+            
+            # Fallback to legacy reachable mirrors check
             reachable_mirrors = get_reachable_mirrors(KNOWN_MIRRORS)
             if reachable_mirrors:
                 logger.info("Available mirrors for external link resolution: %s", 
@@ -2682,7 +2716,20 @@ class AnnaSource:
         logger.info("Attempting LibGen fallback download for '%s' (format=%s)", original_title, fmt)
         
         try:
-            # Filter to reachable mirrors before attempting search
+            # Get all LibGen mirrors
+            libgen_mirrors = [m for m in KNOWN_MIRRORS if "libgen" in m.lower()]
+            
+            # Use SLUM to rank LibGen mirrors by availability
+            if self.slum_monitor and SLUM_AVAILABLE:
+                try:
+                    ranked_mirrors = rank_libgen_mirrors(libgen_mirrors, slum=self.slum_monitor)
+                    logger.info("SLUM-ranked LibGen mirrors: %s", 
+                               ', '.join([urlparse(m).hostname or m for m in ranked_mirrors]))
+                    libgen_mirrors = ranked_mirrors
+                except Exception as e:
+                    logger.warning("SLUM ranking failed for LibGen mirrors: %s", e)
+            
+            # Fallback to legacy reachable mirrors check
             reachable_mirrors = get_reachable_mirrors(KNOWN_MIRRORS)
             mirror_status = report_mirror_status()
             logger.info(mirror_status)
@@ -2691,8 +2738,16 @@ class AnnaSource:
                 logger.error("No reachable LibGen mirrors found")
                 raise ValueError("No reachable LibGen mirrors available")
             
-            # Extract just the domain from the mirror URLs for LibgenSearch
-            libgen_mirror = reachable_mirrors[0]
+            # Use the best SLUM-ranked mirror that's also reachable
+            libgen_mirror = None
+            for m in libgen_mirrors:
+                if m in reachable_mirrors:
+                    libgen_mirror = m
+                    break
+            
+            if not libgen_mirror:
+                libgen_mirror = reachable_mirrors[0]
+            
             from urllib.parse import urlparse
             mirror_domain = urlparse(libgen_mirror).netloc or "libgen.li"
             
@@ -2756,7 +2811,7 @@ class ArchiveOrgSource:
     
     def __init__(
         self,
-        timeout: int = 30,
+        timeout: int = 300,
         max_results: int = 10,
         **_: object,
     ) -> None:

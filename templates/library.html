@@ -256,6 +256,9 @@
                     <line x1="4" y1="16" x2="16" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
             </button>
+            <button type="button" id="library-view-cover" class="view-toggle" title="Newsstand (covers)" aria-label="Newsstand cover view">
+                <span aria-hidden="true">&#128218;</span>
+            </button>
             <button type="button" id="library-view-recent" class="view-toggle" title="Recently added (recent)" aria-label="Recently added view">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                     <circle cx="10" cy="10" r="8" stroke="currentColor" fill="none" stroke-width="1.5"/>
@@ -1193,6 +1196,22 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
          window.location = url.toString();
      }
 
+    const coverViewBtn = document.getElementById('library-view-cover');
+    function setCoverView() {
+        if (gridViewBtn) gridViewBtn.classList.remove('active');
+        if (listViewBtn) listViewBtn.classList.remove('active');
+        if (recentViewBtn) recentViewBtn.classList.remove('active');
+        if (coverViewBtn) coverViewBtn.classList.add('active');
+        localStorage.setItem('library-view', 'cover');
+        // keep sort / per_page / filters, drop the folder prefix
+        const url = new URL(window.location);
+        url.searchParams.set('view', 'cover');
+        url.searchParams.delete('prefix');
+        window.location = url.toString();
+    }
+    if (coverViewBtn) {
+        coverViewBtn.addEventListener('click', setCoverView);
+    }
     gridViewBtn.addEventListener('click', setGridView);
     listViewBtn.addEventListener('click', setListView);
     if (recentViewBtn) {
@@ -1208,6 +1227,11 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         gridViewBtn.classList.remove('active');
         listViewBtn.classList.remove('active');
         recentViewBtn?.classList.add('active');
+    } else if (currentView === 'cover') {
+        coverViewBtn?.classList.add('active');
+        gridViewBtn.classList.remove('active');
+        listViewBtn.classList.remove('active');
+        recentViewBtn?.classList.remove('active');
     } else if (currentView === 'collection') {
         gridViewBtn.classList.add('active');
         listViewBtn.classList.remove('active');

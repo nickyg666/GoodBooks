@@ -3162,6 +3162,24 @@ def get_metadata_field(meta: Dict, field: str, title: str = "", default=""):
     
     return default
 
+def display_title(title: str) -> str:
+    """Title as it should be shown.
+
+    The stored title is the raw scraped filename, e.g.
+    "Clementine  Clementine Series, Book 1-Sara Pennypacker; Marla Frazee".
+    A previous attempt to clean that up in bulk destroyed real titles
+    ("Amy and the Missing Puppy" -> "Amy and the"), so the only transform
+    applied here is one that cannot lose content: collapsing a word that is
+    immediately repeated by the scraper.
+    """
+    t = (title or "").strip()
+    if not t:
+        return t
+    import re as _re
+    return _re.sub(r"\b(\w+)(\s+\1\b)+", r"\1", t, flags=_re.I)
+
+
+
 def resolve_cover_url(cover: Optional[str]) -> str:
     """Turn a stored cover value into a URL the browser can actually load.
 
@@ -3236,7 +3254,7 @@ def build_library_entries() -> List[Dict]:
             key = f"{str(root.resolve())}::{rel_unix}"
 
             meta = metadata.get(key, {})
-            title = meta.get("title") or path.stem
+            title = display_title(meta.get("title") or path.stem)
             author = get_metadata_field(meta, "author", title)
             rating = get_metadata_field(meta, "rating")
             genres = get_metadata_field(meta, "genres")

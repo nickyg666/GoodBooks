@@ -6,7 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="white">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-    <title>{{ app_name }} - {{ title if title else 'Home' }}</title>
+    <title>{% if app_name and title %}{{ app_name }} - {{ title }}
+{%- elif title %}{{ title }}
+{%- elif app_name %}{{ app_name }}
+{%- else %}GoodBooks{% endif %}</title>
     <script src="{{ url_for('static', filename='theme-loader.js') }}"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="preconnect" href="https://fonts.googleapis.com">

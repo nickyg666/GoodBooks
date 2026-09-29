@@ -2510,15 +2510,26 @@ class AnnaSource:
         if md5_val and LIBGEN_AVAILABLE:
             try:
                 import gb_libgen_dl
-                mirrors = result.get("libgen_mirrors") or []
-                url = next((u for u in mirrors if "get.php" in u), None)
-                if url is None:
-                    url = f"https://libgen.li/get.php?md5={md5_val}"
-                logger.info("AA had no usable file; trying libgen get.php md5=%s",
-                            md5_val)
+                # Try every plausible mirror: a title is often hosted on
+                # only one of them, and Book.mirrors mixes real download
+                # links with ads.php landing pages.
+                candidates = list(result.get("libgen_mirrors") or [])
+                seen, ordered = set(), []
+                for u in candidates:
+                    if u not in seen:
+                        seen.add(u)
+                        ordered.append(u)
+                for host in ("libgen.li", "libgen.pw", "libgen.la",
+                             "libgen.gl", "libgen.bz", "libgen.vg"):
+                    u = f"https://{host}/get.php?md5={md5_val}"
+                    if u not in seen:
+                        seen.add(u)
+                        ordered.append(u)
+                logger.info("AA had no usable file; trying %d libgen mirrors "
+                            "for md5=%s", len(ordered), md5_val)
                 saved = gb_libgen_dl.download_from_libgen(
-                    url, dest_dir, result.get("title") or "",
-                    timeout=120, retries=3)
+                    ordered, dest_dir, result.get("title") or "",
+                    timeout=120, retries=2)
                 if saved:
                     return saved
                 if debug_log is not None:

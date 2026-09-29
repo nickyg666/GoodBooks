@@ -86,26 +86,50 @@ def _filename_from(headers) -> str:
     return m.group(1).strip() if m else ""
 
 
-def pick_download_url(book, root: str = "https://libgen.li") -> Optional[str]:
-    """Return a real get.php URL for a libgen Book.
+def pick_download_urls(book, root: str = "https://libgen.li") -> list:
+    """Return candidate download URLs for a libgen Book, best first.
 
-    Book.mirrors is not reliable: for many rows it contains only an
-    `ads.php` advertising page, which returns a 200 HTML document. Prefer a
-    get.php entry if one is present, but otherwise BUILD the get.php URL from
-    the md5 -- that endpoint works and is what actually serves the file.
+    Book.mirrors is not reliable as a single value: for many rows it
+    contains only an `ads.php` advertising page, which returns a 200 HTML
+    document. But the list typically has several entries (ads.php, other
+    libgen hosts, an AA link), and a real file may be served by one of them.
+
+    Returns a de-duplicated ordered list so the caller can try each.
     """
     urls = []
     try:
         urls = [u for u in (getattr(book, "mirrors", None) or []) if u]
     except Exception:
         urls = []
+
+    ordered = []
     for u in urls:
         if "get.php" in u:
-            return u
+            ordered.append(u)
+    for u in urls:
+        if "get.php" not in u and "/book/" in u:
+            ordered.append(u)
+    for u in urls:
+        if "get.php" not in u and "/book/" not in u:
+            ordered.append(u)
 
     md5 = getattr(book, "md5", None)
     if md5:
-        return f"{root.rstrip('/')}/get.php?md5={md5}"
+        for host in ("libgen.li", "libgen.pw", "libgen.la", "libgen.gl",
+                     "libgen.bz", "libgen.vg"):
+            ordered.append(f"https://{host}/get.php?md5={md5}")
+
+    seen, out = set(), []
+    for u in ordered:
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def pick_download_url(book, root: str = "https://libgen.li") -> Optional[str]:
+    """Return the single best download URL (first from pick_download_urls)."""
+    urls = pick_download_urls(book, root=root)
     return urls[0] if urls else None
 
 
@@ -114,17 +138,21 @@ def _safe_name(name: str) -> str:
     return re.sub(r"\s+", " ", name)[:180] or "book"
 
 
-def download_from_libgen(get_url: str, dest_dir: Path, title: str = "",
+def download_from_libgen(get_url, dest_dir: Path, title: str = "",
                          timeout: int = 120, retries: int = 3) -> Optional[Path]:
-    """Fetch a real file from a libgen get.php URL and save it.
+    """Fetch a real file from a libgen URL and save it.
 
-    Returns the written path, or None if the source did not yield real file
-    bytes (an HTML landing page, an error page, or a hard failure). Never
-    writes HTML to disk as if it were a book.
+    get_url may be a single URL or a LIST of candidate URLs -- a given title
+    is often hosted on only one mirror, so every candidate is tried in turn
+    before giving up.
+
+    Returns the written path, or None if no source yielded real file bytes
+    (an HTML landing page, an error page, or a hard failure). Never writes
+    HTML to disk as if it were a book.
 
     libgen sits behind Cloudflare and returns intermittent 522s (origin
     timeout) even though the same URL succeeds seconds later, so a small
-    retry is warranted here.
+    retry is warranted here too.
     """
     import time
 
@@ -133,77 +161,83 @@ def download_from_libgen(get_url: str, dest_dir: Path, title: str = "",
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    for attempt in range(1, retries + 1):
-        try:
-            r = requests.get(get_url, headers={"User-Agent": BROWSER_UA},
-                             timeout=timeout, stream=True, allow_redirects=True)
-        except Exception as exc:
-            logger.warning("libgen fetch failed (try %d/%d) %s: %s",
-                           attempt, retries, get_url, exc)
-            if attempt < retries:
-                time.sleep(5)
-            continue
+    candidates = list(get_url) if isinstance(get_url, (list, tuple)) else [get_url]
+    candidates = [u for u in candidates if u]
 
-        try:
-            if r.status_code in (520, 521, 522, 523, 429) and attempt < retries:
-                logger.info("libgen %s -> HTTP %s (transient); retrying",
-                            get_url, r.status_code)
-                r.close()
-                time.sleep(5)
-                continue
-            if r.status_code >= 400:
-                logger.warning("libgen %s -> HTTP %s", get_url, r.status_code)
-                return None
-
-            ctype = r.headers.get("Content-Type") or ""
-            disp_name = _filename_from(r.headers)
-
-            # stream to a temp file, sniffing as we go
-            head = b""
-            tmp = dest_dir / ((disp_name or "download.bin") + ".part")
-            written = 0
-            reject = False
+    for url in candidates:
+        for attempt in range(1, retries + 1):
             try:
-                with open(tmp, "wb") as fh:
-                    for chunk in r.iter_content(64 * 1024):
-                        if not chunk:
-                            continue
-                        if len(head) < 4096:
-                            head += chunk[: 4096 - len(head)]
-                        if looks_like_html(head) and written == 0:
-                            logger.info("libgen returned HTML for %s; not a file",
-                                        get_url)
-                            reject = True
-                            break
-                        fh.write(chunk)
-                        written += len(chunk)
-            finally:
-                r.close()
+                r = requests.get(url, headers={"User-Agent": BROWSER_UA},
+                                 timeout=timeout, stream=True,
+                                 allow_redirects=True)
+            except Exception as exc:
+                logger.warning("libgen fetch failed (try %d/%d) %s: %s",
+                               attempt, retries, url, exc)
+                if attempt < retries:
+                    time.sleep(5)
+                    continue
+                break
 
-            if reject:
-                tmp.unlink(missing_ok=True)
-                return None
-            break
-        except Exception as exc:
-            logger.warning("libgen download error (try %d/%d): %s",
-                           attempt, retries, exc)
-            if attempt < retries:
-                time.sleep(5)
-                continue
-            return None
+            try:
+                if r.status_code in (520, 521, 522, 523, 429) and attempt < retries:
+                    logger.info("libgen %s -> HTTP %s (transient); retrying",
+                                url, r.status_code)
+                    r.close()
+                    time.sleep(5)
+                    continue
+                if r.status_code >= 400:
+                    logger.info("libgen %s -> HTTP %s", url, r.status_code)
+                    r.close()
+                    break
 
-    if written == 0:
-        tmp.unlink(missing_ok=True)
-        return None
+                ctype = r.headers.get("Content-Type") or ""
+                disp_name = _filename_from(r.headers)
 
-    fmt = guess_format(disp_name, ctype, head)
-    base = _safe_name(Path(disp_name).stem if disp_name else (title or "book"))
-    final = dest_dir / f"{base}.{fmt}"
-    n = 1
-    while final.exists():
-        final = dest_dir / f"{base} ({n}).{fmt}"
-        n += 1
+                # stream to a temp file, sniffing as we go
+                head = b""
+                tmp = dest_dir / ((disp_name or "download.bin") + ".part")
+                written = 0
+                reject = False
+                try:
+                    with open(tmp, "wb") as fh:
+                        for chunk in r.iter_content(64 * 1024):
+                            if not chunk:
+                                continue
+                            if len(head) < 4096:
+                                head += chunk[: 4096 - len(head)]
+                            if looks_like_html(head) and written == 0:
+                                logger.info(
+                                    "libgen returned HTML for %s; not a file", url)
+                                reject = True
+                                break
+                            fh.write(chunk)
+                            written += len(chunk)
+                finally:
+                    r.close()
 
-    tmp.rename(final)
-    logger.info("libgen download -> %s (%d bytes, fmt=%s)", final, written, fmt)
-    return final
+                if reject:
+                    tmp.unlink(missing_ok=True)
+                    break          # this mirror has nothing; try the next URL
+
+                fmt = guess_format(disp_name, ctype, head)
+                base = _safe_name(Path(disp_name).stem if disp_name
+                                  else (title or "book"))
+                final = dest_dir / f"{base}.{fmt}"
+                n = 1
+                while final.exists():
+                    final = dest_dir / f"{base} ({n}).{fmt}"
+                    n += 1
+                tmp.rename(final)
+                logger.info("libgen download -> %s (%d bytes, fmt=%s)",
+                            final, written, fmt)
+                return final
+            except Exception as exc:
+                logger.warning("libgen download error on %s (try %d/%d): %s",
+                               url, attempt, retries, exc)
+                if attempt < retries:
+                    time.sleep(5)
+                    continue
+                break
+
+    logger.info("no libgen mirror served a real file for %r", title)
+    return None

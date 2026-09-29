@@ -465,6 +465,37 @@ class _FakeResponse:
 ENABLE_ZLIB = True  # Z-lib re-enabled now that it's back up
 
 
+# AA sits behind a DDoS-Guard JS challenge. Occasionally the challenge is not
+# cleared within the first browser attempt, and search() then returns zero
+# results with no error -- indistinguishable from "no match", which is how AA
+# previously looked dead for hours. Retry a couple of times before giving up.
+AA_SEARCH_RETRIES = 2
+AA_SEARCH_RETRY_SLEEP = 8
+
+
+def aa_search_with_retry(source, query, options=None):
+    """Call source.search(), retrying a few times if it yields nothing.
+
+    Returns (results, debug_log) like AnnaSource.search does.
+    """
+    last = ([], [])
+    for attempt in range(AA_SEARCH_RETRIES + 1):
+        results, debug_log = source.search(query, options=options)
+        if results:
+            if attempt:
+                logger.info("AA search for %r succeeded on retry %d", query, attempt)
+            return results, debug_log
+        last = (results, debug_log)
+        if attempt < AA_SEARCH_RETRIES:
+            logger.warning(
+                "AA search for %r returned 0 results (likely an uncleared "
+                "bot challenge); retrying in %ds", query, AA_SEARCH_RETRY_SLEEP)
+            time.sleep(AA_SEARCH_RETRY_SLEEP)
+    logger.error("AA search for %r returned no results after %d attempts",
+                 query, AA_SEARCH_RETRIES + 1)
+    return last
+
+
 class AnnaSource:
     """
     Search + download wrapper around Anna's Archive.

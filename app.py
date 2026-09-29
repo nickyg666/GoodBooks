@@ -39,7 +39,12 @@ from flask import (
 
 from logging_config import configure_logging
 from parser_engine import FeedParser, ParsedItem
-from search_engine import AnnaSource, SearchOptions, set_download_concurrency
+from search_engine import (
+    AnnaSource,
+    SearchOptions,
+    aa_search_with_retry,
+    set_download_concurrency,
+)
 from settings_manager import HistoryManager, SettingsManager, UserSettings, FeedSettings
 from ebook_metadata_extractor import extract_book_metadata
 import time
@@ -461,7 +466,7 @@ def search_with_cache(
                         return [], debug_log
 
     # No disk hit (or persist=False): do a live search
-    results, search_debug = source.search(query, options=options)
+    results, search_debug = aa_search_with_retry(source, query, options=options)
     debug_log.extend(search_debug)
 
     # Persist to disk only for feed-driven searches
@@ -5484,7 +5489,7 @@ def search_stream():
                 max_rows=45,
                 max_results=45,
             )
-            results, debug_log = source.search(query, options=search_options)
+            results, debug_log = aa_search_with_retry(source, query, options=search_options)
 
             # Send results in batches for progressive loading
             for i, result in enumerate(results):
@@ -5610,7 +5615,7 @@ def search():
                 max_results=45,
                 resolve_downloads=False,
             )
-            results, debug_log = source.search(query, options=search_options)
+            results, debug_log = aa_search_with_retry(source, query, options=search_options)
             logger.info(
                 "Manual search completed for query='%s' with %d ranked results",
                 query,
@@ -5852,7 +5857,7 @@ def scan_process():
                     max_results=10,
                     resolve_downloads=False,
                 )
-                search_results, _ = source.search(query, options=search_options)
+                search_results, _ = aa_search_with_retry(source, query, options=search_options)
                 if search_results:
                     for r in search_results[:5]:
                         r["scan_query"] = query
@@ -5940,7 +5945,7 @@ def reverse_image_search():
                 max_results=25,
                 resolve_downloads=False,
             )
-            isbn_results, _ = source.search(isbn, options=search_options)
+            isbn_results, _ = aa_search_with_retry(source, isbn, options=search_options)
         except Exception as exc:
             logger.warning("ISBN search failed: %s", exc)
             isbn_results = []
@@ -5986,7 +5991,7 @@ def reverse_image_search():
                 try:
                     opts = SearchOptions(query=query, language="en", max_rows=15,
                                          max_results=15, resolve_downloads=False)
-                    found, _ = source.search(query, options=opts)
+                    found, _ = aa_search_with_retry(source, query, options=opts)
                 except Exception as exc:
                     logger.debug("Lens candidate search failed for %r: %s", query, exc)
                     continue

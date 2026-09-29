@@ -4618,9 +4618,21 @@ def index():
     settings = settings_manager.settings
 
     # View mode (folder vs collection)
+    # view modes:
+    #   folder    - hierarchical folders (previous behaviour)
+    #   collection- flat list of every book
+    #   cover     - cover-forward grid, the "newsstand" layout
+    #   compact   - dense text list, fastest for large libraries
     view_mode = request.args.get("view", "folder").strip().lower()
-    if view_mode not in {"folder", "collection"}:
+    if view_mode not in {"folder", "collection", "cover", "compact", "recent"}:
         view_mode = "folder"
+    # "recent" is a flat, newest-first view. Model it as collection mode
+    # with a date sort rather than a separate branch, so every filter,
+    # pagination and cover fix below applies to it unchanged.
+    if view_mode == "recent":
+        view_mode = "collection"
+        if not request.args.get("sort"):
+            sort_key = "date_newest"
 
     # Sorting: query param overrides default
     sort_key = request.args.get("sort", "").strip() or getattr(
@@ -4651,15 +4663,19 @@ def index():
         per_page = int(request.args.get("per_page", "").strip() or "0")
     except ValueError:
         per_page = 0
-    if per_page not in {15, 25, 50, 100, 200, 500}:
+    # Accept any sane value. The previous whitelist {15,25,50,100,200,500}
+    # silently ignored everything else, so per_page=10 quietly became 50
+    # with no indication to the user.
+    if per_page <= 0:
         per_page = max(1, int(getattr(settings, "library_items_per_page", 50) or 50))
+    per_page = min(per_page, 500)
 
     # Load all entries + narrow to the current prefix subtree (if in folder mode)
     entries_all = build_library_entries()
 
     def under_prefix(entry: Dict) -> bool:
-        if view_mode == "collection":
-            # Collection mode: all files are in scope
+        if view_mode in ("collection", "cover", "compact"):
+            # Flat views: all files are in scope regardless of prefix
             return True
         # Folder mode: check prefix
         rel = entry.get("relpath", "")
@@ -4773,7 +4789,7 @@ def index():
     # Collection view: always show flat list
     # ------------------------------------------------------------------
     folder_cards: List[Dict] = []
-    if view_mode == "collection":
+    if view_mode in ("collection", "cover", "compact"):
         entries_sorted = sort_library_entries(filtered_entries, sort_key)
         total_items = len(entries_sorted)
         total_pages = max(1, (total_items + per_page - 1) // per_page)

@@ -1,6 +1,222 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+/* ------------------------------------------------------------------
+   Newsstand view: a dense, cover-forward shelf.
+   Only applied to .library-view-grid[data-view="cover"].
+   ------------------------------------------------------------------ */
+.library-view-grid[data-view="cover"] {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 22px 18px;
+    align-items: start;
+    padding: 20px 4px 60px;
+}
+
+.library-view-grid[data-view="cover"] .book-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    position: relative;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    text-align: left;
+}
+
+.library-view-grid[data-view="cover"] .newsstand-art {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 3;              /* real book proportions */
+    border-radius: 7px;
+    overflow: hidden;
+    background: linear-gradient(150deg, #2b2f36 0%, #1b1e23 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.34), 0 6px 16px rgba(0,0,0,.26);
+    transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.library-view-grid[data-view="cover"] .book-card:hover .newsstand-art {
+    transform: translateY(-3px);
+    box-shadow: 0 2px 5px rgba(0,0,0,.4), 0 12px 26px rgba(0,0,0,.34);
+}
+
+.library-view-grid[data-view="cover"] .newsstand-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Placeholder stands in for a missing/broken cover so the shelf never
+   shows a torn-image glyph or a collapsed box. */
+.library-view-grid[data-view="cover"] .newsstand-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    text-align: center;
+    color: #7f8794;
+    background: linear-gradient(150deg, #2b2f36 0%, #1b1e23 100%);
+}
+
+.library-view-grid[data-view="cover"] .newsstand-fallback .nb-mark {
+    font-size: 20px;
+    line-height: 1;
+    opacity: .55;
+}
+
+.library-view-grid[data-view="cover"] .newsstand-fallback .nb-word {
+    font-size: 10px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    opacity: .5;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+
+.library-view-grid[data-view="cover"] .newsstand-title {
+    font-size: 12px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--text-color, #e6e8ec);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.6em;               /* keeps rows on a common baseline */
+}
+
+.library-view-grid[data-view="cover"] .newsstand-author {
+    font-size: 11px;
+    line-height: 1.25;
+    color: #949cab;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* selection state, matching the rest of the app's checkbox affordance */
+.library-view-grid[data-view="cover"] .book-card.is-selected .newsstand-art {
+    outline: 2px solid var(--accent-color, #4a9eff);
+    outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+    .library-view-grid[data-view="cover"] {
+        grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+        gap: 16px 12px;
+    }
+}
+
+/* The folder-card overlay is meaningless over a dense cover grid and would
+   sit on top of every cover, so it is suppressed in newsstand mode. */
+.library-view-grid[data-view="cover"] .library-cover-overlay {
+    display: none !important;
+}
+
+/* The card must not force the folder-card aspect ratio. */
+.library-view-grid[data-view="cover"] .book-card,
+.library-view-grid[data-view="cover"] .library-cover,
+.library-view-grid[data-view="cover"] .library-cover-link {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    aspect-ratio: none !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    text-align: left !important;
+}
+
+/* ---- geometry: the cover art is the sizing authority ---- */
+.library-view-grid[data-view="cover"] {
+    align-items: start;
+    align-content: start;
+    grid-auto-rows: min-content;   /* never stretch a row to viewport height */
+    width: 100%;
+}
+
+.library-view-grid[data-view="cover"] .book-card {
+    align-self: start;
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+.library-view-grid[data-view="cover"] .library-cover,
+.library-view-grid[data-view="cover"] .library-cover-link {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
+    display: block !important;
+    position: relative !important;
+    overflow: visible !important;
+}
+
+/* the art is the box: 2:3, fixed, and never taller than its column */
+.library-view-grid[data-view="cover"] .newsstand-art {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 2 / 3 !important;
+    max-height: 46vh !important;
+    overflow: hidden !important;
+    border-radius: 7px !important;
+    background: linear-gradient(150deg, #2b2f36 0%, #1b1e23 100%) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.34), 0 6px 16px rgba(0,0,0,.26) !important;
+}
+
+.library-view-grid[data-view="cover"] .newsstand-art img {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+/* keep the select checkbox out of the cover flow */
+.library-view-grid[data-view="cover"] .library-select {
+    position: absolute !important;
+    top: 4px;
+    left: 4px;
+    z-index: 3;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+.library-view-grid[data-view="cover"] .newsstand-title {
+    margin-top: 2px;
+    min-height: 2.5em;
+}
+
+.library-view-grid[data-view="cover"] .newsstand-author {
+    margin-top: 1px;
+}
+</style>
+
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <div style="display: flex; align-items: center; gap: 1rem;">
@@ -142,7 +358,7 @@
 
     {# Unified grid for both folder cards and book cards #}
     {% if entries or (folder_cards and not filters_active) %}
-    <div id="library-content" class="grid results-grid library-view-grid">
+    <div id="library-content" class="grid results-grid library-view-grid" data-view="{{ view_mode }}">
         {# Folder cards (only when no filters are active) #}
         {% if folder_cards and not filters_active %}
             {% for folder in folder_cards %}
@@ -191,7 +407,19 @@
 
             <div class="library-cover">
                 <a href="{{ url_for('book_detail', entry_id=entry.id) }}" class="library-cover-link">
-                    {% if entry.cover %}
+                    {% if view_mode == 'cover' %}
+                        <div class="newsstand-art">
+                            {% if entry.cover %}
+                            <img src="{{ entry.cover }}" alt="{{ entry.title }}" loading="lazy" decoding="async">
+                            {% endif %}
+                            <div class="newsstand-fallback"{% if entry.cover %} style="display:none"{% endif %}>
+                                <span class="nb-mark" aria-hidden="true">&#128218;</span>
+                                <span class="nb-word">{{ entry.title or 'Untitled' }}</span>
+                            </div>
+                        </div>
+                        <div class="newsstand-title" title="{{ entry.title }}">{{ entry.title or 'Untitled' }}</div>
+                        <div class="newsstand-author" title="{{ entry.author }}">{{ entry.author or '' }}</div>
+                    {% elif entry.cover %}
                     <img src="{{ entry.cover }}" alt="{{ entry.title }}" onerror="this.style.display='none'" {% if not is_kindle %}loading="lazy"{% endif %}>
                     {% else %}
                     <div class="cover-placeholder">
@@ -956,8 +1184,13 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
          listViewBtn.classList.remove('active');
          recentViewBtn?.classList.add('active');
          localStorage.setItem('library-view', 'recent');
-         // Navigate to recently added view - use main index with view parameter
-         window.location = '{{ url_for("index") }}?view=recent';
+         // Keep the user's sort / page size / filters. This used to rebuild
+         // the URL from scratch, silently discarding them.
+         const url = new URL(window.location);
+         url.searchParams.set('view', 'recent');
+         url.searchParams.set('sort', 'date_newest');
+         url.searchParams.delete('prefix');
+         window.location = url.toString();
      }
 
     gridViewBtn.addEventListener('click', setGridView);
@@ -968,7 +1201,8 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 
     // Restore button active state based on current view mode
     const currentView = new URL(window.location).searchParams.get('view') || 'folder';
-    const isRecentlyAdded = window.location.pathname.includes('recently-added');
+    const isRecentlyAdded = window.location.pathname.includes('recently-added')
+        || currentView === 'recent';
     
     if (isRecentlyAdded) {
         gridViewBtn.classList.remove('active');
@@ -1043,5 +1277,30 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     
     // Connect to progress stream on page load
     connectProgressStream();
+</script>
+<script>
+// Hide a cover image that fails to load and reveal the placeholder, so a
+// dead URL never leaves a torn-image glyph in the newsstand grid.
+(function () {
+  function attachFallbacks(root) {
+    root.querySelectorAll('.newsstand-art img').forEach(function (img) {
+      if (img.dataset.fallbackBound) return;
+      img.dataset.fallbackBound = '1';
+      img.addEventListener('error', function () {
+        var fb = img.parentNode.querySelector('.newsstand-fallback');
+        if (fb) fb.style.display = 'flex';
+        img.style.display = 'none';
+      });
+      if (img.complete && img.naturalWidth === 0) img.dispatchEvent(new Event('error'));
+    });
+  }
+  var content = document.getElementById('library-content');
+  if (content) attachFallbacks(content);
+  // covers arrive via fetch/innerHTML updates in some flows
+  if (window.MutationObserver && content) {
+    new MutationObserver(function () { attachFallbacks(content); })
+      .observe(content, { childList: true, subtree: true });
+  }
+})();
 </script>
 {% endblock %}

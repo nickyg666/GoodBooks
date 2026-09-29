@@ -334,3 +334,47 @@ def test_reverse_image_endpoint_is_not_a_stub():
 def test_isbn_module_wired_into_app():
     src = (ROOT / "app.py").read_text(encoding="utf-8", errors="replace")
     assert "decode_isbn" in src, "app.py never calls the ISBN decoder"
+@pytest.mark.resources
+def test_debug_log_rotation_keeps_history():
+    """The old handler rotated at 1GB by writing a single space, destroying
+    all prior log history, and logrotate's 50M rule disagreed with it so
+    debug.log reached 69MB in ~3h. Now it rotates at 50MB keeping 3 backups."""
+    import logging
+    import tempfile
+    from pathlib import Path
+
+    from logging_config import DebugLogRotationHandler
+
+    tmpdir = Path(tempfile.mkdtemp(prefix="rot-test-"))
+    log = tmpdir / "debug.log"
+
+    orig = DebugLogRotationHandler.MAX_BYTES
+    DebugLogRotationHandler.MAX_BYTES = 64 * 1024
+    try:
+        h = DebugLogRotationHandler(str(log), encoding="utf-8")
+        h.setFormatter(logging.Formatter("%(message)s"))
+        h.setLevel(logging.DEBUG)
+        payload = "x" * 900
+        for i in range(400):
+            h.emit(logging.LogRecord("t", logging.DEBUG, __file__, 1,
+                                     f"{i:04d} {payload}", None, None))
+        h.close()
+    finally:
+        DebugLogRotationHandler.MAX_BYTES = orig
+
+    files = {p.name: p.stat().st_size for p in tmpdir.iterdir()}
+    assert "debug.log.1" in files, f"no rotation happened: {files}"
+    assert files["debug.log.1"] > 0, "rotated file is empty: history was destroyed"
+    assert log.read_text(errors="replace").strip(), "live log empty after rotation"
+
+
+@pytest.mark.resources
+def test_logrotate_rule_does_not_conflict():
+    """`daily` and `size` together make logrotate report
+    'size overrides previously specified daily'; keep it size-only."""
+    p = Path("/etc/logrotate.d/goodbooks")
+    if not p.exists():
+        pytest.skip("logrotate rule not present on this host")
+    text = p.read_text()
+    assert "daily" not in text, "logrotate rule mixes daily with size"
+    assert "size" in text, "logrotate rule has no size trigger"

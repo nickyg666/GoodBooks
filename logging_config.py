@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -33,25 +34,59 @@ class SuppressUrllib3ConnectionLogsFilter(logging.Filter):
 
 
 class DebugLogRotationHandler(logging.FileHandler):
-    """File handler that rotates debug.log when it exceeds 1GB."""
-    
-    MAX_SIZE = 1024 * 1024 * 1024  # 1GB
-    
-    def emit(self, record):
+    """Size-based rotating handler for debug.log.
+
+    Rotates at MAX_BYTES and KEEPS BACKUP_COUNT previous files.
+
+    The previous implementation rotated only at 1GB and did
+    ``log_path.write_text(" ")``, which destroyed all prior history instead
+    of rotating it. Combined with a logrotate rule set to 50M the two
+    configs disagreed, and debug.log reached 69MB in about three hours.
+    """
+    MAX_BYTES = 50 * 1024 * 1024   # 50MB
+    BACKUP_COUNT = 3
+
+    def shouldRollover(self, record):  # noqa: N802 - logging API name
         try:
-            if self.stream and self.baseFilename:
-                log_path = Path(self.baseFilename)
-                if log_path.exists() and log_path.stat().st_size >= self.MAX_SIZE:
-                    # Close current handler
-                    self.close()
-                    # Clear the file by rewriting with empty content
-                    log_path.write_text(" ")
-                    # Reopen the handler
-                    self.stream = self._open()
+            if self.stream is None:
+                self.stream = self._open()
+            msg = "%s\n" % self.format(record)
+            if self.stream.tell() + len(msg) >= self.MAX_BYTES:
+                return 1
         except Exception:
-            pass  # Silently ignore rotation errors
-        
-        super().emit(record)
+            return 0
+        return 0
+
+    def emit(self, record):
+        # logging.FileHandler.emit does NOT consult shouldRollover; only
+        # RotatingFileHandler overrides emit to do so. Without this, the
+        # rotation logic below is dead code.
+        try:
+            if self.shouldRollover(record):
+                self.doRollover()
+            super().emit(record)
+        except Exception:
+            self.handleError(record)
+
+    def doRollover(self):  # noqa: N802 - logging API name
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        try:
+            for i in range(self.BACKUP_COUNT - 1, 0, -1):
+                src_name = f"{self.baseFilename}.{i}"
+                dst_name = f"{self.baseFilename}.{i + 1}"
+                if os.path.exists(src_name):
+                    if os.path.exists(dst_name):
+                        os.remove(dst_name)
+                    os.rename(src_name, dst_name)
+            if os.path.exists(self.baseFilename):
+                os.rename(self.baseFilename, self.baseFilename + ".1")
+        except Exception:
+            # never let a rotation failure kill logging
+            pass
+        if not self.delay:
+            self.stream = self._open()
 
 
 def configure_logging(base_dir: Path, level_name: Optional[str] = None) -> logging.Logger:

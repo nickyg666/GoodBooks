@@ -461,3 +461,151 @@ def test_search_route_is_slow_but_alive():
         pytest.skip("no live target configured")
     r = req.get(base + "/search?q=test", timeout=60)
     assert r.status_code < 500
+@pytest.mark.libgen
+def test_libgen_fallback_reads_book_attributes():
+    """libgen_api_enhanced returns Book OBJECTS, not dicts.
+
+    The fallback used item.get("Title"), which always gave "", so every result
+    was skipped and the fallback returned zero for every title.
+
+    Checked via the AST, not a text search: the old expression survives in a
+    comment that documents the bug, which made a text assertion fail even
+    though the code was correct.
+    """
+    import ast
+    import inspect
+
+    from search_engine import AnnaSource
+    src = inspect.getsource(AnnaSource._search_libgen_fallback)
+    tree = ast.parse(src.lstrip())
+
+    dict_calls = []
+    attr_reads = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                and node.func.attr == "get" and isinstance(node.func.value, ast.Name) \
+                and node.func.value.id == "item":
+            dict_calls.append(getattr(node.args[0], "value", None) if node.args else None)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                and node.func.id == "getattr" and node.args:
+            first = node.args[0]
+            if isinstance(first, ast.Name) and first.id == "item":
+                attr_reads.append(getattr(node.args[1], "value", None))
+
+    assert not dict_calls, \
+        f"still reading Book objects as dicts: item.get({dict_calls})"
+    assert "title" in attr_reads, \
+        f"must read item.title via getattr; got {attr_reads}"
+
+
+@pytest.mark.libgen
+def test_libgen_results_carry_md5_and_mirrors():
+    """The results must carry detail (md5) and libgen_mirrors, because the
+    download fallback needs them to build a get.php URL."""
+    import inspect
+
+    from search_engine import AnnaSource
+    src = inspect.getsource(AnnaSource._search_libgen_fallback)
+    for key in ('"detail"', '"libgen_mirrors"', '"source"'):
+        assert key in src, f"fallback result missing {key}"
+
+
+@pytest.mark.libgen
+def test_download_tries_libgen_before_giving_up():
+    """AA's downloads map is empty for many results, so the libgen attempt
+    must happen BEFORE the 'No download links available' guard."""
+    import ast
+    import inspect
+
+    from search_engine import AnnaSource
+    src = inspect.getsource(AnnaSource.download)
+    libgen_at = src.find("gb_libgen_dl")
+    guard_at = src.find("No download links available for any format")
+    assert libgen_at != -1, "download() has no libgen fallback"
+    assert guard_at != -1, "guard raise not found"
+    assert libgen_at < guard_at, \
+        "the libgen fallback must come before the give-up guard"
+
+
+@pytest.mark.libgen
+def test_libgen_downloader_rejects_html_and_keeps_binaries():
+    from gb_libgen_dl import looks_like_html, guess_format
+
+    assert looks_like_html(b"<!DOCTYPE html><html><head><title>x</title>")
+    assert looks_like_html(b"<html><body>ads</body></html>")
+    assert not looks_like_html(b"Rar!\x1a\x07\x00")
+    assert not looks_like_html(b"PK\x03\x04rest")
+    assert not looks_like_html(b"%PDF-1.7")
+
+
+@pytest.mark.libgen
+def test_libgen_format_prefers_magic_over_extension():
+    """A 30MB RAR was saved as .cbr because the Content-Disposition
+    extension was trusted over the actual bytes."""
+    from gb_libgen_dl import guess_format
+
+    # RAR bytes with a misleading .cbr name and a generic content-type
+    assert guess_format("Hobbit TPB.cbr", "application/octet-stream",
+                        b"Rar!\x1a\x07\x00o") == "rar"
+    assert guess_format("book.epub", "", b"PK\x03\x04payload") == "epub"
+    assert guess_format("x.pdf", "", b"%PDF-1.7") == "pdf"
+    # unknown content falls back to the name
+    assert guess_format("thing.xyz", "", b"opaque") == "xyz"
+
+
+@pytest.mark.libgen
+def test_pick_download_url_ignores_ads_page():
+    """Book.mirrors can contain only an ads.php page, which returns a 200
+    HTML document. The get.php URL must be built from the md5 instead."""
+
+    class FakeBook:
+        md5 = "abc123"
+        mirrors = ["https://libgen.li/ads.php?md5=abc123"]
+
+    from gb_libgen_dl import pick_download_url
+    url = pick_download_url(FakeBook())
+    assert "get.php" in url, f"picked an ads page: {url}"
+    assert "abc123" in url
+
+    class FakeBook2:
+        md5 = "def456"
+        mirrors = ["https://libgen.li/ads.php?md5=def456",
+                   "https://libgen.li/get.php?md5=def456"]
+
+    url2 = pick_download_url(FakeBook2())
+    assert "get.php" in url2, f"should prefer the get.php entry: {url2}"
+
+
+@pytest.mark.libgen
+def test_libgen_downloader_writes_nothing_when_html():
+    """An HTML landing page must never leave a file behind."""
+    import gb_libgen_dl
+
+    class FakeResp:
+        status_code = 200
+        headers = {"Content-Type": "text/html; charset=UTF-8"}
+
+        def __init__(self):
+            self._chunks = [b"<!DOCTYPE html><html><head><title>ads</title></head>"
+                            b"<body>x</body></html>"]
+
+        def iter_content(self, n):
+            for c in self._chunks:
+                yield c
+
+        def close(self):
+            pass
+
+    import requests
+    orig = requests.get
+    requests.get = lambda *a, **kw: FakeResp()
+    try:
+        import tempfile
+        from pathlib import Path as _P
+        d = _P(tempfile.mkdtemp())
+        out = gb_libgen_dl.download_from_libgen("https://libgen.li/get.php?md5=x",
+                                                d, "t", retries=1)
+        assert out is None, f"HTML was accepted as a file: {out}"
+        assert list(d.iterdir()) == [], "an HTML page was left on disk"
+    finally:
+        requests.get = orig

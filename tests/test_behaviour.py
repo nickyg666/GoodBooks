@@ -378,3 +378,86 @@ def test_logrotate_rule_does_not_conflict():
     text = p.read_text()
     assert "daily" not in text, "logrotate rule mixes daily with size"
     assert "size" in text, "logrotate rule has no size trigger"
+@pytest.mark.download
+def test_slow_download_rejects_html_partner_page():
+    """The AA partner page is a 200 HTML document served with NO
+    Content-Type header. A header-only check treated it as a real file, so
+    every download resolved successfully and then failed later with
+    "No working download links available". That is why the
+    Goodreads-shelf -> Kindle path never worked.
+    """
+    from search_engine import AnnaSource
+
+    class FakePartnerPage:
+        status_code = 200
+        url = "https://annas-archive.gl/slow_download/abc/0/8"
+        headers = {}          # deliberately absent: that is the trap
+        content = (b"<!DOCTYPE html><html><head>"
+                   b"<title>Download from partner website</title>"
+                   b"<script>x=1</script></head><body>hi</body></html>")
+
+        def close(self):
+            pass
+
+    src = AnnaSource.__new__(AnnaSource)
+    src._safe_get = lambda href, **kw: FakePartnerPage()
+    src._is_cloudflare_challenge = lambda r: False
+    dbg = []
+    out = src._resolve_aa_slow_download(
+        "https://annas-archive.gl/slow_download/abc/0/8", "abc123", ["pdf"], dbg)
+    assert out is None, f"HTML page accepted as a download link: {out!r}"
+    assert any("HTML page" in d for d in dbg), f"not logged as rejected: {dbg}"
+
+
+@pytest.mark.download
+def test_slow_download_still_accepts_real_file():
+    """The rejection must not break genuine file responses."""
+    from search_engine import AnnaSource
+
+    class RealPDF:
+        status_code = 200
+        url = "https://annas-archive.gl/slow_download/abc/0/8"
+        headers = {"Content-Type": "application/pdf",
+                   "Content-Disposition": 'attachment; filename="book.pdf"'}
+        content = b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n" + b"\x00" * 500
+
+        def close(self):
+            pass
+
+    src = AnnaSource.__new__(AnnaSource)
+    src._safe_get = lambda href, **kw: RealPDF()
+    src._is_cloudflare_challenge = lambda r: False
+    out = src._resolve_aa_slow_download(
+        "https://annas-archive.gl/slow_download/abc/0/8", "abc123", ["pdf"], [])
+    assert out is not None, "a real PDF response was wrongly rejected"
+    assert out[1] == "pdf", f"format not detected from Content-Disposition: {out!r}"
+
+
+@pytest.mark.download
+def test_download_resolver_sniffs_html():
+    """The HTML sniff must stay in the resolver, not just in a caller."""
+    import inspect
+
+    from search_engine import AnnaSource
+    src_txt = inspect.getsource(AnnaSource)
+    assert "looks_html" in src_txt, \
+        "HTML sniffing was removed from the slow_download resolver"
+
+
+@pytest.mark.smoke
+def test_search_route_is_slow_but_alive():
+    """Documents a real performance characteristic, not a bug.
+
+    GET /search performs a LIVE Anna's Archive search on every page load, and
+    AA sits behind a DDoS-Guard JS challenge that only a real browser can
+    clear. So a search page takes ~15-20s. The route is correct, just slow;
+    the smoke test uses a 60s timeout for that reason. Do not "fix" this by
+    dropping the timeout -- that would hide a genuine 500.
+    """
+    req = pytest.importorskip("requests")
+    import os
+    base = os.environ.get("GOODBOOKS_URL")
+    if not base:
+        pytest.skip("no live target configured")
+    r = req.get(base + "/search?q=test", timeout=60)
+    assert r.status_code < 500

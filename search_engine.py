@@ -1978,7 +1978,36 @@ class AnnaSource:
             except Exception as e:
                 logger.debug("Failed to decode direct URL from response: %s", e)
             
-            # Fallback: treat slow_href as direct URL (for actual file responses)
+            # The slow_download endpoint is NOT itself a file. When a mirror
+            # is unavailable AA serves a 200 HTML page titled "Download from
+            # partner website". That page often arrives with no Content-Type
+            # header, so a header-only check treated it as a real file and
+            # every download resolved to an HTML page -- which then failed
+            # later as "No working download links available".
+            # Sniff the body before trusting the URL.
+            try:
+                head = (resp.content or b"")[:2048]
+            except Exception:
+                head = b""
+            stripped = head.lstrip()[:400].lower()
+            looks_html = (
+                stripped.startswith(b"<!doctype html")
+                or stripped.startswith(b"<html")
+                or b"<html" in stripped
+                or b"<script" in stripped
+            )
+            if looks_html:
+                ctype = (resp.headers.get("Content-Type") or "").lower()
+                resp.close()
+                logger.info(
+                    "slow_download for md5=%s returned an HTML page (%s), not a "
+                    "file; mirror unusable", md5, ctype or "no content-type")
+                debug_log.append(
+                    "slow_download returned an HTML page (partner/mirror page), "
+                    "not a file -- rejecting")
+                return None
+
+            # Genuine file response: trust the endpoint.
             cd = resp.headers.get("Content-Disposition") or ""
             filename_match = re.search(r'filename="?([^";]+)"?', cd)
             ext = ""
@@ -1986,12 +2015,10 @@ class AnnaSource:
                 fname = filename_match.group(1)
                 if "." in fname:
                     ext = fname.rsplit(".", 1)[-1].lower()
-
             fmt = ext or self._detect_format("", slow_href, formats) or "bin"
             resp.close()
             debug_log.append(
-                f"AA slow_download returned non-HTML; using slow_href directly fmt={fmt}"
-            )
+                f"AA slow_download returned a real file; using slow_href directly fmt={fmt}")
             return slow_href, fmt
 
         # HTML response – parse and look for a real file URL

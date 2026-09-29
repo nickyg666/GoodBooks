@@ -23,13 +23,13 @@ SMOKE_ROUTES = [
 @pytest.mark.smoke
 @pytest.mark.parametrize("method,path", SMOKE_ROUTES)
 def test_route_does_not_500(client, method, path):
-    r = client.request(method, client.base_url + path, timeout=10, allow_redirects=False)  # type: ignore[attr-defined]
+    r = client.request(method, client.base_url + path, timeout=60, allow_redirects=False)  # type: ignore[attr-defined]
     assert r.status_code < 500, f"{method} {path} -> {r.status_code}: {r.text[:200]}"
 
 
 @pytest.mark.smoke
 def test_api_users_returns_json(client):
-    r = client.get(client.base_url + "/api/users", timeout=10)  # type: ignore[attr-defined]
+    r = client.get(client.base_url + "/api/users", timeout=60)  # type: ignore[attr-defined]
     assert r.status_code == 200
     body = r.json()
     assert body.get("success") is True
@@ -40,7 +40,7 @@ def test_api_users_returns_json(client):
 
 @pytest.mark.smoke
 def test_root_renders_known_landmarks(client):
-    r = client.get(client.base_url + "/", timeout=10)  # type: ignore[attr-defined]
+    r = client.get(client.base_url + "/", timeout=60)  # type: ignore[attr-defined]
     assert r.status_code == 200
     text = r.text.lower()
     for needle in ("library", "history", "settings"):
@@ -49,7 +49,7 @@ def test_root_renders_known_landmarks(client):
 
 @pytest.mark.smoke
 def test_settings_page_renders(client):
-    r = client.get(client.base_url + "/settings", timeout=10)  # type: ignore[attr-defined]
+    r = client.get(client.base_url + "/settings", timeout=60)  # type: ignore[attr-defined]
     assert r.status_code == 200
     text = r.text.lower()
     for needle in ("smtp", "server port", "library"):
@@ -58,7 +58,7 @@ def test_settings_page_renders(client):
 
 @pytest.mark.smoke
 def test_history_page_renders(client):
-    r = client.get(client.base_url + "/history", timeout=10)  # type: ignore[attr-defined]
+    r = client.get(client.base_url + "/history", timeout=60)  # type: ignore[attr-defined]
     assert r.status_code == 200
     assert "<html" in r.text.lower()
 
@@ -66,6 +66,6 @@ def test_history_page_renders(client):
 @pytest.mark.smoke
 def test_static_theme_files_served(client):
     for theme in ("dark", "sepia", "high-contrast"):
-        r = client.get(client.base_url + f"/static/themes/{theme}.css", timeout=10)  # type: ignore[attr-defined]
+        r = client.get(client.base_url + f"/static/themes/{theme}.css", timeout=60)  # type: ignore[attr-defined]
         assert r.status_code == 200, f"{theme} theme not served"
         assert ":root" in r.text

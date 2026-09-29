@@ -15,3 +15,7 @@ __pycache__/
 venv/
 *.bak
 *.bak-*
+# rotated debug.log backups
+debug.log.*
+# rotated info.log backups
+info.log.*

@@ -1318,35 +1318,35 @@ class AnnaSource:
             results: List[Dict] = []
             for item in results_libgen[:15]:  # Limit to top 15
                 try:
-                    # Extract fields from libgen result
-                    title = item.get("Title", "").strip()
-                    author = item.get("Author", "").strip()
+                    # libgen_api_enhanced returns Book OBJECTS with attributes,
+                    # not dicts. Reading item.get("Title") always produced an
+                    # empty title, so every result was skipped and this
+                    # fallback always returned zero.
+                    title = (getattr(item, "title", "") or "").strip()
+                    authors = getattr(item, "authors", None) or getattr(
+                        item, "author", "") or ""
                     if not title:
                         continue
-                    
-                    # Generate a unique ID based on title+author
-                    unique_key = f"{title}|{author}".lower()
-                    result_id = hashlib.sha256(unique_key.encode()).hexdigest()
-                    
-                    entry: Dict = {
+                    author = (", ".join(str(a) for a in authors)
+                              if isinstance(authors, (list, tuple)) else str(authors)).strip()
+                    md5 = (getattr(item, "md5", "") or "").strip()
+                    ext = (getattr(item, "extension", "") or "").strip()
+                    result_id = hashlib.sha256(
+                        f"{title}|{author}".lower().encode()).hexdigest()[:16]
+                    results.append({
+                        "id": result_id,
                         "title": title,
                         "author": author,
-                        "cover": "",  # libgen doesn't provide covers
-                        "detail": item.get("MD5", ""),
-                        "formats": ["pdf", "epub"],  # Default formats
-                        "downloads": {},
+                        "detail": md5,
+                        "formats": [ext] if ext else [],
+                        "extension": ext,
                         "description": "",
-                        "source": "libgen_fallback",
-                        "libgen_item": item,  # Store original item for download
-                        "id": result_id,
-                    }
-                    
-                    results.append(entry)
-                    self.cache[result_id] = entry
-                    
-                except Exception as e:
-                    logger.debug("Error converting libgen result: %s", e)
-                    continue
+                        "cover": "",
+                        "source": "libgen",
+                        "libgen_mirrors": list(getattr(item, "mirrors", None) or []),
+                    })
+                except Exception:
+                    logger.debug("Skipping malformed libgen result", exc_info=True)
             
             if results:
                 debug_log.append(f"Converted {len(results)} libgen results to AA format")
@@ -2501,6 +2501,33 @@ class AnnaSource:
                 )
                 downloads_map = {}
 
+        # Anna's Archive slow_download currently serves only a partner HTML
+        # page, so its downloads map is empty for many results. libgen's
+        # get.php endpoint serves real bytes (verified: HTTP 206,
+        # application/octet-stream, Content-Disposition filename). Try that
+        # before giving up entirely.
+        md5_val = (result.get("detail") or "").strip()
+        if md5_val and LIBGEN_AVAILABLE:
+            try:
+                import gb_libgen_dl
+                mirrors = result.get("libgen_mirrors") or []
+                url = next((u for u in mirrors if "get.php" in u), None)
+                if url is None:
+                    url = f"https://libgen.li/get.php?md5={md5_val}"
+                logger.info("AA had no usable file; trying libgen get.php md5=%s",
+                            md5_val)
+                saved = gb_libgen_dl.download_from_libgen(
+                    url, dest_dir, result.get("title") or "",
+                    timeout=120, retries=3)
+                if saved:
+                    return saved
+                if debug_log is not None:
+                    debug_log.append("libgen get.php produced no real file either")
+            except Exception as exc:
+                logger.warning("libgen download fallback failed: %s", exc)
+                if debug_log is not None:
+                    debug_log.append(f"libgen download fallback error: {exc}")
+
         if not downloads_map:
             raise ValueError(
                 f"No download links available for any format (requested={fmt or 'none'})"
@@ -2607,6 +2634,32 @@ class AnnaSource:
             # Fall through to final error
         
         # All formats and links failed
+        # Anna's Archive slow_download currently serves only a partner HTML
+        # page, but libgen's get.php serves real bytes. Fall back to libgen
+        # using this result's md5 before giving up entirely.
+        md5_val = (result.get("detail") or "").strip()
+        if md5_val and LIBGEN_AVAILABLE:
+            try:
+                import gb_libgen_dl
+                mirrors = result.get("libgen_mirrors") or []
+                url = None
+                for u in mirrors:
+                    if "get.php" in u:
+                        url = u
+                        break
+                if url is None:
+                    url = f"https://libgen.li/get.php?md5={md5_val}"
+                logger.info("AA had no usable file; trying libgen get.php for md5=%s",
+                            md5_val)
+                saved = gb_libgen_dl.download_from_libgen(
+                    url, dest_dir, result.get("title") or "", timeout=120, retries=3)
+                if saved:
+                    return saved
+                debug_log.append("libgen get.php produced no real file either")
+            except Exception as exc:
+                logger.warning("libgen download fallback failed: %s", exc)
+                debug_log.append(f"libgen download fallback error: {exc}")
+
         raise ValueError(
             f"No working download links available after trying all formats for {result.get('title')}"
         )

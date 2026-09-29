@@ -3162,6 +3162,32 @@ def get_metadata_field(meta: Dict, field: str, title: str = "", default=""):
     
     return default
 
+def resolve_cover_url(cover: Optional[str]) -> str:
+    """Turn a stored cover value into a URL the browser can actually load.
+
+    Stored covers come in three shapes, only one of which was servable:
+      * "data/covers/<md5>.jpg"  -> a path relative to BASE_DIR, previously
+        emitted verbatim and therefore 404 for all 3,046 such entries
+      * "/abs/path.jpg"          -> local file, previously also 404
+      * "https://..."            -> already fine
+    Anything unrecognised returns "" so the template shows its placeholder
+    instead of a broken image.
+    """
+    if not cover or not isinstance(cover, str):
+        return ""
+    c = cover.strip()
+    if not c:
+        return ""
+    if c.startswith(("http://", "https://", "data:")):
+        return c
+    # local file reference -> serve it through the cache route by its stem
+    name = c.replace("\\", "/").rsplit("/", 1)[-1]
+    stem, dot, ext = name.rpartition(".")
+    if stem and ext.lower() in {"jpg", "jpeg", "png", "webp", "gif"}:
+        return url_for("serve_cached_cover", library_id=stem)
+    return ""
+
+
 def build_library_entries() -> List[Dict]:
     """
     Scan all configured library roots for ebook-like files and return a flat list
@@ -3214,7 +3240,7 @@ def build_library_entries() -> List[Dict]:
             author = get_metadata_field(meta, "author", title)
             rating = get_metadata_field(meta, "rating")
             genres = get_metadata_field(meta, "genres")
-            cover = meta.get("cover", "")
+            cover = resolve_cover_url(meta.get("cover", ""))
             goodreads_link = meta.get("goodreads_link")
             filetype = path.suffix.lower().lstrip(".")
             is_direct = meta.get("is_direct", False)
@@ -7025,28 +7051,30 @@ def history_delete():
 
 @app.route("/cover/<library_id>")
 def serve_cached_cover(library_id: str):
-    """
-    Serve a cached cover image for a library entry.
-    Tries multiple extensions (.jpg, .png, .webp, .gif).
-    Returns 404 if cover doesn't exist or is corrupted.
+    """Serve a cached cover image for a library entry.
+
+    The id is the cache stem (a 32-char hash). Only a plain stem is
+    accepted, which also blocks directory traversal.
+
+    Note: this route used to strip every "." from the id, which silently
+    mangled anything containing a dot and made it useless for those ids.
     """
     try:
-        # Sanitize library_id to prevent directory traversal
-        library_id = library_id.replace("/", "").replace("\\", "").replace(".", "")
-        if not library_id:
+        library_id = library_id.replace("/", "").replace("\\", "").strip()
+        if not library_id or not library_id.replace("_", "").isalnum():
             return "", 404
-
-        # Try different extensions
-        for ext in ["jpg", "png", "webp", "gif"]:
+        for ext in ("jpg", "jpeg", "png", "webp", "gif"):
             cache_path = COVERS_DIR / f"{library_id}.{ext}"
             if cache_path.exists() and cache_path.is_file():
-                return send_file(
-                    str(cache_path),
-                    mimetype=f"image/{ext}" if ext != "jpg" else "image/jpeg",
-                    as_attachment=False,
-                    download_name=None
-                )
-
+                try:
+                    if cache_path.stat().st_size == 0:
+                        continue          # empty placeholder from a failed fetch
+                except OSError:
+                    continue
+                mimetype = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+                return send_file(str(cache_path), mimetype=mimetype,
+                                 as_attachment=False, download_name=None,
+                                 conditional=True)
         return "", 404
     except Exception as e:
         logger.debug("Error serving cover for %s: %s", library_id, e)

@@ -1524,9 +1524,10 @@ from settings_manager import filter_genres, is_genre_allowed
 from goodreads_scraper import scrape_genre_lists, scrape_list_detail
 feed_progress_lock = Lock()
 metadata_progress_lock = Lock()
-cloudflare_lock = Lock()  # Serialize Cloudflare challenge resolution across threads
-library_cache_lock = Lock()
-_LIBRARY_LOOKUP_CACHE = set()  # Global cache of (title, author) tuples already in library
+# NOTE: cloudflare_lock, library_cache_lock and _LIBRARY_LOOKUP_CACHE are
+# defined once at the top of this module. This block used to redeclare them,
+# and the duplicate `_LIBRARY_LOOKUP_CACHE = set()` silently rebound the name
+# to a fresh object, discarding the original cache.
 
 feed_progress_state = {
     "run_id": None,            # uuid4 hex string for current run
@@ -9006,11 +9007,18 @@ def _run_maintenance_cycle() -> None:
             metadata_progress_state["percentage"] = 0
             metadata_progress_state["eta_seconds"] = None
     
-    # Send batch email with all metadata enrichment failures
-    if metadata_enrichment_failures and settings.notify_metadata_failures:
+    # Send batch email with all metadata enrichment failures.
+    # NOTE: the list is drained unconditionally. Previously .clear() lived
+    # only inside the notify branch, so with notifications disabled it grew
+    # without bound for the lifetime of the process.
+    if metadata_enrichment_failures:
         try:
-            user_obj = settings.users[0] if settings.users else None
-            send_batched_metadata_enrichment_failures(settings.smtp, user_obj, metadata_enrichment_failures)
+            if settings.notify_metadata_failures:
+                user_obj = settings.users[0] if settings.users else None
+                send_batched_metadata_enrichment_failures(settings.smtp, user_obj, metadata_enrichment_failures)
+            else:
+                logger.debug("Draining %d enrichment failures (notifications disabled)",
+                             len(metadata_enrichment_failures))
         except Exception as e:
             logger.exception("Failed to send enrichment batch email: %s", e)
         finally:

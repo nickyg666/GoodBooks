@@ -5962,7 +5962,52 @@ def reverse_image_search():
             "note": "ISBN decoded but no book found; try reverse image search.",
         })
 
-    # 2. FALLBACK: use the bordered cover area for reverse image search
+    # 2. FALLBACK A: Google Lens in a real browser. The previous code used
+    #    requests against google.com/searchbyimage, an endpoint Google retired
+    #    in 2019, so it could only ever return generic fallback queries.
+    #    Lens does render results -- but only in a browser, and only from a
+    #    profile Google does not bot-block.
+    if image_data:
+        try:
+            import gb_lens
+            identified = gb_lens.identify_cover(image_data, timeout=120)
+        except Exception as exc:
+            logger.warning("Google Lens identification failed: %s", exc)
+            identified = []
+
+        if identified:
+            hits = []
+            seen = set()
+            for cand in identified:
+                query = cand.get("isbn") or cand.get("title") or ""
+                if not query:
+                    continue
+                try:
+                    opts = SearchOptions(query=query, language="en", max_rows=15,
+                                         max_results=15, resolve_downloads=False)
+                    found, _ = source.search(query, options=opts)
+                except Exception as exc:
+                    logger.debug("Lens candidate search failed for %r: %s", query, exc)
+                    continue
+                for r in (found or [])[:8]:
+                    key = r.get("md5") or r.get("detail")
+                    if key and key not in seen:
+                        seen.add(key)
+                        r["scan_query"] = query
+                        r["lens"] = cand
+                        hits.append(r)
+                if hits:
+                    break
+            return jsonify({
+                "success": True,
+                "source": "google_lens",
+                "identified": identified[:3],
+                "queries": [c.get("isbn") or c.get("title") for c in identified[:3]],
+                "results": hits[:25],
+            })
+        logger.info("Google Lens returned no identification; falling back further")
+
+    # 3. LAST RESORT: upload the image and use the generic reverse-image hints
     try:
         # Upload image to free file host
         image_url = _upload_image_to_host(image_data)

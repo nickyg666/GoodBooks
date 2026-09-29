@@ -24,8 +24,14 @@ class SlumMonitorEntry:
     last_error: Optional[str] = None
     source: str = ""  # which feed this came from ("uptimeflare", "kuma", "local")
 
+    @property
     def score(self) -> float:
-        """0..1 availability score used for ranking."""
+        """0..1 availability score used for ranking.
+
+        NOTE: this MUST be a property. Without the decorator every ranking
+        compared bound method objects, so get_ranked_sources() effectively
+        returned an arbitrary order instead of score order.
+        """
         if not self.is_up:
             return 0.0
         uptime_component = max(0.0, min(1.0, self.uptime_pct / 100.0)) * 0.5
@@ -38,7 +44,7 @@ class SlumMonitorEntry:
 
     def to_dict(self) -> dict:
         d = asdict(self)
-        d["score"] = self.score()
+        d["score"] = self.score
         return d
 
 

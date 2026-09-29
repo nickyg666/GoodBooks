@@ -84,15 +84,81 @@ def launch_stealth_browser(
             browser.close()
 
 
+# Markers that indicate an interstitial bot-challenge page rather than content.
+_CHALLENGE_TITLES = ("ddos-guard", "ddos guard", "checking your browser", "just a moment",
+                     "attention required", "access denied")
+_CHALLENGE_BODY = ("checking your browser", "ddos-guard", "ddg_last_challenge",
+                   "enable javascript and cookies to continue", "captcha-delivery")
+
+
+def _is_challenge_page(title: str, body: str) -> bool:
+    """True when the fetched page is still a bot-wall and not real content."""
+    t = (title or "").lower()
+    if any(m in t for m in _CHALLENGE_TITLES):
+        return True
+    low = (body or "").lower()
+    # Only treat short bodies as blocked; a real results page is large.
+    if len(body or "") < 20000 and any(m in low for m in _CHALLENGE_BODY):
+        return True
+    return False
+
+
 def fetch_with_stealth(url: str, timeout: int = 300, browser_type: str = DEFAULT_BROWSER) -> str:
+    """Fetch a URL through a real browser, waiting out bot-wall challenges.
+
+    Anna's Archive sits behind DDoS-Guard: the first response is a JS cookie
+    challenge page, and only after the challenge completes does it redirect to
+    the real content. The previous implementation grabbed the DOM 300ms after
+    goto and returned that challenge page, which is why AA searches came back
+    empty. Poll until the challenge clears or the budget is spent.
+    """
     logger.debug("Stealth fetching url=%s with browser=%s", url, browser_type)
-    with launch_stealth_browser(browser_type, headless=False) as browser: 
-        context = browser.new_context(user_agent=WINDOWS_USER_AGENT)
+    deadline = time.time() + timeout
+    with launch_stealth_browser(browser_type, headless=False) as browser:
+        context = browser.new_context(
+            user_agent=WINDOWS_USER_AGENT,
+            locale="en-US",
+            timezone_id="America/New_York",
+            extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+        )
+        # Hide the most obvious automation tell before any script runs.
+        try:
+            context.add_init_script(
+                "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
+            )
+        except Exception:
+            logger.debug("Could not install webdriver-hiding init script")
+
         page = context.new_page()
-        
-        page.goto(url, wait_until="networkidle", timeout=timeout * 1000)
-        page.wait_for_timeout(300)
-        html = page.content()
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
+        except Exception as exc:
+            logger.warning("Initial navigation raised, continuing to poll: %s", exc)
+
+        html = ""
+        while True:
+            # The challenge destroys the execution context when it redirects;
+            # that is progress, not an error.
+            try:
+                title = page.title()
+                html = page.content()
+            except Exception:
+                time.sleep(3)
+                if time.time() >= deadline:
+                    logger.warning("Challenge wait exhausted for %s", url)
+                    return html
+                continue
+
+            if not _is_challenge_page(title, html):
+                logger.debug("Challenge cleared for %s (title=%s, %d chars)",
+                             url, title, len(html))
+                break
+
+            if time.time() >= deadline:
+                logger.warning("Timed out waiting out bot challenge for %s", url)
+                break
+            time.sleep(3)
+
         context.close()
         logger.debug("Fetched %d characters from %s", len(html), url)
         return html

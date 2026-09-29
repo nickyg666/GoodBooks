@@ -15,6 +15,13 @@ from lxml import html
 from stealth_browser import resolve_slow_download_link, solve_cloudflare_challenge
 
 try:
+    # libgen.li answers the default python-requests User-Agent with a stock
+    # nginx page (639 bytes, no results table), so the mirror silently returned
+    # zero results. This installs a browser UA for the library's requests.
+    try:
+        import libgen_ua_patch  # noqa: F401
+    except Exception:
+        logging.getLogger(__name__).debug("libgen_ua_patch not importable; libgen may return empty results")
     from libgen_api_enhanced import LibgenSearch
     LIBGEN_AVAILABLE = True
 except ImportError:
@@ -89,13 +96,15 @@ _MIRROR_HEALTH_LOCK = threading.Lock()
 MIRROR_HEALTH_CHECK_INTERVAL = 300  # Re-check mirrors every 5 minutes
 MIRROR_ERROR_THRESHOLD = 3  # Mark mirror as down after 3 consecutive errors
 
+# NOTE: annas-archive.org and .se no longer resolve in DNS (verified from two
+# hosts on 2026-09-28) and .li/.rs are parked domains that serve no search API.
+# The only live Anna's Archive frontend is annas-archive.gl, which is behind a
+# DDoS-Guard JS cookie challenge -- plain requests get a 403, so AA fetches must
+# go through stealth_browser.fetch_with_stealth, which now waits the challenge out.
 KNOWN_MIRRORS = [
     "https://libgen.li",
-    "https://libgen.lc", 
-    "https://libgen.rs",
-    "https://libgenrs.is",
-    "https://annas-archive.se",
-    "https://annas-archive.org",
+    "https://libgen.lc",
+    "https://annas-archive.gl",
 ]
 
 
@@ -162,8 +171,23 @@ def get_reachable_mirrors(mirror_list: List[str] = None) -> List[str]:
     if reachable:
         logger.info("Available mirrors: %s", ', '.join([urlparse(m).hostname for m in reachable]))
     else:
-        logger.warning("No reachable mirrors found! Will attempt all mirrors.")
-        return mirror_list  # Fall back to all if none reachable
+        logger.warning("No reachable mirrors found! Refetching live set from SLUM.")
+        # Project rule: SLUM is the canonical source of which mirrors are live
+        # at request time. If every hardcoded mirror is dead, refetch rather
+        # than burning time on attempts that cannot succeed.
+        try:
+            import slum_canonical
+            live = slum_canonical.refresh_now() or []
+            if live:
+                logger.info("SLUM supplied %d live mirrors: %s",
+                            len(live), ", ".join(live[:6]))
+                return live
+            logger.warning("SLUM reported no live mirrors either.")
+        except Exception as exc:
+            logger.warning("SLUM refetch failed: %s", exc)
+
+        logger.warning("Falling back to the static mirror list as a last resort.")
+        return mirror_list  # Last resort: attempt all
     
     return reachable
 
@@ -453,7 +477,7 @@ class AnnaSource:
     def __init__(
         self,
         timeout: int = 300,
-        base_url: str = "https://annas-archive.org",
+        base_url: str = "https://annas-archive.gl",
         max_results: int = 10,
         max_concurrent_downloads: int = 2,
         enable_zlib: Optional[bool] = None,
@@ -840,14 +864,28 @@ class AnnaSource:
                 )
                 return None
 
+            # NOTE: solve_cloudflare_challenge() is a *download-link resolver*
+            # (it returns a momot.rs href, not page HTML), so using it here
+            # yielded 1-byte bodies and empty searches. For page fetches we need
+            # fetch_with_stealth(), which now polls until the bot-wall clears.
+            fetch_with_stealth = None
+            try:
+                from stealth_browser import fetch_with_stealth
+            except Exception as exc:
+                logger.warning(
+                    "stealth_browser.fetch_with_stealth unavailable (%s)", exc
+                )
+            if fetch_with_stealth is None:
+                return None
+
             if self.cloudflare_lock:
                 with self.cloudflare_lock:
-                    content = solve_cloudflare_challenge(
-                        href, timeout=self.timeout * 2, wait_seconds=15
+                    content = fetch_with_stealth(
+                        href, timeout=min(self.timeout, 120)
                     )
             else:
-                content = solve_cloudflare_challenge(
-                    href, timeout=self.timeout * 2, wait_seconds=15
+                content = fetch_with_stealth(
+                    href, timeout=min(self.timeout, 120)
                 )
             if not content:
                 logger.warning(
@@ -1233,7 +1271,7 @@ class AnnaSource:
         
         try:
             logger.info("Trying libgen fallback search for query=%r", query)
-            ls = LibgenSearch(mirror='libgen.li')
+            ls = LibgenSearch(mirror='li')  # bare alias: the lib adds the libgen. prefix
             
             # Search libgen using correct API signature
             results_libgen = ls.search_title(query)
@@ -1805,6 +1843,13 @@ class AnnaSource:
                     "attention required",
                     "checking your browser",
                     "verify you are human",
+                    # Anna's Archive (annas-archive.gl) is fronted by DDoS-Guard,
+                    # which serves a 403 whose body does NOT contain any of the
+                    # Cloudflare phrases above. Without these markers the stealth
+                    # fallback never fired and every AA search returned nothing.
+                    "ddos-guard",
+                    "ddg_last_challenge",
+                    "__ddg",
                 ]
                 if any(indicator in lower_text for indicator in cloudflare_indicators):
                     return True
@@ -2749,12 +2794,12 @@ class AnnaSource:
                 libgen_mirror = reachable_mirrors[0]
             
             from urllib.parse import urlparse
-            mirror_domain = urlparse(libgen_mirror).netloc or "libgen.li"
+            mirror_domain = (urlparse(libgen_mirror).netloc or "libgen.li").removeprefix("libgen.")
             
             logger.debug("Using LibGen mirror: %s", mirror_domain)
             
             # Search LibGen using the first reachable mirror
-            ls = LibgenSearch(mirror=mirror_domain)
+            ls = LibgenSearch(mirror=mirror_domain)  # bare alias
             results_libgen = ls.search_title(query)
             
             if not results_libgen:

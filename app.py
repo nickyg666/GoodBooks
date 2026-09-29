@@ -5912,7 +5912,57 @@ def reverse_image_search():
     
     # Use free reverse image search approach:
     # 1. Upload image to free file host (x0.at, 0x0.st, catbox.moe)
-    # 2. Use google-reverse-image-api or similar to search by image URL
+    # 1. CANONICAL FAST PATH: try to read the ISBN/EAN-13 barcode locally.
+    #    A clean barcode hit gives the exact ISBN with no external service,
+    #    no upload of the user's photo, and no guessing. This is the primary
+    #    route for scan+steal+send; reverse image search is the fallback.
+    isbn = None
+    if image_data:
+        try:
+            from io import BytesIO
+            from PIL import Image
+            import gb_isbn
+            img = Image.open(BytesIO(image_data))
+            img.load()
+            isbn = gb_isbn.decode_isbn(img)
+        except Exception as exc:
+            logger.info("Local ISBN/barcode decode failed: %s", exc)
+            isbn = None
+
+    if isbn:
+        logger.info("Barcode decoded locally, searching by ISBN %s", isbn)
+        try:
+            search_options = SearchOptions(
+                query=isbn,
+                language="en",
+                max_rows=25,
+                max_results=25,
+                resolve_downloads=False,
+            )
+            isbn_results, _ = source.search(isbn, options=search_options)
+        except Exception as exc:
+            logger.warning("ISBN search failed: %s", exc)
+            isbn_results = []
+
+        if isbn_results:
+            return jsonify({
+                "success": True,
+                "source": "isbn_barcode",
+                "isbn": isbn,
+                "queries": [isbn],
+                "results": isbn_results[:25],
+            })
+        logger.info("ISBN %s yielded no results; falling back to image search", isbn)
+        return jsonify({
+            "success": True,
+            "source": "isbn_barcode",
+            "isbn": isbn,
+            "queries": [isbn],
+            "results": [],
+            "note": "ISBN decoded but no book found; try reverse image search.",
+        })
+
+    # 2. FALLBACK: use the bordered cover area for reverse image search
     try:
         # Upload image to free file host
         image_url = _upload_image_to_host(image_data)
@@ -7377,6 +7427,42 @@ def _parse_single_feed(user: UserSettings, feed: FeedSettings) -> Tuple[Optional
 
 
 
+def _refresh_mirrors_from_slum() -> None:
+    """Refetch the live mirror set from SLUM (canonical source of truth).
+
+    Called at startup and before every feed run. If SLUM cannot be reached the
+    app keeps its static mirror list rather than failing the run.
+    """
+    try:
+        import slum_canonical
+    except Exception as exc:
+        logger.debug("slum_canonical unavailable: %s", exc)
+        return
+    try:
+        live = slum_canonical.refresh_now() or []
+        if live:
+            import search_engine as _se
+            picked = [
+                u for u in live
+                if any(k in u for k in ("annas-archive", "welib", "libgen", "1lib"))
+            ]
+            if picked:
+                _se.KNOWN_MIRRORS[:] = picked
+                # Drop cached health data so the new set gets re-probed.
+                try:
+                    _se._MIRROR_HEALTH.clear()
+                except Exception:
+                    pass
+                logger.info("SLUM mirror refresh: %d live mirrors now active: %s",
+                            len(picked), picked[:6])
+            else:
+                logger.warning("SLUM returned mirrors but none matched known sources")
+        else:
+            logger.warning("SLUM returned no live mirrors; keeping static list")
+    except Exception as exc:
+        logger.warning("SLUM mirror refresh failed: %s", exc)
+
+
 def _run_feeds_background():
     """
     Background worker function that actually processes feeds.
@@ -7384,6 +7470,10 @@ def _run_feeds_background():
     """
     import time
     import uuid
+
+    # Refresh mirrors from SLUM before touching the network: if every mirror
+    # is dead the whole run would otherwise waste time on doomed attempts.
+    _refresh_mirrors_from_slum()
 
     # Initialize progress state (same as run_feeds() does)
     run_id = uuid.uuid4().hex
@@ -8991,6 +9081,13 @@ set_download_concurrency(
     getattr(settings_manager.settings, "max_concurrent_downloads", 2)
 )
 
+
+# Refresh the live mirror set from SLUM at startup so a dead static list
+# never gets used.
+try:
+    _refresh_mirrors_from_slum()
+except Exception:
+    pass
 
 if __name__ == "__main__":
     try:

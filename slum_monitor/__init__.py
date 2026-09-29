@@ -109,7 +109,7 @@ if __name__ == "__main__":
     )
     entries = mon.refresh(force=True)
     print(f"Loaded {len(entries)} monitors from {mon._cache.last_source!r}")
-    for e in sorted(entries, key=lambda x: -x.score())[:15]:
+    for e in sorted(entries, key=lambda x: -x.score)[:15]:
         d = e.to_dict()
         print(
             f"  {d['name']:30} up={d['is_up']!s:5} "

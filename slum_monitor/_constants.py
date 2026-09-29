@@ -75,6 +75,13 @@ LIBGEN_SHORT_ALIASES: Dict[str, str] = {
 # for each public monitor.  Hidden monitors (e.g. annas_archive_pm,
 # annas_archive_in) intentionally have no URL.
 MONITOR_ID_TO_URL: Dict[str, str] = {
+    # SLUM reports Anna's Archive as the numbered monitors annas_archive_1/2/3.
+    # Those IDs were absent from this map, so every AA entry came back with an
+    # empty URL and could never be selected. .org and .se no longer resolve in
+    # DNS; .gl is the live frontend (behind a DDoS-Guard challenge).
+    "annas_archive_1":            "https://annas-archive.gl",
+    "annas_archive_2":            "https://annas-archive.li",
+    "annas_archive_3":            "https://annas-archive.in",
     "annas_archive_li":           "https://annas-archive.li",
     "annas_archive_gl":           "https://annas-archive.gl",
     "annas_archive_in":           "",  # hidden

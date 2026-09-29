@@ -265,7 +265,7 @@ class SlumMonitor:
             ]
         if only_up:
             monitors = [m for m in monitors if m.is_up]
-        return sorted(monitors, key=lambda m: m.score(), reverse=True)
+        return sorted(monitors, key=lambda m: m.score, reverse=True)
 
     def rank_urls(
         self,
@@ -306,6 +306,6 @@ class SlumMonitor:
                 "down_count": sum(1 for m in monitors if not m.is_up),
                 "monitors": [
                     m.to_dict()
-                    for m in sorted(monitors, key=lambda x: x.score(), reverse=True)
+                    for m in sorted(monitors, key=lambda x: x.score, reverse=True)
                 ],
             }

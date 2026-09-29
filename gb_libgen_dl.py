@@ -110,6 +110,10 @@ def pick_download_urls(book, root: str = "https://libgen.li") -> list:
         if "get.php" not in u and "/book/" in u:
             ordered.append(u)
     for u in urls:
+        # ads.php is a known advertising page that always answers 200 HTML, so
+        # it is never worth a request: leave it out entirely.
+        if "ads.php" in u:
+            continue
         if "get.php" not in u and "/book/" not in u:
             ordered.append(u)
 

@@ -554,26 +554,51 @@ def test_libgen_format_prefers_magic_over_extension():
 
 
 @pytest.mark.libgen
-def test_pick_download_url_ignores_ads_page():
-    """Book.mirrors can contain only an ads.php page, which returns a 200
-    HTML document. The get.php URL must be built from the md5 instead."""
+def test_pick_download_url_prefers_getphp_over_ads():
+    """Book.mirrors often contains only an ads.php page, a 200 HTML document.
 
-    class FakeBook:
+    A get.php URL must be present and ranked ahead of the ads page, and the
+    ads page must never be the only candidate offered.
+    """
+    from gb_libgen_dl import pick_download_url, pick_download_urls
+
+    class AdsOnly:
         md5 = "abc123"
         mirrors = ["https://libgen.li/ads.php?md5=abc123"]
 
-    from gb_libgen_dl import pick_download_url
-    url = pick_download_url(FakeBook())
-    assert "get.php" in url, f"picked an ads page: {url}"
-    assert "abc123" in url
+    urls = pick_download_urls(AdsOnly())
+    assert any("get.php" in u for u in urls), \
+        f"no get.php candidate generated: {urls}"
+    first_getphp = next(u for u in urls if "get.php" in u)
+    ads_idx = next((i for i, u in enumerate(urls) if "ads.php" in u), None)
+    getphp_idx = urls.index(first_getphp)
+    if ads_idx is not None:
+        assert getphp_idx < ads_idx, \
+            f"get.php must be tried before ads.php: {urls}"
+    assert any("abc123" in u for u in urls), "md5 missing from candidates"
 
-    class FakeBook2:
+    class WithGetPhp:
         md5 = "def456"
         mirrors = ["https://libgen.li/ads.php?md5=def456",
                    "https://libgen.li/get.php?md5=def456"]
 
-    url2 = pick_download_url(FakeBook2())
-    assert "get.php" in url2, f"should prefer the get.php entry: {url2}"
+    urls2 = pick_download_urls(WithGetPhp())
+    assert urls2[0].endswith("get.php?md5=def456"), \
+        f"the real get.php entry should rank first: {urls2}"
+    assert pick_download_url(WithGetPhp()) == urls2[0]
+
+
+@pytest.mark.libgen
+def test_pick_download_urls_dedupes():
+    from gb_libgen_dl import pick_download_urls
+
+    class B:
+        md5 = "aaa"
+        mirrors = ["https://libgen.li/get.php?md5=aaa",
+                   "https://libgen.li/get.php?md5=aaa"]
+
+    urls = pick_download_urls(B())
+    assert len(urls) == len(set(urls)), f"duplicates present: {urls}"
 
 
 @pytest.mark.libgen

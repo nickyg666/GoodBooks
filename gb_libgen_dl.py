@@ -203,15 +203,37 @@ def download_from_libgen(get_url, dest_dir: Path, title: str = "",
                 written = 0
                 reject = False
                 try:
-                    with open(tmp, "wb") as fh:
+                    # Resume a partial transfer: these mirrors drop the
+                    # connection part way through large files (observed at
+                    # ~15MB of a 30MB transfer), and at 27-57 KiB/s a
+                    # restart from zero means a large book can never finish.
+                    have = tmp.stat().st_size if tmp.exists() else 0
+                    if have:
+                        r.close()
+                        r = requests.get(
+                            url,
+                            headers={"User-Agent": BROWSER_UA,
+                                     "Range": "bytes=%d-" % have},
+                            timeout=timeout, stream=True)
+                        if r.status_code not in (206, 416):
+                            r.close()          # mirror ignored Range
+                            have = 0
+                            r = requests.get(url,
+                                             headers={"User-Agent": BROWSER_UA},
+                                             timeout=timeout, stream=True)
+                        mode = "ab"
+                    else:
+                        mode = "wb"
+                    with open(tmp, mode) as fh:
                         for chunk in r.iter_content(64 * 1024):
                             if not chunk:
                                 continue
-                            if len(head) < 4096:
+                            if not have and len(head) < 4096:
                                 head += chunk[: 4096 - len(head)]
-                            if looks_like_html(head) and written == 0:
+                            if not have and looks_like_html(head) and written == 0:
                                 logger.info(
-                                    "libgen returned HTML for %s; not a file", url)
+                                    "libgen returned HTML for %s; not a file",
+                                    url)
                                 reject = True
                                 break
                             fh.write(chunk)

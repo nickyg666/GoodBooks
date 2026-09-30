@@ -27,6 +27,28 @@ from typing import Optional
 BASE_DIR = Path(__file__).parent
 
 
+# Book content lives on disk so it can be edited before generation.
+GUIDE_SOURCE = BASE_DIR / "data" / "goodbooks_guide.md"
+
+
+def load_guide_sections():
+    """Parse the on-disk guide: each "# " heading becomes a chapter."""
+    if not GUIDE_SOURCE.exists():
+        return []
+    sections, title, body = [], None, []
+    for raw in GUIDE_SOURCE.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.rstrip()
+        if line.startswith("# ") and not line.startswith("##"):
+            if title:
+                sections.append((title, body))
+            title, body = line[2:].strip(), []
+        elif title is not None and line.strip() and not line.startswith("<!--"):
+            body.append(line)
+    if title:
+        sections.append((title, body))
+    return sections
+
+
 def get_local_ip() -> str:
     """Get local IP address for in-home links."""
     import socket
@@ -54,8 +76,15 @@ def get_server_port() -> int:
 
 
 # Define the two URLs
-HOME_URL = f"http://192.168.0.9:5000"
-AWAY_URL = "https://books.a1e.lol/?token=foDcuQIAF5_yVW1ngwAKgeQ-TQYcESvE7XQFDhnaiCw"
+# Navigation URLs come from config, never hardcoded: the previous values
+# baked a LAN address and a live auth token into a file that gets shared.
+try:
+    from gb_epub_urls import get_home_url, get_away_url
+    HOME_URL = get_home_url()
+    AWAY_URL = get_away_url()
+except Exception:  # keep the build working regardless
+    HOME_URL = ""
+    AWAY_URL = ""
 
 # Kindle-optimized CSS (grayscale friendly, 6" diagonal = 600px width)
 KINDLE_CSS = """
@@ -110,7 +139,7 @@ body {
   background: #f5f5f5;
   color: #000;
   text-decoration: none;
-  font-size: 0.85em;
+  font-size: 8pt;
   font-weight: bold;
   border-radius: 2px;
   cursor: pointer;
@@ -260,7 +289,7 @@ code {
   border-top: 1px solid #ccc;
   margin-top: 1.5em;
   padding-top: 0.5em;
-  font-size: 0.85em;
+  font-size: 8pt;
   text-align: center;
   color: #666;
   page-break-inside: avoid;
@@ -268,6 +297,24 @@ code {
 """
 
 # HTML for cover page with navigation
+def _cover_nav_links() -> str:
+    """Nav links for the cover; omitted when a URL is not configured."""
+    out = []
+    if HOME_URL:
+        out.append('<a href="%s" class="nav-button">\U0001F3E0 Home Network</a>' % HOME_URL)
+    if AWAY_URL:
+        out.append('<a href="%s" class="nav-button">\U0001F310 Away</a>' % AWAY_URL)
+    return "".join(out)
+
+
+def create_page_footer(title: str) -> str:
+    """Footer navigation, mirroring the header on every page."""
+    links = _cover_nav_links()
+    if not links:
+        return ""
+    return '<div class="page-footer"><div class="nav-links">' + links + '</div></div>'
+
+
 COVER_HTML = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
@@ -284,14 +331,12 @@ COVER_HTML = f"""<?xml version="1.0" encoding="UTF-8"?>
     <div class="page-header" style="border: none; margin-top: 2em; padding-top: 2em; border-top: 1px solid #333;">
         <div>Access GoodBooks:</div>
     </div>
-    <div class="nav-links" style="justify-content: center; margin-top: 1em;">
-        <a href="{HOME_URL}" class="nav-button">🏠 Home Network</a>
-        <a href="{AWAY_URL}" class="nav-button">🌐 Away</a>
-    </div>
+    <div class="nav-links" style="justify-content: center; margin-top: 1em;">{_cover_nav_links()}</div>
     <p style="margin-top: 2em; font-size: 0.9em; color: #666;">
         Find books, manage your library, send to Kindle
     </p>
 </div>
+{create_page_footer('Cover')}
 </body>
 </html>"""
 

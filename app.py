@@ -62,7 +62,58 @@ _global_history_manager = None
 from goodreads_scraper import scrape_genre_lists, scrape_list_detail
 feed_progress_lock = Lock()
 metadata_progress_lock = Lock()
-cloudflare_lock = Lock()  # Serialize Cloudflare challenge resolution across threads
+class _PriorityLock:
+    """A mutex that lets interactive work jump ahead of background work.
+
+    Anna's Archive fetches must not run concurrently (each one may need the
+    stealth browser to clear a bot challenge), so they serialise. But a feed
+    run of 70+ books used to hold the lock across all of them, which made an
+    interactive /search hang for the whole run. Now background holders
+    release the lock between books and re-acquire at the back of the queue,
+    while interactive holders take priority.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._bg_waiting = 0
+        self._cond = threading.Condition(self._lock)
+
+    def _acquire(self, interactive: bool) -> None:
+        with self._cond:
+            if not interactive:
+                self._bg_waiting += 1
+            try:
+                while True:
+                    if interactive or self._bg_waiting == 0:
+                        break
+                    self._cond.wait(0.25)
+            finally:
+                if not interactive:
+                    self._bg_waiting -= 1
+
+    def _release(self) -> None:
+        with self._cond:
+            self._cond.notify_all()
+
+    def acquire(self, interactive: bool = True, blocking: bool = True):
+        if not blocking:
+            return threading.Lock().acquire(False)
+        self._acquire(interactive)
+        return True
+
+    def release(self) -> None:
+        self._release()
+
+    def __enter__(self, interactive: bool = True):
+        self._acquire(interactive)
+        return self
+
+    def __exit__(self, *exc):
+        self._release()
+        return False
+
+
+cloudflare_lock = _PriorityLock()  # Serialize Cloudflare challenge resolution across threads
 library_cache_lock = Lock()
 search_cache_lock = Lock()  # Serialize search cache reads/writes across threads
 _LIBRARY_LOOKUP_CACHE = set()  # Global cache of (title, author) tuples already in library
@@ -3086,6 +3137,7 @@ def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Option
             and "/" not in e.get("relpath", "").lstrip((folder_prefix + "/") if folder_prefix else "")  # Direct children only
         ]
 
+        _uncached_cover_urls = 0
         # Get up to 12 covers for the composite
         cover_entries = folder_books[:12]
 
@@ -3148,8 +3200,11 @@ def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Option
                     # Skip HTTP URLs - don't download during folder composite generation
                     # They should have been cached to local files already
                     if not cover_img and (cover_data.startswith("http://") or cover_data.startswith("https://")):
-                        # These should have been cached - log if not
-                        logger.debug(f"Skipping uncached URL for folder composite: {cover_data[:60]}...")
+                        # These should have been cached already. Count them
+                        # and report once per composite rather than logging a
+                        # line per book per folder per page load, which grew
+                        # debug.log to tens of MB.
+                        _uncached_cover_urls += 1
                         continue
                 
                 if not cover_img:
@@ -3165,6 +3220,12 @@ def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Option
             except Exception as e:
                 logger.debug(f"Could not add cover to folder composite: {e}")
                 continue
+
+        if _uncached_cover_urls:
+            logger.info(
+                "Folder composite for %r: %d cover(s) were remote URLs and were "
+                "not cached locally, so they were skipped",
+                folder_prefix, _uncached_cover_urls)
 
         # Convert to base64 data URL
         buffer = BytesIO()

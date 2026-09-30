@@ -546,13 +546,17 @@ def _libgen_download_by_title(title: str, fmt: str, dest_dir: Path,
     """
     import libgen_ua_patch  # noqa: F401  (browser UA for the mirrors)
     from libgen_api_enhanced import LibgenSearch
+    import gb_libgen_dl
     import gb_match
 
     if not title or not title.strip():
         return None
     ls = LibgenSearch(mirror="li")
     try:
-        hits = ls.search_title(title)[:8]
+        # Scan more than the first page: libgen's ordering puts unrelated
+        # titles ahead of the exact match, and truncating to 8 meant a book it
+        # plainly had ("Dear Debbie", epub) was never considered.
+        hits = ls.search_title(title)[:40]
     except Exception as exc:
         logger.debug("libgen title search failed for %r: %s", title, exc)
         return None
@@ -560,21 +564,39 @@ def _libgen_download_by_title(title: str, fmt: str, dest_dir: Path,
         return None
 
     want = (fmt or "").lower()
+    matched = []
     for h in hits:
         h_title = getattr(h, "title", "") or ""
         ok, _ = gb_match.is_match(title, h_title, author,
                                   getattr(h, "author", "") or "")
         if not ok:
             continue
-        ext = (getattr(h, "extension", "") or "").lower()
-        if want and ext and ext != want:
-            continue
+        matched.append(h)
+
+    if not matched:
+        logger.info("libgen had results for %r but none matched the title",
+                    title)
+        return None
+
+    # Prefer the requested format, but fall back to any match: demanding an
+    # exact extension discarded a perfectly good epub because the caller
+    # happened to ask for azw3.
+    ordered = [h for h in matched
+               if (getattr(h, "extension", "") or "").lower() == want]
+    if want and len(ordered) < len(matched):
+        logger.info("libgen: %d match(es) for %r, none in the requested %s "
+                    "-- using what is available", len(matched) - len(ordered),
+                    title, want)
+    ordered += [h for h in matched if h not in ordered]
+
+    for h in ordered:
         md5 = getattr(h, "md5", None)
         if not md5:
             continue
         urls = gb_mirrors_live.libgen_get_urls(md5)
         saved = gb_libgen_dl.download_from_libgen(
-            urls, dest_dir, h_title or title, timeout=120, retries=2)
+            urls, dest_dir, getattr(h, "title", "") or title,
+            timeout=120, retries=2)
         if saved:
             logger.info("libgen title search found %r as %s", title, saved.name)
             return saved

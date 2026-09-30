@@ -1383,7 +1383,9 @@ class AnnaSource:
             
             # Direct AA fetch - no ranking overhead
             from urllib.parse import quote
-            url = f"https://annas-archive.org/search?q={quote(query)}&display=table&lang=en&page=1&index=&sort="
+            # use the configured mirror, not a hardcoded dead host
+            url = (f"{self.base_url.rstrip('/')}/search?q={quote(query)}"
+                   f"&display=table&lang=en&page=1&index=&sort=")
             logger.debug("Manual search URL: %s", url)
             
             resp = self._safe_get(url)

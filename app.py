@@ -205,7 +205,7 @@ _cfg_downloads = getattr(settings_manager.settings, "max_concurrent_downloads", 
 
 # Anna's Archive source with per-process download semaphore
 source = AnnaSource(
-    base_url="https://annas-archive.se",  # Use .se mirror (updated Jan 2026 - original .org domain is down)
+    base_url="https://annas-archive.gl",  # .org and .se are both dead; .gl is the live frontend
     timeout=settings_manager.settings.request_timeout,
     max_concurrent_downloads=_cfg_downloads,
     cloudflare_lock=cloudflare_lock,

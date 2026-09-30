@@ -2008,6 +2008,12 @@ class AnnaSource:
                     resolved = None
                 
                 if not resolved:
+                    aa_failures += 1
+                    if aa_failures >= AA_FAIL_BUDGET:
+                        logger.info(
+                            "AA produced no usable file after %d distinct mirror(s) "
+                            "for md5=%s; falling back to LibGen", aa_failures, md5)
+                        break
                     continue
                 
                 download_url, fmt = resolved
@@ -2052,6 +2058,12 @@ class AnnaSource:
                 try:
                     resolved = self._resolve_download_link(ext_href, md5=md5)
                     if not resolved:
+                        aa_failures += 1
+                        if aa_failures >= AA_FAIL_BUDGET:
+                            logger.info(
+                                "AA produced no usable file after %d distinct mirror(s) "
+                                "for md5=%s; falling back to LibGen", aa_failures, md5)
+                            break
                         continue
                     download_url, fmt = resolved
                     fmt = (fmt or "").strip().lower() or "unknown"

@@ -1,4 +1,11 @@
 :root {
+    /* previously referenced but never defined; without these the
+       properties silently rendered as nothing */
+    --accent: #2f6fb3;
+    --hover: #1f5a94;
+}
+
+:root {
     --bg: #ffffff;        /* pure white background */
     --panel: #f8f9fa;     /* light neutral panels */
     --text: #1a1a1a;      /* near-black text for crisp readability */

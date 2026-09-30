@@ -406,3 +406,12 @@ a {
         max-height: calc(100vh - 2rem);
     }
 }
+
+/* Same alias set as desktop.css, so rules port between the two sheets. */
+:root {
+    --primary: var(--primary-color, #2f6fb3);
+    --bg-light: var(--bg-color, #f5f6f8);
+    --border: var(--border-color, #d8d8d8);
+    --text-muted: var(--muted, #555);
+    --card-bg: var(--bg-color, #ffffff);
+}

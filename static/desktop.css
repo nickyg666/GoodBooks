@@ -830,3 +830,15 @@ tbody tr:hover {
         max-height: calc(100vh - 2rem);
     }
 }
+
+/* ------------------------------------------------------------------
+   Variable aliases: desktop.css and kindle.css are the two loaded base
+   sheets but used different names for the same concepts, so a rule written
+   for one did not apply to the other. Either spelling now resolves.
+   ------------------------------------------------------------------ */
+:root {
+    --primary-color: var(--primary, #2f6fb3);
+    --bg-color: var(--bg-light, #f5f6f8);
+    --border-color: var(--border, #d8d8d8);
+    --muted: var(--text-muted, #6b7280);
+}

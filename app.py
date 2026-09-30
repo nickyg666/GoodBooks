@@ -5639,6 +5639,7 @@ def search_stream():
     for progressive loading in the UI.
     """
     query = request.args.get("q", "").strip()
+
     user_id = request.args.get("user", "").strip()
     selected_language = request.args.get("lang", "en").strip() or "en"
     selected_ext = request.args.getlist("ext")
@@ -5688,6 +5689,30 @@ def search():
     """
     # Basic inputs
     query = request.args.get("q", "").strip()
+
+    # ---- fast path: render now, stream results in -------------------------
+    # A query used to block this page on a live Anna's Archive fetch. AA is
+    # behind a DDoS-Guard JS challenge that only a real browser can clear, so
+    # the page never painted (measured: 0.03s with no query, >100s with one).
+    # /api/search-stream already exists for exactly this, so render the shell
+    # immediately and let the browser consume the stream.
+    if query and request.args.get("async") != "0":
+        return render_template(
+            "index.html",
+            settings=settings_manager.settings,
+            title="Search",
+            query=query,
+            user_id=request.args.get("user", "").strip(),
+            users=settings_manager.settings.users,
+            selected_language="en",
+            selected_ext=request.args.getlist("ext"),
+            autodownload=request.args.get("autodownload", "0") in {"1", "on", "true"},
+            autosend=False,
+            available_ext=[],
+            results=[],
+            debug_log=[],
+            async_results=True,
+        )
     user_id = request.args.get("user", "").strip()
     selected_language = request.args.get("lang", "en").strip() or "en"
     selected_ext = request.args.getlist("ext")

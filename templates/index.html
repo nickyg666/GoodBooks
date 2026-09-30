@@ -349,4 +349,97 @@ async function searchByImage() {
 }
 </script>
 
+
+{% if async_results %}
+<!-- GOODBOOKS_ASYNC_SEARCH: the page was served immediately and the results
+     stream in from /api/search-stream, because a live Anna's Archive fetch
+     has to clear a bot challenge in a real browser and can take a minute. -->
+<div id="async-status" class="muted" style="margin: 0.75rem 0;">
+  Searching Anna's Archive&hellip;
+</div>
+<div id="async-results"></div>
+<script>
+(function () {
+  var q  = {{ query|tojson }};
+  var el = document.getElementById('async-results');
+  var st = document.getElementById('async-status');
+  if (!q || !el) return;
+
+  function params() {
+    var u = new URL(window.location);
+    u.searchParams.set('q', q);
+    // the page itself must not re-enter the async path
+    u.searchParams.set('async', '0');
+    return u.toString();
+  }
+
+  var src = new EventSource('/api/search-stream?' + new URLSearchParams({
+    q: q,
+    lang: (document.querySelector('select[name=lang]') || {}).value || 'en',
+    user: (document.querySelector('select[name=user]') || {}).value || ''
+  }).toString());
+
+  var count = 0;
+  function addRow(r) {
+    var d = document.createElement('div');
+    d.className = 'card';
+    d.style.marginBottom = '0.5rem';
+
+    var t = document.createElement('div');
+    t.textContent = r.title || '(untitled)';
+    t.style.fontWeight = '600';
+    d.appendChild(t);
+
+    if (r.author) {
+      var a = document.createElement('div');
+      a.className = 'muted';
+      a.textContent = r.author;
+      a.style.fontSize = '0.9em';
+      d.appendChild(a);
+    }
+
+    var meta = [];
+    if (r.formats && r.formats.length) meta.push(r.formats.join(', '));
+    if (r.detail) meta.push(String(r.detail).slice(0, 12));
+    if (meta.length) {
+      var m = document.createElement('div');
+      m.className = 'muted';
+      m.textContent = meta.join('  \u00b7  ');
+      m.style.fontSize = '0.8em';
+      d.appendChild(m);
+    }
+    el.appendChild(d);
+  }
+
+  src.onmessage = function (ev) {
+    var data;
+    try { data = JSON.parse(ev.data); } catch (e) { return; }
+
+    if (data.error) {
+      if (st) st.textContent = 'Search failed: ' + data.error;
+      src.close();
+      return;
+    }
+    // The endpoint sends ONE result object per event.
+    if (data && data.title) {
+      addRow(data);
+      count += 1;
+      if (st) st.textContent = 'Found ' + count + ' result' + (count === 1 ? '' : 's') + '\u2026';
+      return;
+    }
+    if (data && (data.done === true || data.done === 'true')) {
+      if (st) st.textContent = count
+        ? ('Found ' + count + ' result' + (count === 1 ? '' : 's'))
+        : 'No results found.';
+      src.close();
+    }
+  };
+  src.onerror = function () {
+    if (st) st.textContent = 'Search stream ended.';
+    src.close();
+  };
+})();
+</script>
+{% endif %}
+
 {% endblock %}

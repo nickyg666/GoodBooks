@@ -1,62 +1,174 @@
 # GoodBooks
 
-GoodReads to-read (RSS) -> Kindle automated delivery
+Goodreads to-read shelves → Kindle, automatically.
 
-[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+> **Status note (2026-09-29).** This file previously described a
+> `src/goodbooks/` package layout. That tree was a near-duplicate of the
+> root modules, was imported by nothing, and had drifted badly — it was the
+> source of two separate `IndentationError`s. It has been archived. The
+> authoritative layout is flat modules at the repository root, plus the
+> `gb_*` helpers described below.
+
+## What it does
+
+Point it at a Goodreads shelf RSS feed and a Kindle address. It polls the
+shelf, searches for each new book, fetches a copy, and emails it to your
+Kindle. Existing books are never re-sent.
 
 ## Features
 
-- **Feed Aggregation**: RSS, Atom, HTML, and Goodreads lists with smart filtering by genre/author/rating
-- **Search & Download**: Anna's Archive + LibGen fallback with Cloudflare bypass via Playwright stealth browser
-- **Ebook Processing**: EPUB/MOBI/AZW3/PDF support with Calibre conversion and metadata enrichment
-- **Kindle Delivery**: Direct email delivery with per-user SMTP configuration and auto-send on download
-- **Web Interface**: Modern responsive UI with dark mode, E-ink optimized CSS, library viewer, and history tracking
-- **Multi-user**: Multiple users with individual feeds, Kindle addresses, and genre preferences
-- **Background Processing**: Parallel metadata enrichment, cover caching, and automated feed updates
+- **Feed aggregation** — RSS/Atom/HTML and Goodreads lists, with genre,
+  author and per-feed auto-send toggles.
+- **Multi-source search** — Anna's Archive plus a LibGen fallback, with
+  mirrors resolved live rather than hardcoded (see *Mirrors* below).
+- **Two download pipelines** — automatic (feeds poll themselves) and manual
+  (search the UI, pick a result, send). Both share the same resolver.
+- **Scan and steal** — photograph a book with a phone, read the EAN-13
+  barcode locally for an exact ISBN, falling back to Google Lens on the
+  cover. Works on Android and iOS (`capture="environment"`).
+- **Ebook processing** — EPUB/MOBI/AZW3/PDF/CBZ/RAR handling, format
+  sniffing from magic bytes, and conversion for Kindle delivery.
+- **Kindle delivery** — per-user SMTP, with a sent ledger so nothing is
+  delivered twice.
+- **Web UI** — a cover-forward "newsstand" library view, a folder view, a
+  newsstand search that streams results, dark/sepia/high-contrast/matrix/
+  cyberpunk/synthwave/typewriter/solarized themes, and a Kindle e-ink
+  stylesheet.
+- **Strict result matching** — a search result is only used when it really
+  is the book you asked for. See *Matching* below.
 
-## Quick Install
+## Requirements
+
+- Python 3.9+
+- xvfb (the stealth browser needs a display)
+- calibre (optional, for format conversion)
+
+## Install
 
 ```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install from source
-pip install -e .
-
-# Run
-goodbooks
-# or
-python -m goodbooks
+cd /usr/local/bin/GoodBooks
+chmod +x installer.sh
+./installer.sh        # not sudo: it elevates only what it needs
 ```
 
-## Docker
+Manual alternative:
 
 ```bash
-docker run -d -p 5000:5000 -v ./data:/app/data ghcr.io/nickyg666/goodbooks:latest
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python3 app.py       # or: systemctl start GoodBooks
 ```
+
+The app listens on `data/settings.json → server_port` (default 5000).
 
 ## Configuration
 
-Set environment variables:
-- `GOODBOOKS_PORT` - Server port (default: 5000)
-- `GOODBOOKS_HOST` - Server host (default: 0.0.0.0)
+`data/settings.json` is created on first run and edited through the
+**Settings** page. Notable keys:
 
-First-run setup creates `data/settings.json` for SMTP and user configuration.
+| key | meaning |
+|---|---|
+| `server_port` | HTTP port |
+| `max_concurrent_downloads` | parallel downloads, 1–16 (default 6) |
+| `request_timeout` | seconds (default 300) |
+| `disable_background_jobs` | turns off the maintenance loop |
+| `public_url` | external URL, used for links in the generated epub |
+
+Per-user: `kindle_email`, `notification_email`, `feeds[]` (each with its own
+`auto_send_to_kindle`).
+
+### `data/epub_config.json`
+
+Navigation links baked into `GoodBooks.epub`, resolved at build time:
+
+```json
+{
+  "home_url": "",
+  "away_url": "https://your-host.example",
+  "away_token": "…"
+}
+```
+
+Leave `home_url` empty to auto-detect the LAN address. Environment
+variables `GOODBOOKS_HOME_URL` / `GOODBOOKS_AWAY_URL` override both.
+**The token is embedded in the epub, so only use a token you are willing to
+share with everyone the epub reaches.**
 
 ## Architecture
 
 ```
-src/goodbooks/
-├── app.py              # Main Flask app with Waitress
-├── core/               # Feed parsing, search, settings
-├── epub/               # EPUB generation, metadata
-├── delivery/           # Kindle email delivery
-├── browser/            # Playwright stealth browser
-├── templates/          # Flask templates
-└── static/            # CSS, JS, images
+app.py                     Flask app, all routes
+search_engine.py           Anna's Archive + LibGen search and download
+parser_engine.py           RSS/Atom/HTML feed parsing
+settings_manager.py        settings.json load/save, dataclasses
+goodbooks_delivery.py      SMTP -> Kindle
+epub_distributor.py        format conversion
+build_epub_v2.py           GoodBooks.epub generator
+stealth_browser.py         Playwright bot-wall bypass
+
+gb_mirrors_live.py         live mirrors, via SLUM
+gb_libgen_dl.py            LibGen get.php fetch + HTML sniffing
+gb_fastdl.py               speed-ranked mirror racing
+gb_openlib.py              OpenLibrary title/author/cover lookup
+gb_goodreads.py            Goodreads per-book resolution
+gb_match.py                strict title/author matching
+gb_isbn.py                 EAN-13 barcode decoder
+gb_lens.py                 Google Lens identification
+gb_epub_urls.py            epub navigation URLs from config
+gb_ol_repair.py            batch metadata repair (OpenLibrary)
+gb_gr_run.py               batch metadata repair (Goodreads)
+slum_monitor/              shadow-library availability tracking
 ```
+
+## Important behaviours
+
+### Mirrors are resolved live
+
+`annas-archive.org` and `.se` **no longer resolve in DNS**, and `.li`/`.rs`
+are parked domains. The only live Anna's Archive frontend is
+`annas-archive.gl`, which sits behind a DDoS-Guard challenge that only a real
+browser clears.
+
+Nothing hardcodes a host. `gb_mirrors_live` asks SLUM which mirrors are up
+and ranks them by measured throughput; `gb_fastdl` races the fastest few and
+keeps whichever delivers real bytes first. Download concurrency defaults to 6.
+
+If you see `annas-archive.se` in a log, that log predates the fix.
+
+### Metadata repair
+
+Titles scraped from filenames are frequently mangled
+(`"Clementine  Clementine Series, Book 1-Sara Pennypacker; Marla Frazee"`).
+Two batch repair tools exist, both of which require the service to be
+**stopped** first — it holds the metadata in memory and rewrites the file
+within seconds:
+
+```bash
+sudo systemctl stop GoodBooks.service
+python3 gb_gr_run.py --offset 0 --count 200 --delay 1.6 --apply
+sudo systemctl start GoodBooks.service
+```
+
+Both assert their invariants before writing and abort rather than write bad
+data. Goodreads throttles hard (it answers `202` with a zero-length body when
+rate-limited), so expect this to be slow; it resumes from a state file.
+
+### Matching
+
+A result is only used if it is genuinely the requested book. Single-word
+titles require an exact match, so *"dune"* will not fetch *"Dune Messiah"*;
+negations and volume numbers must agree. A wrong book emailed to a Kindle is
+worse than no book.
+
+## Testing
+
+```bash
+python3 -m pytest tests/ -q
+```
+
+The suite includes regression tests for the bugs fixed so far: the
+search-page blocking fetch, folder pager counts, the uncovered `debug_log`
+binding that disabled the LibGen fallback, and download-concurrency resizing.
 
 ## License
 

@@ -1,4 +1,12 @@
 # GoodBooks - Complete Documentation
+> **Historical snapshot (written December 2025).** Parts of this document
+> no longer match the code -- notably the Anna's Archive host (`.org` and
+> `.se` are dead; `.gl` is the live one), the module layout, and the
+> random button, which used to block on network I/O during render.
+>
+> For current behaviour read **[README.md](README.md)** and
+> **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**.
+
 
 **Updated**: December 11, 2025  
 **Purpose**: Self-hosted Goodreads reading list to Kindle delivery system

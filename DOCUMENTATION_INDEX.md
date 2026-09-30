@@ -1,240 +1,62 @@
-# GoodBooks Documentation Index
+# GoodBooks Documentation
 
-**Last Updated**: December 13, 2025  
-**Complete Reference Guide for All Documentation**
+**Last reviewed: 2026-09-29.**
 
----
+Documents here describe the current system. Point-in-time session reports
+(`FINAL_SESSION_REPORT.md` and friends) have been moved to
+`docs/archive/sessions/` — they were accurate when written and are kept only
+as a record; do not follow them.
 
-## 📍 Start Here
+## Start here
 
-### For First-Time Users
-1. **[README.md](README.md)** - Project overview and features (5 min read)
-2. **[INSTALLER_GUIDE.md](INSTALLER_GUIDE.md)** - Complete installation guide (10 min read)
-3. **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - 30-second quick reference
+| Document | Read it for |
+|---|---|
+| [README.md](README.md) | What the app does, how to run it, configuration, architecture |
+| [INSTALLER_GUIDE.md](INSTALLER_GUIDE.md) | Installation, systemd setup, first run |
 
-### For Developers
-1. **[docs/INSTALLER_TECHNICAL.md](docs/INSTALLER_TECHNICAL.md)** - Technical architecture
-2. **[docs/INSTALLER_ARCHITECTURE.md](docs/INSTALLER_ARCHITECTURE.md)** - Component design
-3. **[agents.md](agents.md)** - AI agent documentation
+## How it works
 
----
+| Document | Read it for |
+|---|---|
+| [METADATA_REFRESH_OPTIMIZATION.md](METADATA_REFRESH_OPTIMIZATION.md) | How the metadata refresh decides what to skip |
+| [SEARCH_MATCHING_ANALYSIS.md](SEARCH_MATCHING_ANALYSIS.md) | Result ranking and the strict matcher |
+| [LIBGEN_FALLBACK_IMPLEMENTATION.md](LIBGEN_FALLBACK_IMPLEMENTATION.md) | The LibGen fallback chain |
+| [DOWNLOAD_FIXES.md](DOWNLOAD_FIXES.md) | Download resolution, mirrors, concurrency |
+| [RANDOM_BUTTON.md](RANDOM_BUTTON.md) | Random selection, and the render-time network bug that made it slow |
 
-## 📚 Main Documentation Files
+## The UI
 
-### Installation & Setup
-| Document | Purpose | Size |
-|----------|---------|------|
-| **README.md** | Project overview, features, quick start | 11KB |
-| **INSTALLER_GUIDE.md** | Installation, configuration, troubleshooting | 9.6KB |
-| **docs/QUICKSTART.md** | 30-second setup reference | 2KB |
-| **docs/INSTALLER_TECHNICAL.md** | Technical implementation details | 12KB |
-| **docs/INSTALLER_ARCHITECTURE.md** | Component architecture | 8KB |
+| Document | Read it for |
+|---|---|
+| [RECENTLY_ADDED_VIEW_GUIDE.md](RECENTLY_ADDED_VIEW_GUIDE.md) | The recently-added view |
+| [PROGRESS_BARS_FIXED.md](PROGRESS_BARS_FIXED.md) | Feed and metadata progress bars |
+| [CRITICAL_ISSUES_AND_FIXES.md](CRITICAL_ISSUES_AND_FIXES.md) | Known issues and their fixes |
 
-### Feature Documentation
-| Document | Purpose | Size |
-|----------|---------|------|
-| **docs/KINDLE_OPTIMIZATION.md** | Kindle delivery setup | 6KB |
-| **docs/EXAMPLE_QUERIES.md** | Search syntax examples | 3KB |
-| **docs/CHANGELOG.md** | Version history | 5KB |
+## Things that will waste your time if you don't know them
 
-### Deployment & Operations
-| Document | Purpose | Size |
-|----------|---------|------|
-| **docs/DEPLOYMENT_NOTES_2025_12_09.md** | Production deployment | 4KB |
-| **latest_implementation_instructions.md** | Recent implementation guidance | 9KB |
+1. **Anna's Archive `.org` and `.se` are dead.** They no longer resolve in
+   DNS. `.li` and `.rs` are parked domains. The only live frontend is
+   `annas-archive.gl`, behind a DDoS-Guard challenge that needs a real
+   browser. If a log shows `annas-archive.se`, that log predates the fix.
 
----
+2. **Nothing hardcodes a mirror.** `gb_mirrors_live.py` asks SLUM which
+   mirrors are up and ranks them by measured speed; `gb_fastdl.py` races the
+   fastest few. Measured spread across live LibGen mirrors: 27–57 KiB/s.
 
-## ✅ What's Documented
+3. **Stop the service before repairing metadata.** It holds the file in
+   memory and rewrites it within ~8 seconds, silently discarding external
+   writes.
 
-### Installation & Deployment
-- [x] One-command installation
-- [x] System dependency setup
-- [x] Python environment creation
-- [x] Systemd service configuration
-- [x] Post-installation verification
+4. **A search page used to never paint.** It performed a live AA fetch while
+   rendering. Now it renders immediately and streams results from
+   `/api/search-stream`.
 
-### Configuration
-- [x] Web UI settings panel
-- [x] Manual JSON configuration
-- [x] User management (Kindle emails, library folders)
-- [x] SMTP setup for email delivery
-- [x] Feed subscription configuration
-- [x] System settings (port, logging, workers)
+5. **Strict matching is deliberate.** Single-word titles require an exact
+   match, so *"dune"* will not fetch *"Dune Messiah"*. A wrong book emailed
+   to a Kindle is worse than no book.
 
-### Features
-- [x] Feed management (RSS, Atom, HTML, Goodreads)
-- [x] Goodreads list scraping with pagination
-- [x] Genre-based list browsing
-- [x] Kindle integration and delivery
-- [x] Web interface with search
-- [x] Library management
-- [x] Multi-user support
-- [x] Background feed processing
+## Adding to this index
 
-### Troubleshooting
-- [x] Service startup issues
-- [x] Port conflicts
-- [x] Permission errors
-- [x] Configuration problems
-- [x] Kindle delivery issues
-- [x] Feed processing optimization
-
----
-
-## 🚀 Quick Start
-
-### Installation (30 seconds)
-```bash
-cd /path/to/goodbooks
-chmod +x installer.sh
-./installer.sh  # Do NOT use sudo
-```
-
-### Access Application
-- Open: `http://localhost:5000`
-- Configure: Go to Settings
-- Add feeds and enjoy!
-
-### Service Commands
-```bash
-sudo systemctl status goodbooks    # Check status
-sudo systemctl restart goodbooks   # Restart
-sudo journalctl -u goodbooks -f    # View logs
-```
-
----
-
-## 📁 File Structure
-
-```
-/usr/local/bin/GoodBooks/
-├── README.md                      ← Project overview
-├── INSTALLER_GUIDE.md             ← Installation guide
-├── DOCUMENTATION_INDEX.md         ← YOU ARE HERE
-│
-├── docs/                          # Detailed documentation
-│   ├── QUICKSTART.md
-│   ├── INSTALLER_TECHNICAL.md
-│   ├── CHANGELOG.md
-│   ├── KINDLE_OPTIMIZATION.md
-│   └── ...more docs...
-│
-├── archived/                      # Legacy documentation
-│
-├── app.py                         # Main application
-├── requirements.txt               # Python dependencies
-├── installer.sh                   # Installation script
-│
-├── data/                          # Application data
-│   ├── settings.json
-│   └── ...more data...
-├── logs/                          # Application logs
-├── static/                        # Web assets
-├── templates/                     # HTML templates
-└── ...more application files...
-```
-
----
-
-## 🔍 Finding What You Need
-
-### By Task
-| Task | Documentation |
-|------|-----------------|
-| Install GoodBooks | [INSTALLER_GUIDE.md](INSTALLER_GUIDE.md) |
-| Configure Kindle | [docs/KINDLE_OPTIMIZATION.md](docs/KINDLE_OPTIMIZATION.md) |
-| Add feeds | [README.md#usage-examples](README.md) |
-| Search books | [docs/EXAMPLE_QUERIES.md](docs/EXAMPLE_QUERIES.md) |
-| Service management | [INSTALLER_GUIDE.md#service-management](INSTALLER_GUIDE.md) |
-| Troubleshoot issues | [INSTALLER_GUIDE.md#troubleshooting](INSTALLER_GUIDE.md) |
-
-### By Topic
-| Topic | Documentation |
-|-------|-----------------|
-| Features | [README.md#features](README.md) |
-| Requirements | [README.md#requirements](README.md) |
-| Configuration | [INSTALLER_GUIDE.md#configuration](INSTALLER_GUIDE.md) |
-| Architecture | [docs/INSTALLER_TECHNICAL.md](docs/INSTALLER_TECHNICAL.md) |
-| Deployment | [docs/DEPLOYMENT_NOTES_2025_12_09.md](docs/DEPLOYMENT_NOTES_2025_12_09.md) |
-
----
-
-## 💡 Learning Paths
-
-### 30-Minute Start
-1. [README.md](README.md) - 5 min
-2. [INSTALLER_GUIDE.md Quick Start](INSTALLER_GUIDE.md#quick-start-30-seconds) - 3 min
-3. Web UI setup - 15 min
-4. Add first feed - 7 min
-
-### Complete Mastery (2 hours)
-1. [README.md](README.md) - 10 min
-2. [INSTALLER_GUIDE.md](INSTALLER_GUIDE.md) - 20 min
-3. [docs/KINDLE_OPTIMIZATION.md](docs/KINDLE_OPTIMIZATION.md) - 15 min
-4. [docs/EXAMPLE_QUERIES.md](docs/EXAMPLE_QUERIES.md) - 10 min
-5. Hands-on configuration - 45 min
-6. Add feeds and test - 20 min
-
----
-
-## 📊 Documentation Summary
-
-- **Total Files**: 40+
-- **Core Documentation**: 5 main files
-- **Detailed Topics**: 15+ additional docs
-- **Legacy/Reference**: 20+ archived docs
-- **Total Content**: 100,000+ characters
-- **Coverage**: 100% of major features
-- **Last Updated**: December 13, 2025 ✅
-
----
-
-## 🔗 Quick Links
-
-**Essential Reading**:
-- [README.md](README.md) - Start here for overview
-- [INSTALLER_GUIDE.md](INSTALLER_GUIDE.md) - Start here for setup
-
-**Configuration Help**:
-- [INSTALLER_GUIDE.md#configuration](INSTALLER_GUIDE.md#configuration)
-- [README.md#configuration](README.md#-configuration)
-
-**Having Issues?**:
-- [INSTALLER_GUIDE.md#troubleshooting](INSTALLER_GUIDE.md#troubleshooting)
-- [README.md#troubleshooting](README.md#-troubleshooting)
-
-**View All Features**:
-- [README.md#features](README.md#-features)
-- [docs/CHANGELOG.md](docs/CHANGELOG.md)
-
----
-
-## 📞 Support
-
-### Getting Help
-1. Check [INSTALLER_GUIDE.md](INSTALLER_GUIDE.md) troubleshooting
-2. Review [README.md](README.md) for features
-3. Check logs: `sudo journalctl -u goodbooks -f`
-4. Review relevant doc from the index above
-
-### Common Commands
-```bash
-# View logs
-sudo journalctl -u goodbooks -f -n 50
-
-# Check status
-sudo systemctl status goodbooks
-
-# Restart
-sudo systemctl restart goodbooks
-
-# Test connection
-curl http://localhost:5000/
-```
-
----
-
-**Navigation Tip**: Use CTRL+F to search within documents  
-**Last Updated**: December 13, 2025 ✅  
-**Status**: All documentation current and complete
+If a document describes past-tense work rather than how the system behaves,
+put it in `docs/archive/sessions/`. The index should only carry things that
+are true today.

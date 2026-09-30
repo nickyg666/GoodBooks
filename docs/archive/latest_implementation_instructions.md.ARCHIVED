@@ -1,0 +1,9 @@
+# Archived: "Latest Implementation Instructions: Genre Goodreads Lists Feature"
+
+**Superseded.** This was a feature request, not documentation of shipped
+behaviour. The Goodreads Listopia browsing it describes did land
+(`/goodreads/<genre>/lists`, `goodreads_genre_lists()` in app.py, with
+`goodreads_lists.html` and `goodreads_series.html` templates), but this file
+was never updated and no longer describes the current implementation.
+
+For the current state, read README.md and the source.

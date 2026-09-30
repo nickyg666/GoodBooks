@@ -1,4 +1,10 @@
 # Example Search Queries for GoodBooks
+> **Dead host (verified 2026-09-29).** `annas-archive.org` and
+> `.se` no longer resolve in DNS. The only live frontend is
+> `annas-archive.gl`, behind a DDoS-Guard challenge. The app
+> resolves mirrors at runtime via SLUM (`gb_mirrors_live.py`); see
+> README.md.
+
 
 ## What the Search Engine Does
 

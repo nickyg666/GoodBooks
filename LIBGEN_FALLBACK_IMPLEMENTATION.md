@@ -1,4 +1,9 @@
 # LibGen Fallback Implementation
+> **Partly historical.** Hostnames below were accurate when this was
+> written. `annas-archive.org`/`.se`, `libgen.rs` and `libgen.is`
+> are all dead; mirrors are now resolved at runtime via SLUM
+> (`gb_mirrors_live.py`). See README.md.
+
 
 ## Overview
 
@@ -258,5 +263,11 @@ Note: Mirror availability is checked automatically and errors are handled gracef
 ## References
 
 - **LibGen API:** libgen-api-enhanced on PyPI
-- **Anna's Archive:** https://annas-archive.org
-- **LibGen Mirrors:** https://libgen.rs (primary), https://libgen.is (backup)
+- **Anna's Archive:** mirrors are resolved at runtime by
+  `gb_mirrors_live.py` (SLUM). The only live frontend is
+  `https://annas-archive.gl`, behind a DDoS-Guard challenge that
+  `stealth_browser.fetch_with_stealth` waits out. `annas-archive.org` and
+  `.se` no longer resolve in DNS.
+- **LibGen Mirrors:** likewise resolved at runtime by SLUM and ranked by
+  measured throughput; `gb_fastdl.py` races the fastest few. `libgen.rs` and
+  `libgen.is` are dead. See `gb_mirrors_live.py` and `gb_fastdl.py`.

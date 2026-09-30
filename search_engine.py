@@ -733,6 +733,28 @@ AA_TRIP_AFTER = 4
 AA_COOLDOWN_SECONDS = 1800
 
 
+def note_aa_html() -> None:
+    """Record an Anna's Archive failure (no usable file, or an HTML page)."""
+    _AA_STATE["html_streak"] += 1
+    import time as _t
+    _AA_STATE["last_html_ts"] = _t.time()
+    if _AA_STATE["html_streak"] == AA_TRIP_AFTER:
+        logger.warning(
+            "Anna's Archive failed %d times in a row; preferring LibGen "
+            "for the next %d minutes", AA_TRIP_AFTER,
+            AA_COOLDOWN_SECONDS // 60)
+
+
+def note_aa_ok() -> None:
+    """Record a real Anna's Archive download; closes the circuit."""
+    if _AA_STATE["html_streak"]:
+        logger.info("Anna's Archive recovered after %d failures",
+                    _AA_STATE["html_streak"])
+    _AA_STATE["html_streak"] = 0
+    import time as _t
+    _AA_STATE["last_ok_ts"] = _t.time()
+
+
 def aa_circuit_open() -> bool:
     """True when AA has been failing recently and should be tried last."""
     st = _AA_STATE
@@ -742,7 +764,6 @@ def aa_circuit_open() -> bool:
     return (_t.time() - st["last_html_ts"]) < AA_COOLDOWN_SECONDS
 
 
-def note_aa_html() -> None:
     _AA_STATE["html_streak"] += 1
     import time as _t
     _AA_STATE["last_html_ts"] = _t.time()
@@ -753,7 +774,6 @@ def note_aa_html() -> None:
             AA_COOLDOWN_SECONDS // 60)
 
 
-def note_aa_ok() -> None:
     if _AA_STATE["html_streak"]:
         logger.info("Anna's Archive recovered after %d HTML failures",
                     _AA_STATE["html_streak"])
@@ -2862,6 +2882,7 @@ class AnnaSource:
                     debug_log.append(f"libgen download fallback error: {exc}")
 
         if not downloads_map:
+            note_aa_html()
             raise ValueError(
                 f"No download links available for any format (requested={fmt or 'none'})"
             )
@@ -2894,6 +2915,7 @@ class AnnaSource:
         if not candidate_formats:
             # No convertible formats available
             available_formats = list(downloads_map.keys())
+            note_aa_html()
             raise ValueError(f"No convertible formats available (requested={fmt or 'none'}, available={available_formats})")
         
         # Try each format's links in order
@@ -2927,6 +2949,7 @@ class AnnaSource:
                     final_path = self._download_from_url(
                         url, result, fmt_to_try, dest_dir
                     )
+                    note_aa_ok()
                     return final_path
                 except ValueError as e:
                     error_msg = str(e).lower()
@@ -3020,6 +3043,7 @@ class AnnaSource:
                 logger.warning("libgen download fallback failed: %s", exc)
                 debug_log.append(f"libgen download fallback error: {exc}")
 
+        note_aa_html()
         raise ValueError(
             f"No working download links available after trying all formats for {result.get('title')}"
         )
@@ -3538,6 +3562,7 @@ class ArchiveOrgSource:
                 result, fmt, dest_dir, "AA circuit open")
         identifier = result.get('detail', '')
         if not identifier:
+            note_aa_html()
             raise ValueError("Result missing 'detail' (identifier)")
         
         dest_dir = Path(dest_dir)
@@ -3547,6 +3572,7 @@ class ArchiveOrgSource:
             # Get metadata
             files_info = self._get_downloadable_files(identifier)
             if not files_info:
+                note_aa_html()
                 raise ValueError(f"No downloadable files found for {identifier}")
             
             # Find best file matching format preference
@@ -3591,11 +3617,13 @@ class ArchiveOrgSource:
                         f.write(chunk)
             
             logger.info(f"Downloaded from Archive.org: {file_path}")
+            note_aa_ok()
             return file_path
             
         except Exception as e:
             error_msg = f"Failed to download from Archive.org: {e}"
             logger.error(error_msg)
+            note_aa_html()
             raise ValueError(error_msg)
 
 

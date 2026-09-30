@@ -102,37 +102,67 @@ def looks_clean_title(t: str) -> bool:
     return True
 
 
-def _pick_best(docs, want_title: str, want_author: str) -> Optional[dict]:
-    """Score OpenLibrary docs against what we already hold."""
+def _pick_best(docs, want_title: str, want_author: str):
+    """Score OpenLibrary docs against what we already hold.
+
+    The query usually carries the author inline ("dune frank herbert") with
+    no separate author field, and scoring the candidate's TITLE against the
+    whole query then penalises the exact match. Instead of guessing where the
+    title ends, try several title prefixes and keep the best result: the
+    longest prefix that still finds a confident match wins.
+
+    Coverage (how much of the title query the candidate accounts for) is the
+    primary signal; jaccard guards against a superset such as a sequel.
+    """
     if not docs:
         return None
-    want_t = set(_title_tokens(want_title))
+
+    q_words = _norm(want_title).split()
     want_a = _norm(want_author)
+    if not want_a and len(q_words) > 3:
+        want_a = " ".join(q_words[2:])
+
     best, best_score = None, -1.0
 
-    for d in docs:
-        title = d.get("title") or ""
-        if not title:
+    # try progressively shorter title prefixes; the first confident one wins
+    for cut in range(len(q_words), 0, -1):
+        want_t = set(q_words[:cut])
+        if not want_t:
             continue
-        t_tok = set(_title_tokens(title))
-        if not t_tok:
-            continue
-        overlap = len(want_t & t_tok)
-        denom = max(len(want_t | t_tok), 1)
-        score = overlap / denom
+        for d in docs:
+            title = d.get("title") or ""
+            got_t = set(_norm(title).split())
+            if not got_t:
+                continue
 
-        authors = d.get("author_name") or []
-        if want_a and authors:
-            a_tok = set(_norm(want_a).split())
-            for name in authors:
-                b_tok = set(_norm(name).split())
-                if b_tok and a_tok:
-                    score += 0.15 * (len(a_tok & b_tok) / max(len(a_tok | b_tok), 1))
+            cov = len(want_t & got_t) / len(want_t)
+            jac = len(want_t & got_t) / len(want_t | got_t) if (want_t | got_t) else 0.0
 
-        if score > best_score:
-            best, best_score = d, score
-    return best if best_score >= 0.34 else None
+            if len(want_t) == 1:
+                # a one-word title must match the title itself, not a superset
+                if got_t != want_t:
+                    continue
+                score = 1.0
+            else:
+                if cov < 0.5:
+                    continue
+                if jac < 0.34:          # a sequel adds too much
+                    continue
+                score = cov
 
+            authors = d.get("author_name") or []
+            if want_a and authors:
+                a_tok = set(_norm(want_a).split())
+                for a in authors:
+                    b_tok = set(_norm(a).split())
+                    if a_tok and b_tok:
+                        score += 0.25 * (len(a_tok & b_tok) / len(a_tok | b_tok))
+
+            if score > best_score:
+                best, best_score = d, score
+        if best is not None and best_score >= 0.75:
+            break
+    return best
 
 def fetch_by_isbn(isbn: str) -> Optional[dict]:
     """Exact lookup. Returns {title, authors, cover, isbn} or None."""
@@ -145,12 +175,15 @@ def fetch_by_isbn(isbn: str) -> Optional[dict]:
     except Exception as exc:
         logger.debug("openlibrary isbn lookup failed: %s", exc)
         return None
-    if r.status_code != 200:
-        return None
     try:
-        j = r.json()
-    except Exception:
-        return None
+        if r.status_code != 200:
+            return None
+        try:
+            j = r.json()
+        except Exception:
+            return None
+    finally:
+        r.close()
     covers = j.get("covers") or []
     authors = j.get("authors") or []
     names = []
@@ -182,12 +215,15 @@ def fetch_by_search(title: str, author: str = "", limit: int = 5) -> Optional[di
     except Exception as exc:
         logger.debug("openlibrary search failed: %s", exc)
         return None
-    if r.status_code != 200:
-        return None
     try:
-        docs = r.json().get("docs") or []
-    except Exception:
-        return None
+        if r.status_code != 200:
+            return None
+        try:
+            docs = r.json().get("docs") or []
+        except Exception:
+            return None
+    finally:
+        r.close()
     best = _pick_best(docs, title, author)
     if not best:
         return None
@@ -222,7 +258,11 @@ def fetch_cover_bytes(url: str, dest_dir: Path, key: str) -> Optional[Path]:
         return None
     if r.content[:200].lstrip().lower().startswith((b"<!doctype", b"<html")):
         return None
+    try:
+        body = r.content
+    finally:
+        r.close()
     tmp = out.with_suffix(out.suffix + ".part")
-    tmp.write_bytes(r.content)
+    tmp.write_bytes(body)
     tmp.rename(out)
     return out

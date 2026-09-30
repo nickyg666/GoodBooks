@@ -2510,13 +2510,17 @@ class AnnaSource:
 
         return result
     def download(self, result: Dict, fmt: str, dest_dir: Path) -> Path:
+        # Bound once here: the libgen fallback below is in a different
+        # branch, and previously this only existed inside the
+        # `if not downloads_map` branch, so the fallback raised
+        # UnboundLocalError instead of running.
+        debug_log: List[str] = []
         downloads_map: Dict[str, Any] = result.get("downloads") or {}
         md5 = (result.get("detail") or "").strip()
         
         if not downloads_map and md5:
             # Try to lazily resolve downloads using the detail (md5) page
             formats = list(result.get("formats") or [])
-            debug_log: List[str] = []
 
             try:
                 downloads_map, _, _ = self._get_downloads(md5, formats, debug_log)

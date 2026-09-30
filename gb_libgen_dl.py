@@ -143,7 +143,8 @@ def _safe_name(name: str) -> str:
 
 
 def download_from_libgen(get_url, dest_dir: Path, title: str = "",
-                         timeout: int = 120, retries: int = 3) -> Optional[Path]:
+                         timeout: int = 120, retries: int = 3,
+                         md5: str = "") -> Optional[Path]:
     """Fetch a real file from one or more libgen get.php URLs and save it.
 
     get_url may be a single URL or a list of candidate URLs: a given md5 is
@@ -160,6 +161,12 @@ def download_from_libgen(get_url, dest_dir: Path, title: str = "",
 
     Returns the written path, or None if no source yielded real file bytes.
     Never writes an HTML landing page to disk as if it were a book.
+
+    When `md5` is supplied the keyed two-hop fetch (gb_keyed) is tried FIRST,
+    because as of 2026-09-30 the plain get.php returns an HTML page even for
+    files that libgen does hold; only the keyed second request yields bytes.
+    The URL candidates remain as a fallback. Proven: md5
+    0c757e447004372b66a07d6e22f5d1da -> 1,869,525 byte EPUB "Dear Debbie".
     """
     import time
     import requests
@@ -168,6 +175,22 @@ def download_from_libgen(get_url, dest_dir: Path, title: str = "",
     dest_dir.mkdir(parents=True, exist_ok=True)
     candidates = list(get_url) if isinstance(get_url, (list, tuple)) else [get_url]
     candidates = [u for u in candidates if u]
+
+    # -- keyed two-hop first (see docstring)
+    if md5:
+        try:
+            import gb_keyed
+            got = gb_keyed.keyed_download(md5, dest_dir, title,
+                                          timeout=min(timeout, 60),
+                                          retries=min(retries, 3))
+            if got:
+                p = Path(got)
+                if p.exists() and p.stat().st_size > 1024:
+                    logger.info("downloaded via keyed hop: %s (%d bytes)",
+                                p.name, p.stat().st_size)
+                    return p
+        except Exception as exc:
+            logger.debug("keyed hop failed for %s: %s", md5, exc)
 
     for url in candidates:
         for attempt in range(1, retries + 1):

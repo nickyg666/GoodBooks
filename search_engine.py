@@ -536,6 +536,51 @@ def aa_search_with_retry(source, query, options=None):
     return last
 
 
+def _title_query_ladder(title: str) -> list:
+    """Progressively shorter search queries for a catalogue title.
+
+    Goodreads hands us strings like:
+
+        "The Butcher's Masquerade: Dungeon Crawler Carl (Book 5)"
+
+    LibGen indexes the BOOK, not the Goodreads metadata blob, so feeding it
+    the whole string returns nothing at all. Each rung strips a different kind
+    of noise, and the ladder stops at the first rung that yields hits.
+    """
+    base = (title or "").strip()
+    out = [base]
+
+    def add(q):
+        q = (q or "").strip()
+        if q and q not in out:
+            out.append(q)
+
+    # the part before a subtitle separator
+    for sep in (":", " - ", " -- "):
+        if sep in base:
+            add(base.split(sep, 1)[0])
+
+    # drop a trailing parenthetical / bracketed series note
+    stripped = re.sub(r"\s*[\(\[].*?[\)\]]\s*$", "", base).strip()
+    add(stripped)
+    for sep in (":", " - ", " -- "):
+        if sep in stripped:
+            add(stripped.split(sep, 1)[0])
+
+    # possessives, which is how libgen usually spells these
+    add(stripped.replace("'", "").replace("\u2019", ""))
+
+    # leading article
+    art = re.sub(r"^(the|a|an)\s+", "", stripped, flags=re.I).strip()
+    add(art)
+
+    # last resort: the first three significant words
+    words = [w for w in re.split(r"\W+", art) if w]
+    if len(words) > 3:
+        add(" ".join(words[:3]))
+    return out
+
+
 def _libgen_download_by_title(title: str, fmt: str, dest_dir: Path,
                               author: str = "") -> Optional[Path]:
     """Last-resort libgen fetch: search by title when an md5 is not on the
@@ -552,15 +597,24 @@ def _libgen_download_by_title(title: str, fmt: str, dest_dir: Path,
     if not title or not title.strip():
         return None
     ls = LibgenSearch(mirror="li")
-    try:
-        # Scan more than the first page: libgen's ordering puts unrelated
-        # titles ahead of the exact match, and truncating to 8 meant a book it
-        # plainly had ("Dear Debbie", epub) was never considered.
-        hits = ls.search_title(title)[:40]
-    except Exception as exc:
-        logger.debug("libgen title search failed for %r: %s", title, exc)
-        return None
+    # Scan more than the first page: libgen's ordering puts unrelated
+    # titles ahead of the exact match, and truncating to 8 meant a book it
+    # plainly had ("Dear Debbie", epub) was never considered.
+    hits, used_query = [], title
+    for q in _title_query_ladder(title):
+        try:
+            got = ls.search_title(q)[:40]
+        except Exception as exc:
+            logger.debug("libgen title search failed for %r: %s", q, exc)
+            continue
+        if got:
+            hits, used_query = got, q
+            logger.info("libgen title ladder: %r matched via %r (%d hits)",
+                        title, q, len(got))
+            break
     if not hits:
+        logger.info("libgen: no results for %r at any rung of %s", title,
+                    _title_query_ladder(title)[:4])
         return None
 
     want = (fmt or "").lower()
@@ -596,7 +650,7 @@ def _libgen_download_by_title(title: str, fmt: str, dest_dir: Path,
         urls = gb_mirrors_live.libgen_get_urls(md5)
         saved = gb_libgen_dl.download_from_libgen(
             urls, dest_dir, getattr(h, "title", "") or title,
-            timeout=120, retries=2)
+            timeout=120, retries=2, md5=md5)
         if saved:
             logger.info("libgen title search found %r as %s", title, saved.name)
             return saved
@@ -696,7 +750,7 @@ class AnnaSource:
             try:
                 saved = gb_libgen_dl.download_from_libgen(
                     urls, dest_dir, result.get("title") or "",
-                    timeout=120, retries=2)
+                    timeout=120, retries=2, md5=md5_val)
                 if saved:
                     return saved
             except Exception as exc:
@@ -2749,7 +2803,7 @@ class AnnaSource:
                             "for md5=%s", len(ordered), md5_val)
                 saved = gb_libgen_dl.download_from_libgen(
                     ordered, dest_dir, result.get("title") or "",
-                    timeout=120, retries=2)
+                    timeout=120, retries=2, md5=md5_val)
                 if saved:
                     return saved
                 if debug_log is not None:
@@ -2899,7 +2953,7 @@ class AnnaSource:
                                 "mirrors for md5=%s", len(urls), md5_val)
                     saved = gb_libgen_dl.download_from_libgen(
                         urls, dest_dir, result.get("title") or "",
-                        timeout=120, retries=2)
+                        timeout=120, retries=2, md5=md5_val)
                     if saved:
                         return saved
                     debug_log.append("libgen get.php produced no real file either")

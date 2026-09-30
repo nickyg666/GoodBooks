@@ -144,93 +144,93 @@ def _safe_name(name: str) -> str:
 
 def download_from_libgen(get_url, dest_dir: Path, title: str = "",
                          timeout: int = 120, retries: int = 3) -> Optional[Path]:
-    """Fetch a real file from a libgen URL and save it.
+    """Fetch a real file from one or more libgen get.php URLs and save it.
 
-    get_url may be a single URL or a LIST of candidate URLs -- a given title
-    is often hosted on only one mirror, so every candidate is tried in turn
-    before giving up.
+    get_url may be a single URL or a list of candidate URLs: a given md5 is
+    often absent from some mirrors ("500 File not found in DB") but present
+    on others, so every candidate is tried in turn.
 
-    Returns the written path, or None if no source yielded real file bytes
-    (an HTML landing page, an error page, or a hard failure). Never writes
-    HTML to disk as if it were a book.
+    Two things matter at these mirror speeds (27-57 KiB/s, so a 27MB book
+    takes 8-16 minutes):
 
-    libgen sits behind Cloudflare and returns intermittent 522s (origin
-    timeout) even though the same URL succeeds seconds later, so a small
-    retry is warranted here too.
+      * a dropped connection resumes with a Range request rather than
+        restarting, and
+      * a connection that dies on the FINAL chunk is accepted when the
+        partial file already holds every advertised byte.
+
+    Returns the written path, or None if no source yielded real file bytes.
+    Never writes an HTML landing page to disk as if it were a book.
     """
     import time
-
     import requests
 
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
-
     candidates = list(get_url) if isinstance(get_url, (list, tuple)) else [get_url]
     candidates = [u for u in candidates if u]
 
     for url in candidates:
         for attempt in range(1, retries + 1):
+            tmp = None
             try:
-                r = requests.get(url, headers={"User-Agent": BROWSER_UA},
-                                 timeout=timeout, stream=True,
-                                 allow_redirects=True)
-            except Exception as exc:
-                logger.warning("libgen fetch failed (try %d/%d) %s: %s",
-                               attempt, retries, url, exc)
-                if attempt < retries:
-                    time.sleep(5)
-                    continue
-                break
+                # Resume a partial file from an earlier attempt.
+                head = b""
+                written = 0
+                resume = None
+                try:
+                    if dest_dir.exists():
+                        for p in dest_dir.glob("*.part"):
+                            resume = p
+                            break
+                except Exception:
+                    resume = None
 
-            try:
+                mode = "wb"
+                if resume is not None and resume.stat().st_size > 0:
+                    mode = "ab"
+
+                r = requests.get(url, headers={"User-Agent": BROWSER_UA},
+                                 timeout=timeout, stream=True)
                 if r.status_code in (520, 521, 522, 523, 429) and attempt < retries:
-                    logger.info("libgen %s -> HTTP %s (transient); retrying",
-                                url, r.status_code)
                     r.close()
                     time.sleep(5)
                     continue
                 if r.status_code >= 400:
-                    logger.info("libgen %s -> HTTP %s", url, r.status_code)
                     r.close()
                     break
 
                 ctype = r.headers.get("Content-Type") or ""
                 disp_name = _filename_from(r.headers)
-
-                # stream to a temp file, sniffing as we go
+                reject = False
                 head = b""
                 tmp = dest_dir / ((disp_name or "download.bin") + ".part")
-                written = 0
-                reject = False
-                try:
-                    # Resume a partial transfer: these mirrors drop the
-                    # connection part way through large files (observed at
-                    # ~15MB of a 30MB transfer), and at 27-57 KiB/s a
-                    # restart from zero means a large book can never finish.
+
+                if mode == "ab":
+                    r.close()
                     have = tmp.stat().st_size if tmp.exists() else 0
-                    if have:
+                    r = requests.get(
+                        url,
+                        headers={"User-Agent": BROWSER_UA,
+                                 "Range": "bytes=%d-" % have},
+                        timeout=timeout, stream=True)
+                    if r.status_code not in (206, 416):
                         r.close()
-                        r = requests.get(
-                            url,
-                            headers={"User-Agent": BROWSER_UA,
-                                     "Range": "bytes=%d-" % have},
-                            timeout=timeout, stream=True)
-                        if r.status_code not in (206, 416):
-                            r.close()          # mirror ignored Range
-                            have = 0
-                            r = requests.get(url,
-                                             headers={"User-Agent": BROWSER_UA},
-                                             timeout=timeout, stream=True)
-                        mode = "ab"
-                    else:
                         mode = "wb"
+                        have = 0
+                        r = requests.get(url,
+                                         headers={"User-Agent": BROWSER_UA},
+                                         timeout=timeout, stream=True)
+
+                written = tmp.stat().st_size if (mode == "ab" and tmp.exists()) else 0
+
+                try:
                     with open(tmp, mode) as fh:
                         for chunk in r.iter_content(64 * 1024):
                             if not chunk:
                                 continue
-                            if not have and len(head) < 4096:
+                            if written == 0 and len(head) < 4096:
                                 head += chunk[: 4096 - len(head)]
-                            if not have and looks_like_html(head) and written == 0:
+                            if written == 0 and looks_like_html(head):
                                 logger.info(
                                     "libgen returned HTML for %s; not a file",
                                     url)
@@ -238,12 +238,34 @@ def download_from_libgen(get_url, dest_dir: Path, title: str = "",
                                 break
                             fh.write(chunk)
                             written += len(chunk)
+                except Exception as read_exc:
+                    # A connection dropped on the final chunk raises here
+                    # even though every byte arrived. Accept the file when
+                    # the partial already holds the advertised length.
+                    try:
+                        expected = int(r.headers.get("Content-Length") or 0)
+                    except Exception:
+                        expected = 0
+                    have_now = tmp.stat().st_size if tmp.exists() else 0
+                    if expected and have_now >= expected:
+                        written = have_now
+                        if not head:
+                            with open(tmp, "rb") as probe:
+                                head = probe.read(4096)
+                        logger.info(
+                            "connection dropped at the final chunk; file is "
+                            "complete (%d/%d bytes)", written, expected)
+                    else:
+                        raise read_exc
                 finally:
                     r.close()
 
                 if reject:
                     tmp.unlink(missing_ok=True)
-                    break          # this mirror has nothing; try the next URL
+                    break
+
+                if not tmp.exists() or tmp.stat().st_size == 0:
+                    break
 
                 fmt = guess_format(disp_name, ctype, head)
                 base = _safe_name(Path(disp_name).stem if disp_name
@@ -264,6 +286,4 @@ def download_from_libgen(get_url, dest_dir: Path, title: str = "",
                     time.sleep(5)
                     continue
                 break
-
-    logger.info("no libgen mirror served a real file for %r", title)
     return None

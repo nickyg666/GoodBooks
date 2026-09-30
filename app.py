@@ -8940,6 +8940,36 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
         return (entry_idx, None)
 
 
+def _poll_feeds_in_maintenance() -> None:
+    """Poll configured feeds from the background maintenance cycle.
+
+    This is the piece that was missing: the maintenance cycle warmed the
+    library cache and enriched metadata, but never fetched feeds, so books
+    added to a Goodreads shelf only ever arrived if somebody manually hit
+    POST /feeds/run.
+
+    Best-effort by contract: any failure is logged and swallowed so the
+    maintenance thread keeps running.
+    """
+    try:
+        settings = settings_manager.settings
+        if not getattr(settings, "disable_background_jobs", False):
+            feeds = []
+            for u in (getattr(settings, "users", None) or []):
+                for f in (getattr(u, "feeds", None) or []):
+                    if getattr(f, "url", ""):
+                        feeds.append((getattr(u, "name", ""), f))
+            if not feeds:
+                logger.debug("Background maintenance: no feeds configured")
+                return
+            logger.info("Background maintenance: polling %d feed(s)", len(feeds))
+            _run_feeds_background()
+            logger.info("Background maintenance: feed poll complete")
+    except Exception:
+        logger.exception("Background maintenance: feed poll failed")
+
+
+
 def _run_maintenance_cycle() -> None:
     """Perform a single maintenance cycle.
 
@@ -9189,6 +9219,13 @@ def _run_maintenance_cycle() -> None:
             save_library_metadata(library_metadata)
     except Exception as e:
         logger.debug("Failed to cache covers in background: %s", e)
+
+    # 3) Poll the feeds. Without this, shelf additions never reached the
+    #    app unless a human triggered POST /feeds/run.
+    try:
+        _poll_feeds_in_maintenance()
+    except Exception:
+        logger.exception("Background maintenance: feed poll step raised")
 
     logger.info("Background maintenance: cycle end")
 

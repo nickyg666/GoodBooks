@@ -30,6 +30,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 try:
+    import gb_mirrors_live  # SLUM-resolved live mirrors
+except Exception:  # pragma: no cover
+    gb_mirrors_live = None
+
+try:
     from slum_monitor import (
         get_slum_monitor,
         rank_aa_mirrors,
@@ -106,6 +111,23 @@ KNOWN_MIRRORS = [
     "https://libgen.lc",
     "https://annas-archive.gl",
 ]
+
+
+def _dynamic_known_mirrors() -> List[str]:
+    """Mirrors to use, best first: whatever SLUM says is live right now.
+
+    The module-level KNOWN_MIRRORS list is only a last-resort fallback for
+    when SLUM cannot be reached at all.
+    """
+    if gb_mirrors_live is not None:
+        try:
+            live = (gb_mirrors_live.aa_mirrors()
+                    + gb_mirrors_live.libgen_mirrors())
+            if live:
+                return live
+        except Exception:
+            logger.debug("dynamic mirror resolution failed", exc_info=True)
+    return list(KNOWN_MIRRORS)
 
 
 def check_mirror_health(url: str, timeout: int = 5) -> bool:
@@ -634,7 +656,8 @@ class AnnaSource:
                     # Try direct HTTP request with LibGen-friendly headers
                     _headers = {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-                        'Referer': 'https://libgen.li/',
+                        'Referer': ((gb_mirrors_live.best_libgen() if gb_mirrors_live
+                                  else 'https://libgen.li') + '/'),
                         'Accept': '*/*',
                         'Accept-Encoding': 'gzip, deflate, br',
                     }
@@ -2253,7 +2276,8 @@ class AnnaSource:
             md5_val = query_params.get("md5", [None])[0]
             if md5_val:
                 # Use direct download URL from MD5 - libgen ads.php pages are unreliable
-                download_url = f"https://libgen.li/get.php?md5={md5_val}"
+                download_url = (gb_mirrors_live.libgen_get_urls(md5_val)[0]
+                               if gb_mirrors_live else f"https://libgen.li/get.php?md5={md5_val}")
                 logger.debug("Using MD5 from ads.php URL to form direct libgen download: %s", download_url)
                 return download_url
             
@@ -2269,7 +2293,8 @@ class AnnaSource:
                     )
                     if url:
                         if not url.startswith("http"):
-                            url = "https://libgen.li" + url if url.startswith("/") else f"https://libgen.li/{url}"
+                            url = gb_mirrors_live.resolve_relative(url) if gb_mirrors_live else \
+                ("https://libgen.li" + url if url.startswith("/") else f"https://libgen.li/{url}")
                         logger.debug("Resolved libgen ads.php to download URL: %s", url)
                         return url
                 except Exception as e:
@@ -2280,7 +2305,8 @@ class AnnaSource:
             logger.debug("Skipping libgen.li/file.php?id= page (book info, not download): %s", href)
             # If we have MD5 from Anna's Archive, use it to form the download URL
             if md5:
-                download_url = f"https://libgen.li/get.php?md5={md5}"
+                download_url = (gb_mirrors_live.libgen_get_urls(md5)[0]
+                                    if gb_mirrors_live else f"https://libgen.li/get.php?md5={md5}")
                 logger.debug("Using Anna's Archive MD5 to form libgen download URL: %s", download_url)
                 return download_url
             return None
@@ -2661,7 +2687,8 @@ class AnnaSource:
                         url = u
                         break
                 if url is None:
-                    url = f"https://libgen.li/get.php?md5={md5_val}"
+                    url = (gb_mirrors_live.libgen_get_urls(md5_val)[0]
+                               if gb_mirrors_live else f"https://libgen.li/get.php?md5={md5_val}")
                 logger.info("AA had no usable file; trying libgen get.php for md5=%s",
                             md5_val)
                 saved = gb_libgen_dl.download_from_libgen(
@@ -2690,7 +2717,8 @@ class AnnaSource:
             md5_val = query_params.get("md5", [None])[0]
             if md5_val:
                 # Use direct download URL instead of ads page
-                url = f"https://libgen.li/get.php?md5={md5_val}"
+                url = (gb_mirrors_live.libgen_get_urls(md5_val)[0]
+                               if gb_mirrors_live else f"https://libgen.li/get.php?md5={md5_val}")
                 logger.debug("Converted ads.php URL to direct download: %s", url)
         
         # 1. Acquire semaphore for concurrency control

@@ -36,9 +36,55 @@ STOP = {
 NEGATIONS = {"not", "no", "never", "without", "anti"}
 
 
+_POSSESSIVE = re.compile(r"(['\u2019]s)\b", re.I)
+_TRAILING_S = re.compile(r"([^\W\d_])s\b", re.I)
+
+
 def tokens(s: str) -> List[str]:
-    t = "".join(c.lower() if c.isalnum() else " " for c in (s or ""))
+    """Split a title into comparable words.
+
+    Possessives are collapsed so that titles which differ only in
+    punctuation still match:
+
+        "The Butcher's Masquerade"  ->  butcher masquerade
+        "The Butchers Masquerade"   ->  butchers masquerade   (before)
+
+    Without this the scraper's apostrophe made every possessive title look
+    like a different book, and the fallback rejected exact matches:
+    cov 0.57, jac 0.50 -- below threshold.
+    """
+    t = (s or "")
+    # Butcher's -> Butcher ; Butcher's -> Butcher
+    t = t.replace("'s", " ").replace("\u2019s", " ")
+    t = "".join(c.lower() if c.isalnum() else " " for c in t)
     return [w for w in t.split() if w and w not in STOP]
+
+
+def _stem(w: str) -> str:
+    """Crude English stemmer, only for the endings that differ between a
+    catalogue entry and its scraped title.
+
+        butchers  -> butcher        (plural)
+        archives  -> archive        (plural)
+        5 / five  -> 5              (a bare number is a series marker and
+                                       is compared separately)
+
+    Deliberately shallow: a full stemmer would merge genuinely different
+    titles, and a wrong book emailed to a Kindle is worse than a miss.
+    """
+    w = w.lower()
+    if len(w) > 4 and w.endswith("ies"):
+        return w[:-3] + "y"
+    if len(w) > 4 and w.endswith("es") and not w.endswith("ses"):
+        return w[:-2]
+    if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+        return w[:-1]
+    return w
+
+
+def _digits(s: str):
+    """Every bare number in a title, as a set."""
+    return set(re.findall(r"\b\d+\b", s or ""))
 
 
 def token_set(s: str) -> set:
@@ -115,8 +161,36 @@ def is_match(query_title: str, cand_title: str,
     if digits_q and digits_c and not (digits_q & digits_c):
         return False, f"different volume ({digits_q} vs {digits_c})"
 
-    cov = coverage(wt, ct)
-    jac = jaccard(wt, ct)
+    # Compare on stems so a scraper that drops an apostrophe
+    # ("Butchers" vs "Butcher's") is still the same book, and keep a
+    # bare series number from sinking the score when the catalogue
+    # simply omits it.
+    sw = {_stem(w) for w in wt}
+    sc_ = {_stem(w) for w in ct}
+    shared = sw & sc_
+    cov = (len(shared) / len(sw)) if sw else 0.0
+    jac = (len(shared) / len(sw | sc_)) if (sw | sc_) else 0.0
+    nq, nc = _digits(query_title), _digits(cand_title)
+    if nq and not nc:
+        # the catalogue dropped the series number; do not penalise it
+        cov = max(cov, 0.85)
+    # A candidate that introduces content words the query never had is a
+    # DIFFERENT book that merely shares a phrase:
+    #     "Never Lie" must not match "Never Leave, Never Lie"
+    # Catalogue filler (series names, "a novel", "unabridged") is allowed
+    # because libgen appends it, so only reject on genuinely new words.
+    FILLER = {"novel", "book", "edition", "ed", "volume", "vol", "part",
+               "unabridged", "illustrated", "paperback", "hardcover",
+               "deluxe", "omnibus", "collection", "anthology", "series"}
+    new_content = {w for w in sc_ - sw
+                   if w not in FILLER and not w.isdigit() and len(w) > 2}
+    # gate on JACCARD, not coverage: "Never Lie" vs "Never Leave,
+    # Never Lie" has full coverage (never+lie are both present) but
+    # jaccard 0.67. The legitimate series-suffix cases measure 0.83.
+    if new_content and jac < 0.80:
+        return False, ("candidate introduces %s, which the query does not "
+                       "mention" % sorted(new_content)[:3])
+
 
     # -- SINGLE-DISTINCT-TOKEN: the highest false-positive risk.
     if len(wt) == 1:

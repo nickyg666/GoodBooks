@@ -502,7 +502,7 @@
 
 {# Random books modal #}
 <div id="random-modal" class="modal hidden">
-    <div class="card" style="max-width: 400px; margin: auto; padding: 2rem; background: white; border-radius: 8px;">
+    <div class="card modal-dialog">
         <h2>Get Random Book(s)</h2>
         <form id="random-form" onsubmit="getRandomBooks(event)">
             <label>
@@ -522,7 +522,7 @@
 
 {# Single send-to-Kindle modal #}
 <div id="send-modal" class="modal hidden">
-    <div class="card" style="max-width: 400px; max-height: 80vh; margin: auto; padding: 2rem; overflow: auto; position: relative;">
+    <div class="card modal-dialog">
         <button type="button" class="modal-close-btn" id="send-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
         <h2>Send to Kindle</h2>
         <form method="post" action="{{ url_for('library_send_to_kindle') }}" id="send-kindle-form">
@@ -556,8 +556,8 @@
 
 {# Batch send modal #}
 <div id="batch-modal" class="modal hidden">
-    <div class="card" style="max-width: 400px; max-height: 80vh; margin: auto; padding: 2rem; overflow: auto;">
-        <button type="button" class="modal-close-btn" id="batch-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
+    <div class="card modal-dialog">
+        <button class="modal-close" aria-label="Close" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
         <h2>Send selected to Kindle</h2>
         <form method="post" action="{{ url_for('library_send_batch') }}" id="batch-kindle-form">
             <input type="hidden" name="entry_ids" id="batch-entry-ids">
@@ -590,7 +590,7 @@
 
 {# Batch delete modal #}
 <div id="delete-modal" class="modal hidden">
-    <div class="card">
+    <div class="card modal-dialog">
         <h2>Delete selected items</h2>
         <p>Choose whether to delete from library only or from filesystem as well.</p>
         <form method="post" action="{{ url_for('library_delete_batch') }}">

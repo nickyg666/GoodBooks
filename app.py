@@ -4998,7 +4998,10 @@ def index():
             else:
                 # At root: count all entries
                 total_recursive = len(entries_all)
-            total_items = total_recursive
+            # Page over the FOLDER CARDS, which is what folder view actually
+            # renders. Using the recursive book count here made a 17-folder
+            # library advertise 97 pages, nearly all of them empty.
+            total_items = len(folder_cards)
             total_pages = max(1, (total_items + per_page - 1) // per_page)
             if page > total_pages:
                 page = total_pages

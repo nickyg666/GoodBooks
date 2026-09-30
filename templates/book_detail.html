@@ -176,7 +176,7 @@
 
 <!-- Send to Kindle Modal -->
 <div id="send-modal" class="modal hidden">
-    <div class="card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
+    <div class="card modal-dialog">
         <button type="button" id="send-close-x" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 2rem; cursor: pointer; color: var(--text); z-index: 10; padding: 0; width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
         <h2>Send to Kindle</h2>
         <form method="post" action="{{ url_for('library_send_to_kindle') }}" id="send-kindle-form">
@@ -207,7 +207,7 @@
 
 <!-- Delete Book Modal -->
 <div id="delete-modal" class="modal hidden">
-    <div class="card" style="max-width: 500px; margin: auto; padding: 2rem;">
+    <div class="card modal-dialog">
         <h2>Delete Book</h2>
         <p style="color: var(--muted); margin-bottom: 1.5rem;">Choose what to delete:</p>
         <div style="display: flex; flex-direction: column; gap: 1rem;">

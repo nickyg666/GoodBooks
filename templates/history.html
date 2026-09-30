@@ -177,7 +177,7 @@
 
 {# Send-to-Kindle modal for history entries #}
 <div id="history-send-modal" class="modal hidden">
-    <div class="card" style="max-width: 500px; margin: auto; padding: 2rem; position: relative;">
+    <div class="card modal-dialog">
         <button type="button" id="history-send-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
         <h2>Send to Kindle</h2>
         <form method="post" action="{{ url_for('history_send_to_kindle') }}" id="history-send-form">
@@ -211,7 +211,7 @@
 
 {# History entry details modal #}
 <div id="history-details-modal" class="modal hidden">
-    <div class="card" style="max-width: 600px; margin: auto; padding: 2rem; position: relative;">
+    <div class="card modal-dialog modal-dialog-wide">
         <button type="button" id="history-details-close-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; color: var(--text-light); width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;">×</button>
         <div style="display: flex; gap: 1.5rem;">
             <div style="flex-shrink: 0;">

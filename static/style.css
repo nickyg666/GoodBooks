@@ -528,6 +528,43 @@ section { margin-bottom: 1rem; }
 
 .modal.hidden { display: none !important; }
 
+/* ------------------------------------------------------------------
+   Shared modal dialog sizing.
+
+   Before this, every modal carried its own inline max-width (400/500/600px,
+   some with a fixed width and a 400px max-height, several with none), so
+   dialogs did not match each other and could overflow a short window. The
+   library random modal also hardcoded `background: white`, which is a white
+   box on a dark theme. One rule, sized to the viewport in both axes.
+   ------------------------------------------------------------------ */
+.modal-dialog {
+    box-sizing: border-box;
+    background: var(--card-bg, #ffffff);
+    color: var(--text-color, inherit);
+    border: 1px solid var(--border, #d8d8d8);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .28);
+    padding: 1.5rem;
+    width: min(560px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    position: relative;
+}
+
+.modal-dialog.modal-dialog-wide { width: min(760px, calc(100vw - 2rem)); }
+
+@media (max-width: 560px) {
+    .modal-dialog {
+        width: calc(100vw - 1.5rem);
+        max-width: calc(100vw - 1.5rem);
+        padding: 1.1rem;
+        max-height: calc(100vh - 2rem);
+    }
+}
+
+
 .modal .card {
     max-width: 600px;
     width: auto;

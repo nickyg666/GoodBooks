@@ -723,6 +723,45 @@ class _TryNextSource(Exception):
     """Internal signal: this source cannot serve the file; try the next one."""
 
 
+# --- Anna's Archive circuit breaker -------------------------------------
+# AA serves a partner or synthetic HTML page for every slow_download mirror.
+# That is not transient, and retrying it costs minutes per book in the
+# stealth browser, so track consecutive HTML results and prefer LibGen while
+# AA stays broken. A single real success closes the circuit immediately.
+_AA_STATE = {"html_streak": 0, "last_html_ts": 0.0, "last_ok_ts": 0.0}
+AA_TRIP_AFTER = 4
+AA_COOLDOWN_SECONDS = 1800
+
+
+def aa_circuit_open() -> bool:
+    """True when AA has been failing recently and should be tried last."""
+    st = _AA_STATE
+    if st["html_streak"] < AA_TRIP_AFTER:
+        return False
+    import time as _t
+    return (_t.time() - st["last_html_ts"]) < AA_COOLDOWN_SECONDS
+
+
+def note_aa_html() -> None:
+    _AA_STATE["html_streak"] += 1
+    import time as _t
+    _AA_STATE["last_html_ts"] = _t.time()
+    if _AA_STATE["html_streak"] == AA_TRIP_AFTER:
+        logger.warning(
+            "Anna's Archive returned HTML %d times in a row; preferring "
+            "LibGen for the next %d minutes", AA_TRIP_AFTER,
+            AA_COOLDOWN_SECONDS // 60)
+
+
+def note_aa_ok() -> None:
+    if _AA_STATE["html_streak"]:
+        logger.info("Anna's Archive recovered after %d HTML failures",
+                    _AA_STATE["html_streak"])
+    _AA_STATE["html_streak"] = 0
+    import time as _t
+    _AA_STATE["last_ok_ts"] = _t.time()
+
+
 class AnnaSource:
     """
     Search + download wrapper around Anna's Archive.
@@ -2752,6 +2791,15 @@ class AnnaSource:
 
         return result
     def download(self, result: Dict, fmt: str, dest_dir: Path) -> Path:
+
+        # Anna's Archive is returning HTML for every mirror; when the
+        # breaker is open, skip straight to the LibGen fallback rather than
+        # burning minutes in the stealth browser first.
+        if aa_circuit_open():
+            logger.info("AA circuit open; going straight to LibGen for %r",
+                        result.get("title") or "")
+            return self._download_via_next_source(
+                result, fmt, dest_dir, "AA circuit open")
         # Bound once here: the libgen fallback below is in a different
         # branch, and previously this only existed inside the
         # `if not downloads_map` branch, so the fallback raised
@@ -3479,6 +3527,15 @@ class ArchiveOrgSource:
         Returns:
             Path to downloaded file
         """
+
+        # Anna's Archive is returning HTML for every mirror; when the
+        # breaker is open, skip straight to the LibGen fallback rather than
+        # burning minutes in the stealth browser first.
+        if aa_circuit_open():
+            logger.info("AA circuit open; going straight to LibGen for %r",
+                        result.get("title") or "")
+            return self._download_via_next_source(
+                result, fmt, dest_dir, "AA circuit open")
         identifier = result.get('detail', '')
         if not identifier:
             raise ValueError("Result missing 'detail' (identifier)")

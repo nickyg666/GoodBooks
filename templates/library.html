@@ -239,7 +239,7 @@
         <div class="library-toolbar">
                         <div id="library-view-controls" class="view-segments" role="group" aria-label="Library view">
                 <span class="view-segments-label">View</span>
-                <button type="button" id="library-view-grid" class="view-toggle {% if view_mode == 'collection' %}active{% endif %}" data-view="collection" title="Bookshelf: every book in a grid">
+                <button type="button" id="library-view-grid" class="view-toggle {% if view_mode_requested == 'collection' %}active{% endif %}" data-view="collection" title="Bookshelf: every book in a grid">
                     <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
                         <rect x="2.5" y="2.5" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1.5"/>
                         <rect x="11.5" y="2.5" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1.5"/>
@@ -248,7 +248,7 @@
                     </svg>
                     <span class="view-toggle-text">Bookshelf</span>
                 </button>
-                <button type="button" id="library-view-list" class="view-toggle {% if view_mode == 'folder' %}active{% endif %}" data-view="folder" title="Folders: browse by folder and series">
+                <button type="button" id="library-view-list" class="view-toggle {% if view_mode_requested == 'folder' %}active{% endif %}" data-view="folder" title="Folders: browse by folder and series">
                     <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
                         <line x1="4" y1="4.5" x2="16" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                         <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -256,7 +256,7 @@
                     </svg>
                     <span class="view-toggle-text">Folders</span>
                 </button>
-                <button type="button" id="library-view-cover" class="view-toggle {% if view_mode == 'cover' %}active{% endif %}" data-view="cover" title="Covers: browse the collection as a wall of book covers">
+                <button type="button" id="library-view-cover" class="view-toggle {% if view_mode_requested == 'cover' %}active{% endif %}" data-view="cover" title="Covers: browse the collection as a wall of book covers">
                     <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
                         <rect x="3" y="2.5" width="4.4" height="15" rx="0.7" stroke="currentColor" fill="none" stroke-width="1.4"/>
                         <rect x="8.5" y="2.5" width="3.8" height="15" rx="0.7" stroke="currentColor" fill="none" stroke-width="1.4"/>
@@ -264,7 +264,7 @@
                     </svg>
                     <span class="view-toggle-text">Covers</span>
                 </button>
-                <button type="button" id="library-view-recent" class="view-toggle {% if view_mode == 'recent' %}active{% endif %}" data-view="recent" title="Newest: most recently added books first">
+                <button type="button" id="library-view-recent" class="view-toggle {% if view_mode_requested == 'recent' %}active{% endif %}" data-view="recent" title="Newest: most recently added books first">
                     <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
                         <circle cx="10" cy="10" r="7.2" stroke="currentColor" fill="none" stroke-width="1.4"/>
                         <path d="M10 5.6V10l3.1 2" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round"/>

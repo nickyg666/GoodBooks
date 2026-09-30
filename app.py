@@ -4786,6 +4786,10 @@ def index():
     view_mode = request.args.get("view", "folder").strip().lower()
     if view_mode not in {"folder", "collection", "cover", "compact", "recent"}:
         view_mode = "folder"
+    # Keep what the user actually asked for. "recent" is resolved to
+    # collection mode below for its behaviour, but the template needs the
+    # original name or the "Newest" button can never be the active one.
+    view_mode_requested = view_mode
     # "recent" is a flat, newest-first view. Model it as collection mode
     # with a date sort rather than a separate branch, so every filter,
     # pagination and cover fix below applies to it unchanged.
@@ -5119,6 +5123,7 @@ def index():
         filters_active=filters_active,
 
         view_mode=view_mode,
+    view_mode_requested=view_mode_requested,
     )
 def ensure_mobi_for_direct_download(src: Path) -> tuple[Path, Optional[Path]]:
     """

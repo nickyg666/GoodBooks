@@ -72,26 +72,44 @@ MAX_CLOUDFLARE_ATTEMPTS = 1
 CLOUDFLARE_TIMEOUT = 8
 
 
-def set_download_concurrency(max_concurrent: int) -> None:
-    """
-    Configure the global max number of concurrent downloads.
+# Current permit count, tracked so a resize can be applied to the EXISTING
+# semaphore. Rebinding the module global left threads already holding or
+# waiting on the old object stuck at the old value, which is why the
+# configured concurrency of 4 had no effect.
+_DOWNLOAD_CONCURRENCY = {"value": 1}
 
-    Safe bounds:
-      - min: 1
-      - max: 16
+
+def set_download_concurrency(max_concurrent: int) -> None:
+    """Configure the max number of concurrent downloads (1..16).
+
+    The semaphore is resized IN PLACE. Rebinding the module global left
+    threads already waiting on the old object at the old concurrency, so the
+    configured value silently did nothing until a restart.
     """
-    global _DOWNLOAD_SEMAPHORE
     try:
         value = int(max_concurrent)
     except Exception:
         value = 2
-
-    if value < 1:
-        value = 1
-    if value > 16:
-        value = 16
-
-    _DOWNLOAD_SEMAPHORE = threading.Semaphore(value)
+    value = max(1, min(value, 16))
+    current = _DOWNLOAD_CONCURRENCY["value"]
+    if value != current:
+        sem = _DOWNLOAD_SEMAPHORE
+        try:
+            if value > current:
+                for _ in range(value - current):
+                    sem.release()
+            else:
+                acquired = 0
+                for _ in range(current - value):
+                    if sem.acquire(timeout=0.05):
+                        acquired += 1
+                    else:
+                        break
+                for _ in range(acquired):
+                    sem.release()
+        except Exception:
+            logger.debug("could not resize download semaphore", exc_info=True)
+    _DOWNLOAD_CONCURRENCY["value"] = value
     logger.info("Download concurrency set to %d", value)
 
 

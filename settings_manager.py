@@ -96,7 +96,11 @@ class Settings:
 
     # Threading / concurrency
     max_feed_workers: int = 4
-    max_concurrent_downloads: int = 4
+    # 6 parallel downloads: libgen files are large (a 27MB book is ~8 min
+    # at the fastest measured mirror), so one-at-a-time dominated wall
+    # time. Deliberately not higher: both sources throttle concurrent
+    # connections and the 429 auto-throttle backs off above 3/min.
+    max_concurrent_downloads: int = 6
     
     # Background jobs control
     disable_background_jobs: bool = False

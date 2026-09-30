@@ -4204,7 +4204,7 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
     return meta
 
 
-def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
+def ensure_library_metadata(entry: Dict[str, Any], allow_network: bool = False) -> Dict[str, Any]:
     """
     Ensure we have a reasonably rich metadata block for a library entry.
 
@@ -4247,7 +4247,7 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
                 author = history_manager.cleanup_author(author)
 
             query = f"{entry.get('title', '')} {author}".strip()
-            if query:
+            if allow_network and query:
                 # Make a small, format-aware search
                 allowed_formats = [entry.get("filetype", "epub") or "epub"]
 
@@ -4305,7 +4305,7 @@ def ensure_library_metadata(entry: Dict[str, Any]) -> Dict[str, Any]:
                         meta["goodreads_link"] = gr_link
 
                     # If we don't have a Goodreads link yet, try to find it using search query
-                    if not gr_link and (meta.get("title") or entry.get("title")):
+                    if allow_network and not gr_link and (meta.get("title") or entry.get("title")):
                         try:
                             import requests
                             title = meta.get("title") or entry.get("title")

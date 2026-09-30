@@ -2861,8 +2861,49 @@ def send_batch_notification_email(
             logger.exception("Failed to send batch notification email to %s", recipient_email)
 
 
+_SORT_ARTICLES = ("the ", "a ", "an ")
+
+
 def _normalize_sort_key(value: str) -> str:
-    return (value or "").casefold()
+    """Sort key for a title or author.
+
+    casefold alone is only case-insensitive, which made author sorting look
+    arbitrary. This also:
+      * folds accents, so "Émile Zola" sorts beside "Emile Zola" rather than
+        after every "Z"
+      * drops a leading article, so "The Hobbit" files under H and
+        "Zebra, The" under Z
+      * strips punctuation and collapses whitespace
+    """
+    s = (value or "").strip()
+    if not s:
+        return ""
+    try:
+        import unicodedata
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    except Exception:
+        pass
+    s = s.casefold()
+    # keep apostrophes/hyphens as separators so "o'malley" -> "o malley"
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    # strip a leading article only when something follows it
+    for art in _SORT_ARTICLES:
+        if s.startswith(art) and len(s) > len(art):
+            s = s[len(art):]
+            break
+    # and a trailing one, so "Zebra, The" files under Z rather than T.
+    # The article must be a standalone word: without a leading-space check
+    # "zola" matched the article "a" and became "zol".
+    for art in _SORT_ARTICLES:
+        bare = art.rstrip()
+        if not bare or len(s) <= len(bare):
+            continue
+        if s.endswith(" " + bare) or s == bare:
+            s = s[: -(len(bare) + 1)].strip() if s.endswith(" " + bare) else ""
+            break
+    return s
 
 
 def load_library_metadata() -> Dict[str, Dict]:
@@ -3198,11 +3239,16 @@ def resolve_cover_url(cover: Optional[str]) -> str:
         return ""
     if c.startswith(("http://", "https://", "data:")):
         return c
-    # local file reference -> serve it through the cache route by its stem
+    # Local file reference -> serve it through the cache route by its stem.
+    # Build the URL by hand rather than url_for(): build_library_entries() is
+    # also called from the background maintenance thread and from tests, where
+    # there is no Flask request context and url_for() raises
+    # "Working outside of application context".
     name = c.replace("\\", "/").rsplit("/", 1)[-1]
     stem, dot, ext = name.rpartition(".")
     if stem and ext.lower() in {"jpg", "jpeg", "png", "webp", "gif"}:
-        return url_for("serve_cached_cover", library_id=stem)
+        from urllib.parse import quote
+        return "/cover/" + quote(stem, safe="")
     return ""
 
 
@@ -3323,6 +3369,19 @@ def filter_entries_needing_enrichment(entries: List[Dict], metadata: Dict[str, D
     return incomplete
 
 
+def _author_sort_key(entry: Dict, descending: bool = False):
+    """Key for author sorting that keeps unknown authors out of the way.
+
+    An empty author must not sort as "" (which Python places before every
+    real name) -- that put the 45 authorless books on page 1 of every
+    author-sorted view and made the sort look broken.
+    """
+    a = _normalize_sort_key(entry.get("author", ""))
+    # "~" sorts after any alphanumeric, so unknown authors land at the end
+    return ("~" + a if not a else a, _normalize_sort_key(entry.get("title", "")))
+
+
+
 def sort_library_entries(entries: List[Dict], sort_key: str) -> List[Dict]:
     """
     Sort entries according to the configured sort key.
@@ -3349,22 +3408,9 @@ def sort_library_entries(entries: List[Dict], sort_key: str) -> List[Dict]:
             reverse=True,
         )
     if sort_key == "author_az":
-        return sorted(
-            entries,
-            key=lambda e: (
-                _normalize_sort_key(e.get("author", "")),
-                _normalize_sort_key(e.get("title", "")),
-            ),
-        )
+        return sorted(entries, key=lambda e: _author_sort_key(e))
     if sort_key == "author_za":
-        return sorted(
-            entries,
-            key=lambda e: (
-                _normalize_sort_key(e.get("author", "")),
-                _normalize_sort_key(e.get("title", "")),
-            ),
-            reverse=True,
-        )
+        return sorted(entries, key=lambda e: _author_sort_key(e), reverse=True)
 
     # Fallback: newest first
     return sorted(entries, key=lambda e: e.get("mtime", 0), reverse=True)

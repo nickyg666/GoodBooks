@@ -39,9 +39,37 @@ OL_COVER = "https://covers.openlibrary.org/b/id/{cid}-L.jpg"
 UA = {"User-Agent": "GoodBooks/1.0 (local library manager)"}
 
 # words that mean the string is a scraped filename, not a clean title
-_FILENAME_NOISE = re.compile(
-    r"(;\s*-\s*|\bBook\s*\d+\b.*\bSeries\b|"
-    r"[A-Za-z]{3,}\s+[A-Z][a-z]+[A-Za-z]*\s+[A-Z][a-z]+)", re.S)
+# A title is "mangled" only if it shows these defects. A genuine published
+# title may legitimately contain "Series, #N" or "(Series, Book 2)", so
+# those are NOT defects on their own.
+# Only unambiguous defects. A pattern for "run-together words" was tried
+# and removed: it matched ordinary title casing ("The Bad Beginning"), so it
+# rejected almost every genuine title.
+# 1. semicolon-separated author fragments: "sara; pennypacker; marla"
+_SEMI_AUTHORS = re.compile(r";\s*[A-Za-z]")
+
+# 2. a glued "-Author" tail. Must be a hyphen with NO space after it, then
+#    capitalised words (so "The Fenway Foul-Up (Ballpark...)" is fine), and
+#    the author part must not be a bare series number.
+_GLUED_AUTHOR = re.compile(
+    r"[a-z\)]-(?!\s)\d*\s*(?:[A-Z][a-z]+(?:\s+[A-Z]\.?\s*[A-Za-z]+){1,3})"
+    r"(?!\s*#)")
+
+# 3. a lowercase word fused straight into a capitalised one, with no
+#    separator: "The Winter SeaJekyll & Hyde".
+_FUSED_WORD = re.compile(r"[a-z]{3}[A-Z][a-z]{2,}")
+
+
+def _has_defect(t: str) -> bool:
+    return bool(_SEMI_AUTHORS.search(t)
+                or _GLUED_AUTHOR.search(t)
+                or _FUSED_WORD.search(t))
+
+# A title fused with a series fragment mid-string, e.g.
+# "Clementine  Clementine Series, Book 1" -- only a defect when the words
+# immediately before "Series" repeat the words that started the title.
+_FUSED_SERIES = re.compile(
+    r"^(.{4,40}?)\b[A-Za-z0-9'\- ]{2,40}\s+Series\b", re.S)
 
 _STOP = {"the", "a", "an", "of", "and", "to", "in", "on", "for", "is", "vol",
          "book", "series", "part", "edition"}
@@ -56,14 +84,20 @@ def _title_tokens(s: str):
 
 
 def looks_clean_title(t: str) -> bool:
-    """True when a title does not look like a scraped filename."""
+    """True when a title looks like a real book title, not a filename.
+
+    Accepts the shapes real catalogues produce -- subtitles, "(Series, #N)",
+    "Book 2" in a series name -- and rejects only genuine defects:
+    semicolon-separated author fragments, a glued "-Author" tail, run-together
+    words, or excessive length.
+    """
     if not t or len(t) < 3:
         return False
-    if ";" in t:                       # author fragments glued on
+    if ";" in t:                       # "sara; pennypacker; marla" author split
         return False
-    if len(t) > 140:
+    if len(t) > 160:
         return False
-    if _FILENAME_NOISE.search(t):
+    if _has_defect(t):
         return False
     return True
 

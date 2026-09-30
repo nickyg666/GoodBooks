@@ -240,31 +240,39 @@
         <button type="button" id="library-multi-delete" class="danger">
             Delete selected
         </button>
-        <div id="library-view-controls" style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto;">
-            <button type="button" id="library-view-grid" class="view-toggle {% if view_mode == 'collection' %}active{% endif %}" title="All books (grid)" aria-label="All books view">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <rect x="2" y="2" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
-                    <rect x="12" y="2" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
-                    <rect x="2" y="12" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
-                    <rect x="12" y="12" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1"/>
+        <div id="library-view-controls" class="view-segments" role="group" aria-label="Library view">
+            <span class="view-segments-label">View</span>
+            <button type="button" id="library-view-grid" class="view-toggle {% if view_mode == 'collection' %}active{% endif %}" data-view="collection" title="Bookshelf: every book in a grid">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                    <rect x="2.5" y="2.5" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    <rect x="11.5" y="2.5" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    <rect x="2.5" y="11.5" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1.5"/>
+                    <rect x="11.5" y="11.5" width="6" height="6" stroke="currentColor" fill="none" stroke-width="1.5"/>
                 </svg>
+                <span class="view-toggle-text">Bookshelf</span>
             </button>
-            <button type="button" id="library-view-list" class="view-toggle {% if view_mode == 'folder' %}active{% endif %}" title="Folders (list)" aria-label="Folders view">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <line x1="4" y1="4" x2="16" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <button type="button" id="library-view-list" class="view-toggle {% if view_mode == 'folder' %}active{% endif %}" data-view="folder" title="Folders: browse by folder and series">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                    <line x1="4" y1="4.5" x2="16" y2="4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="4" y1="16" x2="16" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="4" y1="15.5" x2="16" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
+                <span class="view-toggle-text">Folders</span>
             </button>
-            <button type="button" id="library-view-cover" class="view-toggle" title="Newsstand (covers)" aria-label="Newsstand cover view">
-                <span aria-hidden="true">&#128218;</span>
-            </button>
-            <button type="button" id="library-view-recent" class="view-toggle" title="Recently added (recent)" aria-label="Recently added view">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <circle cx="10" cy="10" r="8" stroke="currentColor" fill="none" stroke-width="1.5"/>
-                    <line x1="10" y1="6" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    <line x1="10" y1="10" x2="13" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <button type="button" id="library-view-cover" class="view-toggle {% if view_mode == 'cover' %}active{% endif %}" data-view="cover" title="Covers: browse the collection as a wall of book covers">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                    <rect x="3" y="2.5" width="4.4" height="15" rx="0.7" stroke="currentColor" fill="none" stroke-width="1.4"/>
+                    <rect x="8.5" y="2.5" width="3.8" height="15" rx="0.7" stroke="currentColor" fill="none" stroke-width="1.4"/>
+                    <rect x="13.4" y="4" width="3.6" height="13.5" rx="0.7" stroke="currentColor" fill="none" stroke-width="1.4"/>
                 </svg>
+                <span class="view-toggle-text">Covers</span>
+            </button>
+            <button type="button" id="library-view-recent" class="view-toggle {% if view_mode == 'recent' %}active{% endif %}" data-view="recent" title="Newest: most recently added books first">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                    <circle cx="10" cy="10" r="7.2" stroke="currentColor" fill="none" stroke-width="1.4"/>
+                    <path d="M10 5.6V10l3.1 2" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <span class="view-toggle-text">Newest</span>
             </button>
         </div>
     </div>
@@ -301,16 +309,28 @@
             </select>
         </label>
 
-        <label style="margin-bottom: 0;">
+        <label style="margin-bottom: 0;" class="author-filter">
             <span style="font-size: 0.85rem; display: block; margin-bottom: 0.25rem;">Author</span>
-            <select name="author" style="width: 100%;">
-                <option value="">Any</option>
-                {% for a in author_options %}
-                <option value="{{ a }}" {% if a == author_filter %}selected{% endif %}>
-                    {{ a }}
-                </option>
-                {% endfor %}
-            </select>
+            {# A 3,948-option <select> cannot be typed into, so the author you
+               wanted was thousands of rows down, and the list opened on
+               "1898.; alice's; adventures; in; wonderland; (". This is a
+               combobox: type to filter, pick from the list. The form still
+               submits a plain author=<key>, so the request format and the
+               server-side filter are unchanged. #}
+            <input type="hidden" name="author" id="author-filter-value" value="{{ author_filter or '' }}">
+            {# If the filter key has no display label (an author that vanished
+               from the current scope), fall back to the key so the control
+               still reports the active filter instead of showing a
+               placeholder. #}
+            <div class="author-combobox">
+                <input type="text" id="author-filter-input" class="author-combobox-input"
+                       placeholder="Any author" autocomplete="off" role="combobox"
+                       aria-expanded="false" aria-controls="author-filter-list"
+                       aria-autocomplete="list" data-authors="{{ author_options_json }}"
+                       value="{{ author_filter_label or '' }}"
+                       data-current-key="{{ author_filter or '' }}">
+                <ul id="author-filter-list" class="author-combobox-list" role="listbox" hidden></ul>
+            </div>
         </label>
 
         <label style="margin-bottom: 0;">
@@ -333,6 +353,153 @@
         <form method="post" action="{{ url_for('refresh_library_metadata') }}" style="display: block; width: 100%; margin: 0;">
             <button type="submit" class="secondary" title="Fetch book metadata (genres, ratings) from Goodreads" style="margin: 0; width: 100%;">Refresh</button>
         </form>
+
+<script>
+// ---------------------------------------------------------------- author --
+// Typeahead over the parsed author list. The <select> this replaced held
+// 3,948 raw metadata strings and could not be typed into.
+(function () {
+  var input = document.getElementById('author-filter-input');
+  var hidden = document.getElementById('author-filter-value');
+  var list = document.getElementById('author-filter-list');
+  if (!input || !hidden || !list) { return; }
+
+  var AUTHORS = [];
+  try { AUTHORS = JSON.parse(input.getAttribute('data-authors') || '[]'); }
+  catch (e) { AUTHORS = []; }
+
+  // The page was rendered with a filter already applied (from a form submit
+  // or a hand-edited URL). Show its label so the control reflects the state
+  // it is actually in.
+  (function showCurrent() {
+    var key = input.getAttribute('data-current-key') || '';
+    if (!key) { return; }
+    var label = key;
+    for (var i = 0; i < AUTHORS.length; i++) {
+      if (AUTHORS[i].k === key) { label = AUTHORS[i].l; break; }
+    }
+    hidden.value = key;
+    input.value = label;
+  })();
+
+  var MAX = 60;
+  var active = -1;
+  var current = [];
+
+  function norm(s) {
+    return (s || '').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function score(item, q) {
+    // exact prefix beats word-start beats substring
+    var l = norm(item.l);
+    if (!q) { return 1; }
+    if (l === q) { return 100; }
+    if (l.indexOf(q) === 0) { return 80; }
+    if (norm(item.k).indexOf(q) === 0) { return 70; }
+    var words = l.split(/[\s,]+/);
+    for (var i = 0; i < words.length; i++) {
+      if (words[i].indexOf(q) === 0) { return 60; }
+    }
+    if (l.indexOf(q) >= 0) { return 40; }
+    // subsequence, so "smk" finds "Stephen King"
+    var i2 = 0;
+    for (var j = 0; j < l.length && i2 < q.length; j++) {
+      if (l[j] === q[i2]) { i2++; }
+    }
+    return i2 === q.length ? 20 : 0;
+  }
+
+  function render() {
+    var q = norm(input.value.trim());
+    current = [];
+    if (input.value.trim() === '') {
+      // empty box means "Any author": clear the filter outright
+      hidden.value = '';
+      list.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    var hits = [];
+    for (var i = 0; i < AUTHORS.length; i++) {
+      var s = score(AUTHORS[i], q);
+      if (s > 0) { hits.push({ a: AUTHORS[i], s: s }); }
+    }
+    hits.sort(function (x, y) {
+      if (y.s !== x.s) { return y.s - x.s; }
+      if (y.a.n !== x.a.n) { return y.a.n - x.a.n; }
+      return x.a.l.localeCompare(y.a.l);
+    });
+    current = hits.slice(0, MAX).map(function (h) { return h.a; });
+    list.innerHTML = '';
+    for (var k = 0; k < current.length; k++) {
+      var it = current[k];
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.id = 'author-opt-' + k;
+      li.dataset.key = it.k;
+      li.dataset.label = it.l;
+      li.innerHTML = '<span class="author-name"></span>' +
+                     '<span class="author-count">' + it.n + '</span>';
+      li.querySelector('.author-name').textContent = it.l;
+      li.addEventListener('mousedown', function (ev) {
+        ev.preventDefault();
+        choose(this.dataset.key, this.dataset.label);
+      });
+      list.appendChild(li);
+    }
+    active = -1;
+    list.hidden = current.length === 0;
+    input.setAttribute('aria-expanded', current.length ? 'true' : 'false');
+  }
+
+  function choose(key, label) {
+    hidden.value = key;
+    input.value = label;
+    list.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+    var form = input.closest('form');
+    if (form) { form.submit(); }
+  }
+
+  function move(delta) {
+    if (list.hidden || !current.length) { return; }
+    active = (active + delta + current.length) % current.length;
+    var items = list.children;
+    for (var i = 0; i < items.length; i++) {
+      items[i].classList.toggle('active', i === active);
+      items[i].setAttribute('aria-selected', i === active ? 'true' : 'false');
+    }
+    var el = items[active];
+    if (el && el.scrollIntoView) { el.scrollIntoView({ block: 'nearest' }); }
+  }
+
+  input.addEventListener('input', render);
+  input.addEventListener('focus', render);
+  input.addEventListener('blur', function () {
+    // let a mousedown on an option win, then close
+    setTimeout(function () { list.hidden = true; }, 120);
+  });
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); move(1); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); move(-1); }
+    else if (ev.key === 'Enter') {
+      if (!list.hidden && active >= 0 && current[active]) {
+        ev.preventDefault();
+        choose(current[active].k, current[active].l);
+      }
+    } else if (ev.key === 'Escape') {
+      list.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('click', function (ev) {
+    if (!list.contains(ev.target) && ev.target !== input) { list.hidden = true; }
+  });
+})();
+</script>
+
 
         <button type="button" class="secondary" id="random-btn" title="Get random book(s) from your selection" onclick="openRandomModal()" style="width: 50px; height: 50px; padding: 0; border-radius: 6px; border: 2px solid #666; background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%); cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
             <svg id="random-die" width="32" height="32" viewBox="0 0 32 32" style="filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2)); transition: transform 0.05s linear;">
@@ -365,36 +532,31 @@
         {# Folder cards (only when no filters are active) #}
         {% if folder_cards and not filters_active %}
             {% for folder in folder_cards %}
-            <div class="card library-card folder-card" data-folder-prefix="{{ folder.prefix }}">
-                <div class="library-select">
-                    <input type="checkbox"
-                           class="library-select-checkbox"
-                           aria-label="Select folder {{ folder.name }}"
-                           data-folder-prefix="{{ folder.prefix }}">
-                </div>
-                <div class="library-cover">
-                    <a href="{{ url_for('index', prefix=folder.prefix, sort=sort_key) }}" class="library-cover-link">
-                        {% if folder.cover %}
-                            <img src="{{ folder.cover }}" alt="{{ folder.name }}" class="cover-image" />
-                        {% else %}
-                            <div class="cover-placeholder folder-placeholder">
-                                <i class="fas fa-folder"></i>
-                            </div>
-                        {% endif %}
-                        <div class="library-cover-overlay">
-                            <span class="library-status-chip">
-                                Folder
-                            </span>
-                            <div class="library-title-overlay">
-                                {{ folder.name }}
-                            </div>
+                        <div class="card library-card folder-card" data-folder-prefix="{{ folder.prefix }}">
+                                <div class="library-select">
+                                        <input type="checkbox"
+                                                      class="library-select-checkbox"
+                                                      aria-label="Select folder {{ folder.name }}"
+                                                      data-folder-prefix="{{ folder.prefix }}">
+                                </div>
+                                <div class="library-cover folder-cover">
+                                        <a href="{{ url_for('index', prefix=folder.prefix, sort=sort_key) }}" class="library-cover-link folder-link"
+                                           {% if folder.cover %}
+                                           style="background-image: url('{{ folder.cover }}'); background-size: cover; background-position: center;"
+                                           {% endif %}>
+                                                {% if not folder.cover %}
+                                                <i class="fas fa-folder folder-icon" aria-hidden="true"></i>
+                                                {% endif %}
+                                                <span class="library-status-chip folder-chip">Folder</span>
+                                        </a>
+                                </div>
+                                <div class="library-info folder-info">
+                                        <h3 class="library-title folder-name">{{ folder.name }}</h3>
+                                        {% if folder.count is defined and folder.count %}
+                                        <span class="folder-count">{{ folder.count }} book{% if folder.count != 1 %}s{% endif %}</span>
+                                        {% endif %}
+                                </div>
                         </div>
-                    </a>
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">{{ folder.name }}</h3>
-                </div>
-            </div>
             {% endfor %}
         {% endif %}
 
@@ -1328,3 +1490,4 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 })();
 </script>
 {% endblock %}
+

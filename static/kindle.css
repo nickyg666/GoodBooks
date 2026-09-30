@@ -1,3 +1,11 @@
+:root {
+  --accent: #2563eb;
+  --hover: #f3f4f6;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+}
+
 /* ============================================================================
    KINDLE E-INK OPTIMIZED CSS
    Ultra-responsive, minimal design for Kindle devices
@@ -415,3 +423,213 @@ a {
     --text-muted: var(--muted, #555);
     --card-bg: var(--bg-color, #ffffff);
 }
+
+/* ---------------------------------------------------- view segmented ctrl */
+/* Four unlabelled icon buttons gave no way to tell what any of them did.
+   Now each shows its name, and the active one is obvious. */
+.view-segments {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.view-segments-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7280);
+  margin-right: 0.15rem;
+}
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease,
+              color 120ms ease;
+}
+.view-toggle:hover {
+  background: var(--hover, #f3f4f6);
+  border-color: var(--accent, #2563eb);
+}
+.view-toggle.active {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+}
+.view-toggle.active:hover { filter: brightness(1.08); }
+.view-toggle:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+.view-toggle-text { font-weight: 500; }
+
+/* On a narrow screen the labels wrap under the icons rather than clipping. */
+@media (max-width: 720px) {
+  .view-toggle { padding: 0.4rem 0.55rem; font-size: 0.82rem; }
+  .view-segments-label { width: 100%; margin-bottom: 0.1rem; }
+}
+
+/* ----------------------------------------------------- author combobox -- */
+/* Replaces a 3,948-option <select> that could not be typed into. */
+.author-filter { position: relative; }
+.author-combobox { position: relative; }
+.author-combobox-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.author-combobox-input::placeholder { color: var(--muted, #6b7280); }
+.author-combobox-input:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #2563eb) 22%,
+                                   transparent);
+}
+.author-combobox-list {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+.author-combobox-list[hidden] { display: none; }
+.author-combobox-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.author-combobox-list li:hover,
+.author-combobox-list li.active {
+  background: var(--hover, #f3f4f6);
+}
+.author-combobox-list li.active {
+  box-shadow: inset 2px 0 0 var(--accent, #2563eb);
+}
+.author-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.author-count {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  background: color-mix(in srgb, var(--muted, #6b7280) 14%, transparent);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- folders -- */
+/* Folder cards used to be 495px tall with a 455px empty grey placeholder and
+   the name printed twice, so the Folders view read as blank boxes. A folder
+   is not a book: give it a compact tile so the names are what you see. */
+.library-view-grid .folder-card {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: auto;
+  min-height: 0;
+  max-height: none;
+}
+.library-view-grid .folder-cover {
+  position: relative;
+  height: 132px;
+  flex: none;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  background: linear-gradient(160deg,
+              color-mix(in srgb, var(--accent, #2563eb) 12%, transparent),
+              color-mix(in srgb, var(--muted, #6b7280) 14%, transparent));
+}
+.library-view-grid .folder-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: var(--text, #111827);
+  position: relative;
+}
+.library-view-grid .folder-icon {
+  font-size: 2.6rem;
+  opacity: 0.55;
+  color: var(--accent, #2563eb);
+}
+.library-view-grid .folder-chip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--surface, #fff);
+  color: var(--muted, #6b7280);
+  border: 1px solid var(--border, #d4d4d8);
+}
+.library-view-grid .folder-info {
+  padding: 0.6rem 0.7rem 0.75rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.library-view-grid .folder-name {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-view-grid .folder-count {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The "Folder" chip was clipped to "OLDER": the per-card select checkbox is
+   absolutely positioned in the same corner and painted over the chip's left
+   edge. Lift the chip above it and offset it clear of the checkbox. */
+.library-view-grid .folder-chip {
+  z-index: 2;
+  top: 10px;
+  left: 34px;              /* clear of the select checkbox */
+  font-size: 0.66rem;
+  padding: 0.12rem 0.4rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.library-view-grid .folder-card .library-select {
+  z-index: 3;
+}
+.library-view-grid .folder-icon { position: relative; z-index: 1; }

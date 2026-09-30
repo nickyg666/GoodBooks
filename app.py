@@ -3117,6 +3117,36 @@ def find_book_in_library_by_title_author(title: str, author: str = "") -> Option
         logger.warning("Failed to check for duplicate book title=%r author=%r: %s", title, author, e)
         return None
 
+# Folder composite covers are a pure function of the folder's contents but
+# were recomputed on every folder-view request, which made each GET take
+# seconds and eventually stopped the service answering systemctl at all
+# (observed: systemctl is-active timing out at rc=124 while GET /?view=folder
+# was still running). Cache by (prefix, entry count) with a TTL so adding or
+# removing a book invalidates it.
+_FOLDER_COVER_CACHE: Dict[str, tuple] = {}
+_FOLDER_COVER_LOCK = threading.Lock()
+_FOLDER_COVER_TTL = 300.0
+
+
+def _cached_folder_cover(prefix: str, entries, builder):
+    """Return (value, cache_hit)."""
+    key = f"{prefix}|{len(entries)}"
+    now = time.time()
+    with _FOLDER_COVER_LOCK:
+        hit = _FOLDER_COVER_CACHE.get(key)
+        if hit and (now - hit[1]) < _FOLDER_COVER_TTL:
+            return hit[0], True
+    value = builder()
+    with _FOLDER_COVER_LOCK:
+        _FOLDER_COVER_CACHE[key] = (value, now)
+    return value, False
+
+
+def _invalidate_folder_cover_cache() -> None:
+    with _FOLDER_COVER_LOCK:
+        _FOLDER_COVER_CACHE.clear()
+
+
 def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Optional[str]:
     """
     Generate a composite cover image for a folder using locally cached covers.
@@ -3437,7 +3467,12 @@ def _author_sort_key(entry: Dict, descending: bool = False):
     real name) -- that put the 45 authorless books on page 1 of every
     author-sorted view and made the sort look broken.
     """
-    a = _normalize_sort_key(entry.get("author", ""))
+    # Sort on the PARSED author name, not the raw catalogue blob, so
+    # "jeff; smith", "jeff smith" and "Smith, Jeff" group as one person.
+    import gb_authors
+    _raw = entry.get("author", "") or ""
+    _shown = gb_authors.display_author(_raw)
+    a = _normalize_sort_key(_shown or _raw)
     # "~" sorts after any alphanumeric, so unknown authors land at the end
     return ("~" + a if not a else a, _normalize_sort_key(entry.get("title", "")))
 
@@ -4876,7 +4911,36 @@ def index():
     # Filter out adult/explicit genres
     genre_set = {g for g in genre_set if is_genre_allowed(g)}
     genre_options = sorted(genre_set, key=lambda s: s.casefold())
-    author_options = sorted(author_set, key=lambda s: s.casefold())
+
+    # Author options come from gb_authors, which parses the catalogue blobs
+    # into real people and merges every representation of the same person
+    # into one entry with a book count. A bare casefold() sort over the raw
+    # strings put "1898.; alice's; adventures; in; wonderland; (" first and
+    # made the filter unusable across ~4,800 rows.
+    import gb_authors
+    author_option_tuples = gb_authors.provide_author_options(
+        entries_in_scope)
+    # (value, label, count): the value is the normalised key the filter
+    # compares against, the label is the display name. Showing the count
+    # makes the list scannable and makes an author with 24 books stand out
+    # from a one-off metadata artefact.
+    author_options = [(key, label, n)
+                      for key, label, n in author_option_tuples]
+
+    # The template renders a typeahead combobox rather than a <select>, so
+    # the list travels as JSON on a data attribute. Only the fields the UI
+    # needs, and the label for the currently-filtered author so the input
+    # shows "Freida Mcfadden" rather than the key "freida mcfadden".
+    import json as _json
+    author_options_json = _json.dumps(
+        [{"k": k, "l": label, "n": n} for k, label, n in author_options],
+        ensure_ascii=False)
+    author_filter_label = ""
+    if author_filter:
+        for k, label, _n in author_options:
+            if k == author_filter:
+                author_filter_label = label
+                break
 
     # Apply filters
     filtered_entries = entries_in_scope
@@ -4893,9 +4957,25 @@ def index():
         filtered_entries = [e for e in filtered_entries if has_genre(e)]
 
     if author_filter:
-        filtered_entries = [
-            e for e in filtered_entries if e.get("author") == author_filter
-        ]
+        # Match against every name the entry carries, not the raw blob, so
+        # "jeff; smith" and "jeff smith" are the same author. Seed the
+        # vocabularies from the scope being filtered so the given/surname
+        # orientation stays data-driven.
+        import gb_authors
+        _given = gb_authors.given_name_seed(
+            gb_authors.harvest_given_names(entries_in_scope))
+        _want = gb_authors.sort_key(author_filter)
+
+        def _author_matches(entry: Dict) -> bool:
+            raw = entry.get("author")
+            if not raw:
+                return False
+            if gb_authors.sort_key(str(raw)) == _want:
+                return True
+            return _want in gb_authors.entry_author_keys(str(raw), _given)
+
+        filtered_entries = [e for e in filtered_entries
+                            if _author_matches(e)]
 
     if search_query:
         filtered_entries = [
@@ -4978,15 +5058,22 @@ def index():
                 else:
                     sub_prefix = folder_name
 
-                # Generate composite cover image for folder
-                cover = generate_folder_cover(sub_prefix, entries_all)
+                # Generate composite cover image for folder (cached: this was
+                # recomputed on every request and made the view unusable)
+                cover, _cover_hit = _cached_folder_cover(
+                    sub_prefix, entries_all,
+                    lambda p=sub_prefix: generate_folder_cover(p, entries_all))
 
+                folder_count = len([
+                    e for e in entries_all
+                    if e.get("relpath", "").startswith(sub_prefix + "/")])
                 folder_cards.append(
-                    {
-                        "name": folder_name,
-                        "prefix": sub_prefix,
-                        "cover": cover,  # Composite cover or None
-                    }
+                        {
+                            "name": folder_name,
+                            "prefix": sub_prefix,
+                            "cover": cover,  # Composite cover or None
+                            "count": folder_count,
+                        }
                 )
 
             entries_sorted = sort_library_entries(files_here, sort_key)
@@ -5026,6 +5113,8 @@ def index():
         author_options=author_options,
         genre_filter=genre_filter,
         author_filter=author_filter,
+    author_options_json=author_options_json,
+    author_filter_label=author_filter_label,
         direct_only=direct_only,
         filters_active=filters_active,
 

@@ -536,6 +536,117 @@ def aa_search_with_retry(source, query, options=None):
     return last
 
 
+def _libgen_download_by_title(title: str, fmt: str, dest_dir: Path,
+                              author: str = "") -> Optional[Path]:
+    """Last-resort libgen fetch: search by title when an md5 is not on the
+    mirrors.
+
+    AA and libgen can hold the same book under different md5s, so an md5 that
+    404s on every get.php does not mean the book is unavailable.
+    """
+    import libgen_ua_patch  # noqa: F401  (browser UA for the mirrors)
+    from libgen_api_enhanced import LibgenSearch
+    import gb_match
+
+    if not title or not title.strip():
+        return None
+    ls = LibgenSearch(mirror="li")
+    try:
+        hits = ls.search_title(title)[:8]
+    except Exception as exc:
+        logger.debug("libgen title search failed for %r: %s", title, exc)
+        return None
+    if not hits:
+        return None
+
+    want = (fmt or "").lower()
+    for h in hits:
+        h_title = getattr(h, "title", "") or ""
+        ok, _ = gb_match.is_match(title, h_title, author,
+                                  getattr(h, "author", "") or "")
+        if not ok:
+            continue
+        ext = (getattr(h, "extension", "") or "").lower()
+        if want and ext and ext != want:
+            continue
+        md5 = getattr(h, "md5", None)
+        if not md5:
+            continue
+        urls = gb_mirrors_live.libgen_get_urls(md5)
+        saved = gb_libgen_dl.download_from_libgen(
+            urls, dest_dir, h_title or title, timeout=120, retries=2)
+        if saved:
+            logger.info("libgen title search found %r as %s", title, saved.name)
+            return saved
+    return None
+
+
+_TITLE_STOP = {"the", "a", "an", "of", "and", "to", "in", "on", "for",
+               "is", "vol", "volume", "book", "part", "edition", "novel"}
+
+
+def _title_tokens(t: str) -> set:
+    norm = re.sub(r"[^a-z0-9 ]+", " ", (t or "").lower())
+    return {w for w in norm.split() if w and w not in _TITLE_STOP}
+
+
+def _rank_results(results: List[Dict], query: str,
+                  opts: Optional["SearchOptions"] = None) -> List[Dict]:
+    """Order results by how well the title matches the query.
+
+    AA returns results in its own order, which is frequently a different
+    book than the one asked for ("Lemons Never Lie" for "Never Lie"), and
+    picking the wrong one wastes a full multi-megabyte download. Rank by:
+
+      1. exact title match, then token coverage of the query
+      2. a penalty when the candidate title is a strict superset (a sequel
+         or spinoff adds tokens the query did not have)
+      3. the existing format preference score, as a tiebreak
+    """
+    if not results:
+        return results
+    want = _title_tokens(query)
+    scored = []
+    for idx, r in enumerate(results):
+        title = r.get("title") or ""
+        got = _title_tokens(title)
+        norm_title = re.sub(r"[^a-z0-9]+", "", (title or "").lower())
+        norm_q = re.sub(r"[^a-z0-9]+", "", (query or "").lower())
+
+        if want and got:
+            cov = len(want & got) / len(want)
+            extra = len(got - want)
+            score = cov
+            if norm_title == norm_q:
+                score += 1.0            # exact
+            # a title that adds a lot of its own is usually a sequel/spinoff
+            if extra >= 2 and cov < 0.9:
+                score -= 0.35
+            if len(want) == 1 and got != want:
+                # single-word query: require the title itself to be that word
+                score -= 1.0
+        else:
+            score = 0.0
+
+        try:
+            fmt = _format_preference_score(
+                r.get("formats") or [], opts or SearchOptions(query=query))
+        except Exception:
+            fmt = 0.0
+
+        scored.append((-score, -fmt, idx, r))
+
+    scored.sort()
+    out = [r for _, _, _, r in scored]
+    for r in out:
+        r.pop("score", None)
+    return out
+
+
+class _TryNextSource(Exception):
+    """Internal signal: this source cannot serve the file; try the next one."""
+
+
 class AnnaSource:
     """
     Search + download wrapper around Anna's Archive.
@@ -544,6 +655,45 @@ class AnnaSource:
       results: list of dicts with keys:
         id, title, author, cover, detail (md5), formats, downloads
     """
+
+    def _download_via_next_source(self, result: Dict, fmt: str, dest_dir: Path,
+                                 reason: str = "") -> Path:
+        """Second attempt: LibGen, once Anna's Archive has failed.
+
+        AA routinely serves a partner HTML page from slow_download, which
+        must not abort the download. Returns the saved path, or raises if
+        neither source could serve the file.
+        """
+        md5_val = (result.get("detail") or "").strip()
+        if md5_val and LIBGEN_AVAILABLE:
+            import gb_libgen_dl
+            urls = (gb_mirrors_live.libgen_get_urls(md5_val)
+                    if gb_mirrors_live
+                    else [f"https://libgen.li/get.php?md5={md5_val}"])
+            logger.info("trying %d libgen mirrors for md5=%s", len(urls), md5_val)
+            try:
+                saved = gb_libgen_dl.download_from_libgen(
+                    urls, dest_dir, result.get("title") or "",
+                    timeout=120, retries=2)
+                if saved:
+                    return saved
+            except Exception as exc:
+                logger.warning("libgen fallback failed: %s", exc)
+
+        # last resort: search libgen by title. AA and libgen can hold the
+        # same book under different md5s, so a 404 md5 does not mean absent.
+        try:
+            saved = _libgen_download_by_title(
+                result.get("title") or "", fmt, dest_dir,
+                (result.get("author") or ""))
+            if saved:
+                return saved
+        except Exception as exc:
+            logger.debug("libgen title fallback failed: %s", exc)
+
+        raise ValueError(
+            "Could not download %r from Anna's Archive or LibGen%s"
+            % (result.get("title") or "?", (f" ({reason})" if reason else "")))
 
     def __init__(
         self,
@@ -1318,16 +1468,14 @@ class AnnaSource:
                 results = libgen_results
                 logger.info("libgen fallback provided %d results", len(results))
 
-        # Return raw results immediately - no ranking or download resolution
-        # Cache full raw list for this query
+        # Rank by title relevance. The previous code returned AA's raw
+        # order, so searching "Never Lie" offered "Lemons Never Lie" first
+        # and a whole multi-megabyte download was spent on the wrong book.
         if results:
+            results = _rank_results(results, opts.query or query, opts)
             self.cache[cache_key] = {"results": results}
-
-        debug_log.append(f"Returning {len(results)} raw results (no ranking)")
-        logger.debug(
-            "Returning %d raw results (no ranking, no download resolution)",
-            len(results),
-        )
+        debug_log.append(f"Returning {len(results)} ranked results")
+        logger.debug("Returning %d ranked results", len(results))
         return results, debug_log
 
     def _search_libgen_fallback(self, query: str) -> Tuple[List[Dict], List[str]]:
@@ -2603,6 +2751,15 @@ class AnnaSource:
         candidate_formats: List[str] = []
         if requested_fmt and requested_fmt in downloads_map:
             candidate_formats.append(requested_fmt)
+        else:
+            # The requested format may not be what this particular copy has
+            # (a caller asking for "epub" frequently lands on an azw3-only
+            # record), so fall back to whatever the result does offer.
+            available = [f for f in (result.get("formats") or []) if f]
+            if requested_fmt and requested_fmt not in available and available:
+                logger.info(
+                    "Requested format %s unavailable; will also try %s",
+                    requested_fmt, available)
         
         # Then add other formats in preference order (only convertible formats)
         for f in (result.get("formats") or []):
@@ -2709,15 +2866,32 @@ class AnnaSource:
                         url = u
                         break
                 if url is None:
-                    url = (gb_mirrors_live.libgen_get_urls(md5_val)[0]
-                               if gb_mirrors_live else f"https://libgen.li/get.php?md5={md5_val}")
-                logger.info("AA had no usable file; trying libgen get.php for md5=%s",
-                            md5_val)
-                saved = gb_libgen_dl.download_from_libgen(
-                    url, dest_dir, result.get("title") or "", timeout=120, retries=3)
-                if saved:
-                    return saved
-                debug_log.append("libgen get.php produced no real file either")
+                    # Try EVERY live mirror. A given md5 is often absent from
+                    # some mirrors (libgen answers "500 File not found in DB")
+                    # but present on others, so taking only the first mirror
+                    # reported available books as undownloadable.
+                    urls = (gb_mirrors_live.libgen_get_urls(md5_val)
+                            if gb_mirrors_live
+                            else [f"https://libgen.li/get.php?md5={md5_val}"])
+                    logger.info("AA had no usable file; trying %d libgen "
+                                "mirrors for md5=%s", len(urls), md5_val)
+                    saved = gb_libgen_dl.download_from_libgen(
+                        urls, dest_dir, result.get("title") or "",
+                        timeout=120, retries=2)
+                    if saved:
+                        return saved
+                    debug_log.append("libgen get.php produced no real file either")
+                    # Last resort: search libgen by title, because the file may
+                    # be catalogued under a different md5 than AA's.
+                    try:
+                        saved = _libgen_download_by_title(
+                            result.get("title") or "", fmt, dest_dir,
+                            (result.get("author") or ""))
+                        if saved:
+                            return saved
+                        debug_log.append("libgen title search also produced nothing")
+                    except Exception as exc:
+                        logger.debug("libgen title fallback failed: %s", exc)
             except Exception as exc:
                 logger.warning("libgen download fallback failed: %s", exc)
                 debug_log.append(f"libgen download fallback error: {exc}")
@@ -2875,13 +3049,30 @@ class AnnaSource:
                                 result.get("title"),
                                 html_snippet[:2000],
                             )
-                            # Check if this is an expiration message
-                            if "expired" in html_snippet.lower():
-                                raise ValueError("Download link expired")
-                            raise ValueError(
-                                f"Download URL returned HTML payload instead of ebook. HTML snippet: {html_snippet}"
-                            )
+# An HTML payload means this AA link is no good: AA routinely serves a
+                            # partner page from slow_download. Do not abort here
+                            # -- download() has a LibGen fallback that must stay
+                            # reachable. The partial file is cleaned up by the
+                            # except clause below; if LibGen also fails, the
+                            # caller reports both attempts.
+                            html_failure_reason = (
+                                "AA returned an HTML page instead of the file")
+                            raise _TryNextSource(html_failure_reason)
                     f.write(chunk)
+        except _TryNextSource as exc:
+            # This source cannot serve the file (AA served a partner HTML
+            # page). Remove the partial file and fall through so the LibGen
+            # fallback below can run.
+            try:
+                if final_path.exists():
+                    final_path.unlink()
+            except Exception:
+                logger.debug("Failed to remove partial file %s", final_path,
+                             exc_info=True)
+            logger.info("AA download unusable (%s); trying the next source",
+                        exc)
+            return self._download_via_next_source(result, fmt, dest_dir,
+                                                   str(exc))
         except Exception:
             try:
                 if final_path.exists():

@@ -1932,6 +1932,13 @@ class AnnaSource:
             ordered_hrefs = []  # Skip AA slow_download entirely
 
         # Walk through slow_download URLs until we get at least one real file URL
+        # Per-entry AA budget: after this many DISTINCT AA mirror failures,
+        # stop spending time on AA and let the caller fall through to the
+        # LibGen fallback. AA and LibGen use different md5 namespaces, so a
+        # LibGen 404 does not mean the book is unavailable.
+        aa_failures = 0
+        AA_FAIL_BUDGET = 2
+
         for raw_href in ordered_hrefs:
             slow_href = urljoin(self.base_url, raw_href)
             logger.debug("Resolving AA slow_download link=%s md5=%s", slow_href, md5)
@@ -1951,6 +1958,15 @@ class AnnaSource:
                 resolved = None
 
             if not resolved:
+                aa_failures += 1
+                if aa_failures >= AA_FAIL_BUDGET:
+                    logger.info(
+                        "AA produced no usable file after %d distinct mirror(s) "
+                        "for md5=%s; falling back to LibGen", aa_failures, md5)
+                    debug_log.append(
+                        "AA budget spent (%d mirror failures); deferring to "
+                        "LibGen" % aa_failures)
+                    break
                 continue
 
             download_url, fmt = resolved
@@ -2876,6 +2892,22 @@ class AnnaSource:
                     return saved
                 if debug_log is not None:
                     debug_log.append("libgen get.php produced no real file either")
+                # Last resort: search libgen by title. AA and LibGen use
+                # different md5 namespaces, so an AA md5 that is absent from
+                # libgen ("File not found in DB" on every mirror) says
+                # nothing about whether libgen holds the book. The title
+                # ladder is the only path left here.
+                try:
+                    got = _libgen_download_by_title(
+                        result.get("title") or "", fmt, dest_dir,
+                        (result.get("author") or ""))
+                    if got:
+                        logger.info("recovered %r via libgen title search",
+                                    result.get("title"))
+                        return got
+                except Exception as exc:
+                    logger.debug("libgen title ladder failed for %r: %s",
+                                 result.get("title"), exc)
             except Exception as exc:
                 logger.warning("libgen download fallback failed: %s", exc)
                 if debug_log is not None:

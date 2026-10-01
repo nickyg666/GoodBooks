@@ -4889,6 +4889,7 @@ def index():
     author_filter_label=author_filter_label,
         direct_only=direct_only,
         filters_active=filters_active,
+        search_query=search_query,
 
         view_mode=view_mode,
     view_mode_requested=view_mode_requested,

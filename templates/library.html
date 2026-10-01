@@ -229,6 +229,12 @@
 
     <div class="library-header">
         <div class="library-summary">
+            {# Refresh is not a filter: it fetches genres and ratings from
+               Goodreads across the library, which is a long network
+               operation. It lives here, as a maintenance action, rather than
+               among the filters where a select change would fire it. #}
+            <button type="button" id="library-refresh-metadata" class="secondary"
+                    title="Fetch book metadata (genres, ratings) from Goodreads">Refresh metadata</button>
             <span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>
             <label class="checkbox select-all-label" style="margin: 0;">
                 <input type="checkbox" id="library-select-all" style="cursor: pointer;">
@@ -279,16 +285,45 @@
                     <span class="view-toggle-text">Newest</span>
                 </button>
             </div>
-            <form method="get" class="form-grid library-filters lib-filters" style="margin: 0;">
+            <form method="get" id="library-filter-form" class="form-grid library-filters lib-filters" style="margin: 0;"
+                  data-auto-submit="1">
                 <label class="lib-search" style="margin-bottom: 0;">
                     <span>Search</span>
-                    <input type="search" name="search" value="{{ search_query or '' }}"
-                           placeholder="Search titles or authors..." autocomplete="off"
-                           aria-label="Search titles or authors">
+                    <span class="lib-search-box" style="display:flex;align-items:center;gap:0.1rem;width:100%;min-width:0">
+                        <input type="search" name="search" id="lib-search-input" style="flex:1 1 auto;min-width:0;width:100%;padding-right:0.5rem"
+                               value="{{ search_query or '' }}"
+                               placeholder="Search titles or authors..."
+                               autocomplete="off" form="library-filter-form"
+                               aria-label="Search titles or authors">
+                        {# Submit inline with the field instead of a separate
+                           Apply button. #}
+                        <button type="submit" class="lib-search-go"
+                                title="Search" aria-label="Search"
+                                style="position:static;flex:0 0 26px;width:26px;height:30px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;cursor:pointer;line-height:0">
+                            <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round">
+                                <circle cx="8.5" cy="8.5" r="5.5"/>
+                                <line x1="12.7" y1="12.7" x2="17" y2="17"/>
+                            </svg>
+                        </button>
+                        {% if search_query %}
+                        <a class="lib-search-clear" href="{{ url_for('index', prefix=prefix or none, sort=sort_key, view=view_mode) }}"
+                           title="Clear search" aria-label="Clear search"
+                           style="position:static;flex:0 0 26px;width:26px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none">
+                            <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round">
+                                <line x1="5" y1="5" x2="15" y2="15"/>
+                                <line x1="15" y1="5" x2="5" y2="15"/>
+                            </svg>
+                        </a>
+                        {% endif %}
+                    </span>
                 </label>
                 <label style="margin-bottom: 0;">
                     <span>Sort</span>
-                    <select name="sort">
+                    <select name="sort" data-autosubmit="1">
                         <option value="date_newest" {% if sort_key == 'date_newest' %}selected{% endif %}>Newest first</option>
                         <option value="date_oldest" {% if sort_key == 'date_oldest' %}selected{% endif %}>Oldest first</option>
                         <option value="title_az" {% if sort_key == 'title_az' %}selected{% endif %}>Title A–Z</option>
@@ -299,7 +334,7 @@
                 </label>
                 <label style="margin-bottom: 0;">
                     <span>Genre</span>
-                    <select name="genre">
+                    <select name="genre" data-autosubmit="1">
                         <option value="">Any</option>
                         {% for g in genre_options %}
                         <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>{{ g }}</option>
@@ -308,19 +343,19 @@
                 </label>
                 <label style="margin-bottom: 0;">
                     <span>Per page</span>
-                    <select name="per_page">
+                    <select name="per_page" data-autosubmit="1">
                         {% for n in [15, 25, 50, 100, 200, 500] %}
                         <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
                         {% endfor %}
                     </select>
                 </label>
+                {# No Apply and no Clear: selects submit themselves, and the
+                   search field has its own inline submit. #}
                 <div class="toolbar-buttons">
                     <input type="hidden" name="view" value="{{ view_mode }}">
                     <input type="hidden" name="prefix" value="{{ prefix or '' }}">
-                    <button type="submit" class="primary">Search</button>
-                    <a href="{{ url_for('index', prefix=prefix or none, sort=sort_key, view=view_mode) }}" class="secondary clear-link">Clear</a>
-                    <button type="button" id="library-refresh-metadata" class="secondary" title="Fetch book metadata (genres, ratings) from Goodreads">Refresh</button>
-                    <button type="button" id="random-btn" class="secondary" title="Get random book(s) from your selection">Random</button>
+                    <button type="button" id="random-btn" class="secondary"
+                            title="Get random book(s) from your selection">Random</button>
                 </div>
             </form>
             <div id="library-multi-actions" class="hidden">
@@ -1616,6 +1651,33 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 })();
 </script>
+
+<script>
+// Filter changes apply themselves.
+//
+// Nick: "other changes should submit and refresh to filter or change views
+// automatically when you select the thing."
+//
+// The form has no Apply button, so a select that did not submit would look
+// broken. Only the three selects auto-submit; the search field deliberately
+// does not, because it has its own inline submit and the parsed-author
+// matching means a half-typed name legitimately matches many books.
+//
+// This MUST live inside the block content. library.html extends
+// base.html and fills that block, and Jinja discards anything a child
+// template writes past its endblock. An earlier copy sat after the endblock:
+// it was in the file, grep found it, and the served page never contained it.
+document.addEventListener('DOMContentLoaded', function () {
+  var form = document.getElementById('library-filter-form');
+  if (!form) { return; }
+  form.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t && t.matches && t.matches('[data-autosubmit]')) {
+      form.submit();
+    }
+  });
+});
+</script>
 {% endblock %}
 
 {# Convert a library EPUB into a chaptered audiobook.
@@ -1824,4 +1886,4 @@ document.addEventListener('DOMContentLoaded', function () {
     if (btn) { ev.preventDefault(); ev.stopPropagation(); open(btn); }
   });
 })();
-</script>
+

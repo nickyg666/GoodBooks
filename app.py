@@ -368,9 +368,7 @@ def cleanup_deleted_users(current_user_names: set) -> None:
                     logger.info("Removing %d history entries for deleted users", removed_count)
 
                     # Write back cleaned history
-                    with history_manager.lock:
-                        with open(history_manager.path, 'w') as f:
-                            json.dump(filtered_data, f, indent=2)
+                    _atomic_write_history(history_manager, filtered_data)
                     cleaned["history"] = removed_count
                     logger.info("Cleaned history: removed %d entries", removed_count)
     except Exception as e:
@@ -2914,6 +2912,35 @@ def send_batch_notification_email(
 
 _SORT_ARTICLES = ("the ", "a ", "an ")
 
+
+
+def _atomic_write_history(history_manager, entries) -> None:
+    """Write history.json atomically, under the manager's own lock.
+
+    history.json is not a cache: it holds kindle_sent / kindle_sent_email /
+    kindle_sent_timestamp, the record that a book was actually delivered. It
+    was written two unsafe ways:
+
+      * history_delete() called history_manager.path.write_text(...) with no
+        lock at all, so concurrent request threads could interleave and lose
+        entries outright
+      * user cleanup used open(path, 'w') + json.dump, which truncates before
+        writing, so a crash mid-write empties the file
+
+    Write temp, fsync, os.replace -- atomic on POSIX, so a reader sees either
+    the old file or the new one, never a truncated one.
+    """
+    path = history_manager.path
+    with history_manager.lock:
+        tmp = Path(str(path) + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(entries, fh, indent=2, ensure_ascii=False)
+            fh.flush()
+            try:
+                os.fsync(fh.fileno())
+            except OSError:
+                pass
+        os.replace(tmp, path)
 
 
 def _atomic_write_metadata(metadata: Dict, sort_keys: bool = False) -> None:
@@ -7482,9 +7509,11 @@ def history_delete():
     entry = entries[index]
     path_str = entry.get("path") or ""
 
-    # Remove from history
+    # Remove from history. This write used to be unlocked and truncating, and
+    # history.json is the delivery record, so losing it loses the evidence a
+    # book reached a Kindle.
     removed_entry = entries.pop(index)
-    history_manager.path.write_text(json.dumps(entries, indent=2))
+    _atomic_write_history(history_manager, entries)
 
     # Optionally delete the file from library
     if delete_library and path_str:

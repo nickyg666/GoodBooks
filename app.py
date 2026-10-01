@@ -2773,12 +2773,18 @@ def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Option
     - Generates a quick composite from up to 12 cover images
     """
     try:
-        # Get books directly in this folder (not subfolders) that have covers
+        # Books anywhere in this folder's SUBTREE that have a cover.
+        #
+        # This used to be direct children only. That broke any shelf which
+        # only groups subfolders: measured, Listopia holds 187 books all under
+        # Listopia/LorenzoGrade2/, so it had zero direct children, found
+        # nothing, and rendered with no cover at all. The other three shelves
+        # keep files directly, which is why only one looked broken.
+        _pfx = (folder_prefix + "/") if folder_prefix else ""
         folder_books = [
-            e for e in all_entries 
-            if (e.get("relpath", "").startswith(folder_prefix + "/") if folder_prefix else True)
-            and e.get("cover")  # Only books with existing cover metadata
-            and "/" not in e.get("relpath", "").lstrip((folder_prefix + "/") if folder_prefix else "")  # Direct children only
+            e for e in all_entries
+            if (e.get("relpath", "").startswith(_pfx) if _pfx else True)
+            and e.get("cover")
         ]
 
         _uncached_cover_urls = 0
@@ -2820,13 +2826,22 @@ def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Option
                 if isinstance(cover_data, str):
                     cover_path = None
                     
+                    # A "/cover/<id>" value is a ROUTE, not a file path.
+                    # It was treated as an absolute path, so exists() was
+                    # always False and every such cover was silently
+                    # dropped -- which is why a whole shelf rendered with no
+                    # composite even though those covers serve fine over
+                    # HTTP. Resolve the id against the cover cache instead.
+                    if cover_data.startswith("/cover/"):
+                        cover_path = _cover_cache_file(
+                            cover_data[len("/cover/"):])
                     # Check if it's a relative path like "data/covers/..."
-                    if cover_data.startswith("data/"):
+                    elif cover_data.startswith("data/"):
                         cover_path = BASE_DIR / cover_data
                     # Check if it's an absolute path
                     elif cover_data.startswith("/"):
                         cover_path = Path(cover_data)
-                    
+
                     if cover_path and cover_path.exists():
                         try:
                             cover_img = Image.open(cover_path)
@@ -2933,6 +2948,7 @@ def resolve_cover_url(cover: Optional[str]) -> str:
       * "data/covers/<md5>.jpg"  -> a path relative to BASE_DIR, previously
         emitted verbatim and therefore 404 for all 3,046 such entries
       * "/abs/path.jpg"          -> local file, previously also 404
+      * "/cover/<id>"             -> already a cache route, passed through
       * "https://..."            -> already fine
     Anything unrecognised returns "" so the template shows its placeholder
     instead of a broken image.
@@ -2949,11 +2965,27 @@ def resolve_cover_url(cover: Optional[str]) -> str:
     # also called from the background maintenance thread and from tests, where
     # there is no Flask request context and url_for() raises
     # "Working outside of application context".
+    # Already a cache route: pass it through. "/cover/<32-hex-hash>" is what
+    # the warmer stores and has no extension, so the rpartition(".") below
+    # produced an empty stem and this function returned "" -- silently erasing
+    # the cover. Measured on every Listopia entry.
+    if c.startswith("/cover/"):
+        ident = c[len("/cover/"):].strip("/")
+        if ident:
+            from urllib.parse import quote
+            return "/cover/" + quote(ident, safe="")
+        return ""
+
     name = c.replace("\\", "/").rsplit("/", 1)[-1]
     stem, dot, ext = name.rpartition(".")
     if stem and ext.lower() in {"jpg", "jpeg", "png", "webp", "gif"}:
         from urllib.parse import quote
         return "/cover/" + quote(stem, safe="")
+    # An extension-less filename that is a bare hash is a cache stem too.
+    if stem == "" and name and len(name) >= 16 and \
+            all(ch in "0123456789abcdefABCDEF" for ch in name):
+        from urllib.parse import quote
+        return "/cover/" + quote(name, safe="")
     return ""
 
 
@@ -3072,6 +3104,42 @@ def filter_entries_needing_enrichment(entries: List[Dict], metadata: Dict[str, D
             not bool(goodreads_meta.get("goodreads_url"))):
             incomplete.append(entry)
     return incomplete
+
+
+def _library_search_seed(entries: List[Dict]):
+    """The given-name seed used to orient parsed author names."""
+    import gb_authors
+    return gb_authors.given_name_seed(gb_authors.harvest_given_names(entries))
+
+
+def _entry_matches_search(entry: Dict, needle: str, given=None) -> bool:
+    """True when `needle` appears in the title, the raw author, or the PARSED
+    author.
+
+    Nick: the search bar should show titles OR authors. The stored author is
+    catalogue text ("mcfadden, freida; publishing"), so matching only that
+    misses a search for "Freida" or "McFadden". gb_authors turns the blob
+    into "Freida Mcfadden" and all of "freida", "mcfadden" and "freida
+    mcfadden" then match.
+    """
+    if not needle:
+        return True
+    q = needle.casefold()
+    if q in str(entry.get("title", "")).casefold():
+        return True
+    if q in str(entry.get("author", "")).casefold():
+        return True
+    try:
+        import gb_authors
+    except Exception:
+        return False
+    disp = entry.get("author_display")
+    if not disp:
+        if given is None:
+            given = _library_search_seed([entry])
+        disp = gb_authors.display_author(str(entry.get("author") or ""), given)
+        entry["author_display"] = disp
+    return bool(disp) and q in str(disp).casefold()
 
 
 def _author_sort_key(entry: Dict, descending: bool = False):
@@ -4560,10 +4628,9 @@ def index():
             kindled_shelf = prefix
 
         if search_query:
-            _q = search_query.casefold()
+            _seed = _library_search_seed(entries_in_scope)
             pool = [e for e in pool
-                    if _q in str(e.get("title", "")).casefold()
-                    or _q in str(e.get("author", "")).casefold()]
+                    if _entry_matches_search(e, search_query, _seed)]
 
         kindled_reading_now = gb_reading.currently_reading(entries_in_scope)
 
@@ -4593,7 +4660,7 @@ def index():
     # 500'd folder view. entries_in_scope is built above, so that is the
     # source. Folder view shows folder CARDS, but "4,837 titles" is the
     # truthful headline in every view.
-    library_headline_count = len(entries_in_scope)
+    library_headline_count = len(entries_in_scope)  # replaced below
 
     # Build filter option sets (within current folder subtree, recursing 8 levels deep)
     genre_set = set()
@@ -4682,12 +4749,9 @@ def index():
                             if _author_matches(e)]
 
     if search_query:
-        filtered_entries = [
-            e for e in filtered_entries if (
-                search_query in (e.get("title", "") or "").lower() or
-                search_query in (e.get("author", "") or "").lower()
-            )
-        ]
+        _seed = _library_search_seed(entries_in_scope)
+        filtered_entries = [e for e in filtered_entries
+                            if _entry_matches_search(e, search_query, _seed)]
 
     if direct_only:
         filtered_entries = [e for e in filtered_entries if e.get("is_direct")]
@@ -4800,6 +4864,10 @@ def index():
             end = start + per_page
             page_entries = entries_sorted[start:end]
 
+    # The headline must agree with the grid. total_items is the FILTERED count
+    # the grid paginates over; entries_in_scope is the pre-filter total, which
+    # made the banner say "4,837" while the page showed one search result.
+    library_headline_count = total_items
     return render_template(
         "library.html",
         settings=settings,
@@ -6619,10 +6687,9 @@ def history():
 
     # Filter by search query (title or author)
     if search_query:
-        entries = [e for e in entries if (
-            search_query in (e.get("title", "") or "").lower() or
-            search_query in (e.get("author", "") or "").lower()
-        )]
+        _seed = _library_search_seed(entries)
+        entries = [e for e in entries
+                   if _entry_matches_search(e, search_query, _seed)]
 
     # Filter by date range
     if date_start or date_end:
@@ -9093,18 +9160,23 @@ def _run_maintenance_cycle() -> None:
             except Exception as e:
                 logger.warning("Parallel enrichment failed for entry %d: %s", idx, e)
     
-    # Update library_metadata with all results
-    for idx, enriched_meta in enrichment_results.items():
-        entry_id = entries_needing_enrichment[idx].get("id")
-        if entry_id:
-            library_metadata[entry_id] = enriched_meta
-            any_changes = True
-            enriched_count += 1
-
     # Persist to disk only if changes were made
     if any_changes:
         try:
             with library_metadata_lock:
+                # Re-read INSIDE the lock. The dict bound at the top of this
+                # run is ~25 minutes stale for a 4,800-book library, and
+                # writing it back discarded everything written in between:
+                # measured 4,869 -> 4,816 records with covers erased, which is
+                # why the cover and folder views fell back to placeholders.
+                # Merging into a fresh read means enrichment can only add.
+                library_metadata = load_library_metadata()
+                for idx, enriched_meta in enrichment_results.items():
+                    entry_id = entries_needing_enrichment[idx].get("id")
+                    if entry_id:
+                        library_metadata[entry_id] = enriched_meta
+                        enriched_count += 1
+
                 LIBRARY_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
                 _atomic_write_metadata(library_metadata)
                 # Clear the library entries cache since metadata changed
@@ -9452,6 +9524,135 @@ def audiobook_voices():
     except Exception as exc:
         logger.debug("voice list unavailable: %s", exc)
         return jsonify({"voices": [], "error": str(exc)[:120]})
+
+
+# ------------------------------------------------------------ cover cache --
+# Folder composites deliberately never fetch during a render, so they silently
+# skip any cover that exists only as a remote URL. That left a shelf with no
+# composite at all (measured: Listopia, 190 books) and the folder view looking
+# bare. This warms the local cache in the background instead, keeping the
+# request path free of network calls as originally intended.
+
+
+def _cover_cache_file(cover_id: str):
+    """The cached file for a /cover/<id> reference, or None.
+
+    A "/cover/<id>" value is a route, not a filesystem path. Folder composite
+    generation used to do Path("/cover/<id>"), whose exists() is always False,
+    so those covers were silently skipped and shelves rendered bare.
+    """
+    if not cover_id:
+        return None
+    cid = cover_id.split("/")[-1].split(".")[0]
+    if not cid:
+        return None
+    # Same directory and extension list as serve_cached_cover(), or this
+    # resolver looks in the wrong place and still finds nothing. The first
+    # version used _cover_cache_dir() (DATA_DIR/"covers") while the route
+    # reads COVERS_DIR.
+    try:
+        base = Path(COVERS_DIR)
+    except NameError:
+        base = BASE_DIR / "data" / "covers"
+    for ext in ("jpg", "jpeg", "png", "webp", "gif"):
+        p = base / f"{cid}.{ext}"
+        try:
+            if p.exists() and p.is_file() and p.stat().st_size > 0:
+                return p
+        except OSError:
+            continue
+    return None
+
+
+def _cover_cache_dir() -> Path:
+    """Where cached cover images live. Must be the SAME directory the
+    /cover/<id> route reads, or the warmer fills a folder nothing serves."""
+    try:
+        d = Path(COVERS_DIR)
+    except NameError:
+        d = DATA_DIR / "covers"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _cover_is_cached(cover_ref: str) -> bool:
+    """True when a cover reference points at a file already on disk."""
+    if not cover_ref:
+        return False
+    if cover_ref.startswith("/cover/"):
+        return True
+    if cover_ref.startswith("data:"):
+        return True
+    if cover_ref.startswith("http"):
+        return False
+    p = Path(cover_ref)
+    return p.exists()
+
+
+def warm_cover_cache(limit: int = 400) -> Dict[str, int]:
+    """Download remote cover URLs into the local cache, once.
+
+    Bounded by `limit` so one call cannot run for hours, and idempotent: a
+    cover already on disk is skipped, so repeated calls converge.
+    """
+    import hashlib
+    import urllib.request
+
+    stats = {"cached": 0, "skipped": 0, "failed": 0}
+    try:
+        entries = build_library_entries()
+    except Exception:
+        logger.exception("cover cache: could not list the library")
+        return stats
+
+    cache = _cover_cache_dir()
+    for e in entries:
+        if stats["cached"] >= limit:
+            break
+        cover = (e.get("cover") or "").strip()
+        if not cover or not cover.startswith("http"):
+            if _cover_is_cached(cover):
+                stats["skipped"] += 1
+            continue
+        name = hashlib.sha1(cover.encode("utf-8")).hexdigest() + ".img"
+        dest = cache / name
+        if dest.exists() and dest.stat().st_size > 200:
+            stats["skipped"] += 1
+            continue
+        try:
+            req = urllib.request.Request(cover, headers={
+                "User-Agent": "GoodBooks/1.0 (+local library cache)"})
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                blob = resp.read()
+            if len(blob) < 200:
+                stats["failed"] += 1
+                continue
+            tmp = dest.with_suffix(".part")
+            tmp.write_bytes(blob)
+            tmp.replace(dest)
+            stats["cached"] += 1
+        except Exception:
+            stats["failed"] += 1
+
+    # folder composites are memoised, so drop that cache to pick up the covers
+    try:
+        _invalidate_folder_cover_cache()
+    except Exception:
+        pass
+    logger.info("cover cache warm: %s", stats)
+    return stats
+
+
+@app.route("/admin/warm-covers", methods=["POST"])
+def admin_warm_covers():
+    """Warm the local cover cache so folder composites can be built."""
+    try:
+        limit = int(request.form.get("limit") or request.args.get("limit") or 400)
+    except (TypeError, ValueError):
+        limit = 400
+    limit = max(1, min(limit, 2000))
+    return jsonify({"ok": True, "limit": limit, **warm_cover_cache(limit)})
+
 
 
 if __name__ == "__main__":

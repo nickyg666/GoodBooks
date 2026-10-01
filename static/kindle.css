@@ -1407,3 +1407,79 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
 .ab-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 .ab-actions button { min-height: 40px; padding: 0.5rem 0.9rem; }
 .ab-actions button[hidden] { display: none; }
+
+/* ------------------------------------------------ library filter row --- */
+/* Nick: centre both rows, halve the field widths, make search 2x.
+   The author <select> is gone -- the search bar matches titles OR authors,
+   so a second 4,000-option dropdown was redundant. */
+.library-toolbar {
+  justify-content: center;   /* centre the whole control group */
+}
+.lib-filters {
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  flex: 1 1 auto;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0;
+}
+/* every field is half the old basis; search is twice a normal field */
+.lib-filters > label {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 150px;         /* was ~300px: half */
+  margin-bottom: 0;
+}
+.lib-filters > label.lib-search {
+  flex: 2 1 0;
+  max-width: 300px;         /* 2x a normal field */
+}
+.lib-filters > label > span {
+  display: block;
+  text-align: center;        /* labels centred over their field */
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted, #6b7280);
+  margin-bottom: 0.2rem;
+}
+.lib-filters select,
+.lib-filters input[type="search"],
+.lib-filters input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.88rem;
+  font-family: inherit;
+  text-align: center;
+}
+.lib-filters input[type="search"] { text-align: left; }
+.lib-filters input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+.lib-filters select:focus,
+.lib-filters input:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #2563eb) 20%, transparent);
+}
+/* the action buttons sit centred beneath, on their own row */
+.lib-filters .toolbar-buttons {
+  flex: 0 0 100%;
+  justify-content: center;
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+/* the summary line above it: centred too */
+.library-summary { justify-content: center; }
+
+/* narrow: search keeps the full width, the rest share a row */
+@media (max-width: 760px) {
+  .lib-filters > label { max-width: none; flex: 1 1 30%; }
+  .lib-filters > label.lib-search { flex: 1 1 100%; max-width: none; }
+  .lib-filters .toolbar-buttons { flex-wrap: wrap; }
+}

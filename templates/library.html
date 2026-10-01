@@ -279,20 +279,22 @@
                     <span class="view-toggle-text">Newest</span>
                 </button>
             </div>
-            <form method="get" class="form-grid library-filters" style="margin: 0;">
-                <label style="margin-bottom: 0;">
+            <form method="get" class="form-grid library-filters lib-filters" style="margin: 0;">
+                <label class="lib-search" style="margin-bottom: 0;">
                     <span>Search</span>
-                    <input type="text" name="search" value="{{ search_query or '' }}" placeholder="Title or author...">
+                    <input type="search" name="search" value="{{ search_query or '' }}"
+                           placeholder="Search titles or authors..." autocomplete="off"
+                           aria-label="Search titles or authors">
                 </label>
                 <label style="margin-bottom: 0;">
                     <span>Sort</span>
                     <select name="sort">
                         <option value="date_newest" {% if sort_key == 'date_newest' %}selected{% endif %}>Newest first</option>
                         <option value="date_oldest" {% if sort_key == 'date_oldest' %}selected{% endif %}>Oldest first</option>
-                        <option value="title_az" {% if sort_key == 'title_az' %}selected{% endif %}>Title A-Z</option>
-                        <option value="title_za" {% if sort_key == 'title_za' %}selected{% endif %}>Title Z-A</option>
-                        <option value="author_az" {% if sort_key == 'author_az' %}selected{% endif %}>Author A-Z</option>
-                        <option value="author_za" {% if sort_key == 'author_za' %}selected{% endif %}>Author Z-A</option>
+                        <option value="title_az" {% if sort_key == 'title_az' %}selected{% endif %}>Title A–Z</option>
+                        <option value="title_za" {% if sort_key == 'title_za' %}selected{% endif %}>Title Z–A</option>
+                        <option value="author_az" {% if sort_key == 'author_az' %}selected{% endif %}>Author A–Z</option>
+                        <option value="author_za" {% if sort_key == 'author_za' %}selected{% endif %}>Author Z–A</option>
                     </select>
                 </label>
                 <label style="margin-bottom: 0;">
@@ -303,22 +305,6 @@
                         <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>{{ g }}</option>
                         {% endfor %}
                     </select>
-                </label>
-                <label style="margin-bottom: 0;" class="author-filter">
-                    <span>Author</span>
-                    {# A 3,948-option <select> cannot be typed into, so the author
-                       you wanted was thousands of rows down, and the list opened
-                       on "1898.; alice's; adventures; in; wonderland; (". This is
-                       a combobox: type to filter, pick from the list. The form
-                       still submits a plain author=<key>, so the request format
-                       and the server-side filter are unchanged. #}
-                    <input type="hidden" name="author" id="author-filter-value" value="{{ author_filter or '' }}">
-                    <div class="author-combobox">
-                        <input type="text" id="author-filter-input" data-authors-url="/api/library-authors"
-                               value="{{ author_filter_label or '' }}"
-                               data-current-key="{{ author_filter or '' }}">
-                        <ul id="author-filter-list" class="author-combobox-list" role="listbox" hidden></ul>
-                    </div>
                 </label>
                 <label style="margin-bottom: 0;">
                     <span>Per page</span>
@@ -331,10 +317,10 @@
                 <div class="toolbar-buttons">
                     <input type="hidden" name="view" value="{{ view_mode }}">
                     <input type="hidden" name="prefix" value="{{ prefix or '' }}">
-                    <button type="submit" class="primary">Apply</button>
+                    <button type="submit" class="primary">Search</button>
                     <a href="{{ url_for('index', prefix=prefix or none, sort=sort_key, view=view_mode) }}" class="secondary clear-link">Clear</a>
                     <button type="button" id="library-refresh-metadata" class="secondary" title="Fetch book metadata (genres, ratings) from Goodreads">Refresh</button>
-                    <button type="button" id="random-btn" class="secondary" title="Get random book(s) from your selection"><svg id="random-die" width="32" height="32" viewBox="0 0 32 32" style="filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2)); transition: transform 0.05s linear;"> <!-- Die cube --> <rect x="4" y="4" width="24" height="24" rx="2" fill="none" stroke="#333" stroke-width="2"/> <!-- Dots - Six sides of die (showing 6) --> <circle cx="10" cy="10" r="2" fill="#333"/> <circle cx="10" cy="16" r="2" fill="#333"/> <circle cx="10" cy="22" r="2" fill="#333"/> <circle cx="22" cy="10" r="2" fill="#333"/> <circle cx="22" cy="16" r="2" fill="#333"/> <circle cx="22" cy="22" r="2" fill="#333"/> </svg><span class="view-toggle-text">Random</span></button>
+                    <button type="button" id="random-btn" class="secondary" title="Get random book(s) from your selection">Random</button>
                 </div>
             </form>
             <div id="library-multi-actions" class="hidden">
@@ -1437,104 +1423,114 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 }
 
 
-    // Library view toggle functionality
-    const gridViewBtn = document.getElementById('library-view-grid');
-    const listViewBtn = document.getElementById('library-view-list');
-    const recentViewBtn = document.getElementById('library-view-recent');
-    const kindleViewBtn = document.getElementById('library-view-kindle');
 
-    // Single source of truth for which view is active. Each setter used to
-    // hand-remove 'active' from the other buttons, which meant a fifth view
-    // (Library) could never be marked active: the old handlers did not know
-    // it existed and a stale localStorage choice kept Folders lit. Clearing
-    // all and lighting the one that matches makes a new view a template-only
-    // change.
-    function setActiveView(view) {
-        document.querySelectorAll('.view-toggle').forEach(function (b) {
-            b.classList.toggle('active', b.getAttribute('data-view') === view);
-        });
-    }
+// The view-toggle block below used to sit OUTSIDE any function, after
+// the DOMContentLoaded handler had already closed. It never ran, and its
+// top-level const declarations collided with the same names declared
+// inside that handler -- a redeclaration is a SyntaxError for the whole
+// script, so every view button was dead. Reported stuck on folder view.
+document.addEventListener('DOMContentLoaded', function () {
+        // Library view toggle functionality
+        const vGridBtn = document.getElementById('library-view-grid');
+        const vListBtn = document.getElementById('library-view-list');
+        const vRecentBtn = document.getElementById('library-view-recent');
+        const vKindleBtn = document.getElementById('library-view-kindle');
+        const vCoverBtn = document.getElementById('library-view-cover');
 
-    function setGridView() {
-        setActiveView('collection');
-        localStorage.setItem('library-view', 'grid');
-        // Navigate to grid view (collection mode shows all books)
-        const url = new URL(window.location);
-        url.searchParams.set('view', 'collection');
-        url.searchParams.delete('prefix');
-        window.location = url.toString();
-    }
+        // Single source of truth for which view is active. Each setter used to
+        // hand-remove 'active' from the other buttons, which meant a fifth view
+        // (Library) could never be marked active: the old handlers did not know
+        // it existed and a stale localStorage choice kept Folders lit. Clearing
+        // all and lighting the one that matches makes a new view a template-only
+        // change.
+        function setActiveView(view) {
+            document.querySelectorAll('.view-toggle').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-view') === view);
+            });
+        }
 
-    function setListView() {
-        setActiveView('folder');
-        localStorage.setItem('library-view', 'list');
-        // Navigate to list view (folder mode at root)
-        const url = new URL(window.location);
-        url.searchParams.set('view', 'folder');
-        url.searchParams.delete('prefix');
-        window.location = url.toString();
-    }
+        function setGridView() {
+            setActiveView('collection');
+            localStorage.setItem('library-view', 'grid');
+            // Navigate to grid view (collection mode shows all books)
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'collection');
+            url.searchParams.delete('prefix');
+            window.location = url.toString();
+        }
 
-    function setKindleView() {
-        setActiveView('kindle');
-        localStorage.setItem('library-view', 'kindle');
-        // Kindle view is a flat shelf browser: drop the folder prefix so the
-        // shelf tabs, not a folder, decide what is shown.
-        const url = new URL(window.location);
-        url.searchParams.set('view', 'kindle');
-        url.searchParams.delete('prefix');
-        window.location = url.toString();
-    }
+        function setListView() {
+            setActiveView('folder');
+            localStorage.setItem('library-view', 'list');
+            // Navigate to list view (folder mode at root)
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'folder');
+            url.searchParams.delete('prefix');
+            window.location = url.toString();
+        }
 
-    function setRecentView() {
-         setActiveView('recent');
-         localStorage.setItem('library-view', 'recent');
-         // Keep the user's sort / page size / filters. This used to rebuild
-         // the URL from scratch, silently discarding them.
-         const url = new URL(window.location);
-         url.searchParams.set('view', 'recent');
-         url.searchParams.set('sort', 'date_newest');
-         url.searchParams.delete('prefix');
-         window.location = url.toString();
-     }
+        function setKindleView() {
+            setActiveView('kindle');
+            localStorage.setItem('library-view', 'kindle');
+            // Kindle view is a flat shelf browser: drop the folder prefix so the
+            // shelf tabs, not a folder, decide what is shown.
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'kindle');
+            url.searchParams.delete('prefix');
+            window.location = url.toString();
+        }
 
-    function setCoverView() {
-        setActiveView('cover');
-        if (recentViewBtn) recentViewBtn.classList.remove('active');
-        if (coverViewBtn) coverViewBtn.classList.add('active');
-        localStorage.setItem('library-view', 'cover');
-        // keep sort / per_page / filters, drop the folder prefix
-        const url = new URL(window.location);
-        url.searchParams.set('view', 'cover');
-        url.searchParams.delete('prefix');
-        window.location = url.toString();
-    }
-    if (coverViewBtn) {
-        coverViewBtn.addEventListener('click', setCoverView);
-    }
-    gridViewBtn.addEventListener('click', setGridView);
-    listViewBtn.addEventListener('click', setListView);
-    if (recentViewBtn) {
-        recentViewBtn.addEventListener('click', setRecentView);
-    }
+        function setRecentView() {
+             setActiveView('recent');
+             localStorage.setItem('library-view', 'recent');
+             // Keep the user's sort / page size / filters. This used to rebuild
+             // the URL from scratch, silently discarding them.
+             const url = new URL(window.location);
+             url.searchParams.set('view', 'recent');
+             url.searchParams.set('sort', 'date_newest');
+             url.searchParams.delete('prefix');
+             window.location = url.toString();
+         }
 
-    // Restore the active button from the URL. This block used to branch over
-    // four hardcoded view names and defaulted anything else -- including
-    // "kindle" -- to Folders, so the Library view lit Folders on top of the
-    // server's own marking. setActiveView() keys off data-view instead, so
-    // it is right for every view that exists without being updated.
-    const currentView = new URL(window.location).searchParams.get('view') || 'folder';
-    const isRecentlyAdded = window.location.pathname.includes('recently-added');
-    if (isRecentlyAdded) {
-        setActiveView('recent');
-    } else {
-        setActiveView(currentView);
-    }
+        function setCoverView() {
+            setActiveView('cover');
+            if (vRecentBtn) vRecentBtn.classList.remove('active');
+            if (vCoverBtn) vCoverBtn.classList.add('active');
+            localStorage.setItem('library-view', 'cover');
+            // keep sort / per_page / filters, drop the folder prefix
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'cover');
+            url.searchParams.delete('prefix');
+            window.location = url.toString();
+        }
+        if (vCoverBtn) {
+            vCoverBtn.addEventListener('click', setCoverView);
+        }
+        vGridBtn.addEventListener('click', setGridView);
+        vListBtn.addEventListener('click', setListView);
+        if (vRecentBtn) {
+            vRecentBtn.addEventListener('click', setRecentView);
+        }
 
-    if (kindleViewBtn) {
-        kindleViewBtn.addEventListener('click', setKindleView);
-    }
+        // Restore the active button from the URL. This block used to branch over
+        // four hardcoded view names and defaulted anything else -- including
+        // "kindle" -- to Folders, so the Library view lit Folders on top of the
+        // server's own marking. setActiveView() keys off data-view instead, so
+        // it is right for every view that exists without being updated.
+        const currentView = new URL(window.location).searchParams.get('view') || 'folder';
+        const isRecentlyAdded = window.location.pathname.includes('recently-added');
+        if (isRecentlyAdded) {
+            setActiveView('recent');
+        } else {
+            setActiveView(currentView);
+        }
 
+        if (vKindleBtn) {
+            vKindleBtn.addEventListener('click', setKindleView);
+        }
+
+
+});
 
     // Prevent double submissions on forms
     const forms = document.querySelectorAll('form');

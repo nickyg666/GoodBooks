@@ -4784,7 +4784,8 @@ def index():
     #   cover     - cover-forward grid, the "newsstand" layout
     #   compact   - dense text list, fastest for large libraries
     view_mode = request.args.get("view", "folder").strip().lower()
-    if view_mode not in {"folder", "collection", "cover", "compact", "recent"}:
+    if view_mode not in {"folder", "collection", "cover", "compact", "recent",
+                         "kindle"}:
         view_mode = "folder"
     # Keep what the user actually asked for. "recent" is resolved to
     # collection mode below for its behaviour, but the template needs the
@@ -4895,6 +4896,83 @@ def index():
     except Exception as e:
         logger.debug("Failed to start genre enrichment thread: %s", e)
 
+    # ---------------------------------------------------- Kindle library --
+    # A distinct browsing model from the four views above: shelves first,
+    # then a "Reading Now" rail, then a cover grid. Kept separate rather
+    # than restyled because the information architecture differs.
+    kindled_entries = []
+    kindled_shelves = []
+    kindled_reading_now = []
+    kindled_shelf = ""
+    kindled_total_count = 0
+    kindled_pager = None
+    if view_mode == "kindle":
+        import gb_reading
+        import gb_authors as _gba
+
+        _given = _gba.given_name_seed(
+            _gba.harvest_given_names(entries_in_scope))
+        _gba.install_surname_counts(entries_in_scope)
+
+        # shelf = first path segment under the library root
+        _shelf_of = getattr(gb_reading, "shelf_of", None)
+        _shelved = {}
+        for e in entries_in_scope:
+            e["_shelf"] = _shelf_of(e) if _shelf_of else ""
+            if e["_shelf"]:
+                _shelved.setdefault(e["_shelf"], []).append(e)
+            # parsed author for display, without mutating stored metadata
+            e["author_display"] = _gba.display_author(
+                str(e.get("author") or ""), _given)
+
+        # "All" plus each shelf, ordered by name
+        kindled_shelves = sorted(
+            ((name, len(v)) for name, v in _shelved.items()),
+            key=lambda t: t[0].casefold())
+        kindled_total_count = len(entries_in_scope)
+
+        pool = entries_in_scope
+        if prefix:
+            # clicking a shelf sets prefix to the shelf name
+            pool = [e for e in entries_in_scope if e.get("_shelf") == prefix]
+            kindled_shelf = prefix
+
+        if search_query:
+            _q = search_query.casefold()
+            pool = [e for e in pool
+                    if _q in str(e.get("title", "")).casefold()
+                    or _q in str(e.get("author", "")).casefold()]
+
+        kindled_reading_now = gb_reading.currently_reading(entries_in_scope)
+
+        pool = sort_library_entries(pool, sort_key or "date_newest")
+        gb_reading.decorate(pool)
+
+        # paginate: a Kindle-sized page, not 500
+        _kpp = 48
+        _kpages = max(1, (len(pool) + _kpp - 1) // _kpp)
+        _kpage = max(1, min(page, _kpages))
+        _kstart = (_kpage - 1) * _kpp
+        kindled_entries = pool[_kstart:_kstart + _kpp]
+
+        class _KP:
+            pass
+        kindled_pager = _KP()
+        kindled_pager.page = _kpage
+        kindled_pager.pages = _kpages
+        kindled_pager.has_prev = _kpage > 1
+        kindled_pager.has_next = _kpage < _kpages
+        kindled_pager.prev_page = _kpage - 1
+        kindled_pager.next_page = _kpage + 1
+
+    # Headline count is about BOOKS. It must be computed from data that
+    # already exists at this point: total_items is assigned further down the
+    # body (folder view only), so reading it here raised UnboundLocalError and
+    # 500'd folder view. entries_in_scope is built above, so that is the
+    # source. Folder view shows folder CARDS, but "4,837 titles" is the
+    # truthful headline in every view.
+    library_headline_count = len(entries_in_scope)
+
     # Build filter option sets (within current folder subtree, recursing 8 levels deep)
     genre_set = set()
     author_set = set()
@@ -4931,14 +5009,14 @@ def index():
     author_options = [(key, label, n)
                       for key, label, n in author_option_tuples]
 
-    # The template renders a typeahead combobox rather than a <select>, so
-    # the list travels as JSON on a data attribute. Only the fields the UI
-    # needs, and the label for the currently-filtered author so the input
-    # shows "Freida Mcfadden" rather than the key "freida mcfadden".
-    import json as _json
-    author_options_json = _json.dumps(
-        [{"k": k, "l": label, "n": n} for k, label, n in author_options],
-        ensure_ascii=False)
+    # The author list is NOT inlined here. It is ~4,900 entries (~274KB of
+    # JSON) and embedding it cost that on every library page load, which is
+    # unacceptable on an e-ink device. The combobox fetches it on demand from
+    # /api/library-authors instead.
+    #
+    # Only the label for the currently-filtered author is needed here, so the
+    # input can show "Freida Mcfadden" rather than the key.
+    author_options_json = ""
     author_filter_label = ""
     if author_filter:
         for k, label, _n in author_options:
@@ -5124,6 +5202,13 @@ def index():
 
         view_mode=view_mode,
     view_mode_requested=view_mode_requested,
+    kindled_entries=kindled_entries,
+    kindled_shelves=kindled_shelves,
+    kindled_reading_now=kindled_reading_now,
+    kindled_shelf=kindled_shelf,
+    kindled_total_count=kindled_total_count,
+    kindled_pager=kindled_pager,
+    library_headline_count=library_headline_count,
     )
 def ensure_mobi_for_direct_download(src: Path) -> tuple[Path, Optional[Path]]:
     """
@@ -5727,6 +5812,71 @@ def api_add_genre_feed():
     except Exception as e:
         logger.exception("Failed to add genre feed")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+
+
+@app.after_request
+def _no_store_html(resp):
+    """Keep the HTML shell revalidated.
+
+    An ereader webview caches aggressively. Revalidating the document means a
+    template or logic change shows up on a normal refresh instead of
+    lingering for however long the device felt like.
+    """
+    if resp.mimetype == "text/html":
+        resp.headers.setdefault("Cache-Control", "no-cache, must-revalidate")
+    return resp
+
+
+def _static_version() -> str:
+    """Cache-bust token for static asset URLs.
+
+    Stylesheets were linked with no version query, so browsers and ereader
+    webviews kept serving months-old CSS: new rules could be correct on disk
+    and visibly absent in the UI. Deriving the token from the stylesheet's
+    mtime gives it a new URL whenever it changes, which is what actually
+    defeats a stale cache.
+    """
+    try:
+        newest = 0.0
+        static_dir = Path(app.static_folder or "static")
+        for name in ("desktop.css", "kindle.css", "style.css",
+                     "theme-loader.js", "theme-picker.js"):
+            p = static_dir / name
+            if p.exists():
+                newest = max(newest, p.stat().st_mtime)
+        return str(int(newest))
+    except Exception:
+        return "0"
+
+
+@app.context_processor
+def _inject_static_version():
+    return {"static_v": _static_version()}
+
+
+@app.route("/api/library-authors")
+def library_authors_json():
+    """The parsed author list, for the library's author typeahead.
+
+    Fetched on demand rather than inlined: the list is ~4,900 entries and
+    embedding it cost 274KB on every library page load, which is unacceptable
+    on an e-ink device. Same gb_authors pipeline as the filter itself, so
+    the suggestions can never disagree with what filtering does.
+    """
+    import gb_authors
+    entries = build_library_entries()
+    given = gb_authors.given_name_seed(gb_authors.harvest_given_names(entries))
+    gb_authors.install_surname_counts(entries)
+    opts = gb_authors.provide_author_options(entries)
+    payload = [{"k": k, "l": label, "n": n} for k, label, n in opts]
+    # long-lived but revalidated, so a library change is picked up
+    resp = app.response_class(
+        app.json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+    resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
 
 
 @app.route("/api/search-stream")
@@ -6598,6 +6748,17 @@ def book_detail(entry_id):
         return redirect(url_for("index"))
 
     meta = ensure_library_metadata(entry)
+
+    # A Kindle-style "Reading Now" rail needs a last-read event, and opening
+    # this page IS that event. Timestamp and open count only -- no progress
+    # percentage is invented, so the rail never draws a bar for a position
+    # nobody actually recorded.
+    try:
+        import gb_reading
+        gb_reading.mark_opened(entry)
+    except Exception:
+        logger.debug("reading-state write failed", exc_info=True)
+
     return render_template(
         "book_detail.html",
         settings=settings_manager.settings,
@@ -8842,9 +9003,20 @@ def metadata_progress():
     Always sends final event with active=false before closing.
     """
     logger.info("metadata_progress endpoint accessed, active=%s", metadata_progress_state.get("active"))
+    # Hard ceilings. The stream used to close ONLY on an observed
+    # active->inactive transition, or if it started idle. With a refresh
+    # running it therefore streamed one event per second forever, and a
+    # stalled refresh meant every consumer hung indefinitely. Measured: a
+    # route sweep blew a 300s budget on this endpoint alone.
+    max_stream_seconds = 300.0
+    stall_timeout_seconds = 20.0
+
     def event_stream():
         event_count = 0
         last_active = None
+        last_payload = None
+        last_change = time.time()
+        started = time.time()
 
         while True:
             with metadata_progress_lock:
@@ -8854,27 +9026,42 @@ def metadata_progress():
                 payload = json.dumps(state)
                 is_active = state.get("active", False)
 
-                if event_count == 0:
-                    pass
+            event_count += 1
 
-                event_count += 1
+            # Track when the state last actually changed, so a stalled
+            # refresh cannot hold the stream open.
+            if payload != last_payload:
+                last_payload = payload
+                last_change = time.time()
 
-            # Always send the current event
             yield f"data: {payload}\n\n"
+            # heartbeat: keeps proxies and ereader webviews from dropping a
+            # stream that is merely quiet
+            yield ": keepalive\n\n"
 
-            # If we transitioned from active to inactive, close the stream
+            # Wall-clock ceiling. No consumer should be able to hang forever.
+            if (time.time() - started) > max_stream_seconds:
+                logger.info("SSE: reached %ds ceiling, closing stream",
+                            int(max_stream_seconds))
+                break
+
+            # Closed on the active->inactive transition.
             if last_active is True and is_active is False:
                 logger.info("SSE: State transitioned from active to inactive, closing stream")
                 break
 
-            # If started as inactive, close after first event
+            # Started idle: one event is enough.
             if is_active is False and event_count == 1:
-                logger.info("SSE: Started with inactive state, closing immediately after first event")
+                logger.info("SSE: Started with inactive state, closing after first event")
                 break
 
-            # Check if client disconnected (generator will raise GeneratorExit)
-            # We can't easily detect this here, but the Flask response will handle it
-            
+            # Idle and nothing has changed for stall_timeout: the worker is
+            # wedged or already finished without flipping the flag.
+            if (not is_active) and (time.time() - last_change) > stall_timeout_seconds:
+                logger.info("SSE: idle and unchanged for %ds, closing stream",
+                            int(stall_timeout_seconds))
+                break
+
             last_active = is_active
             time.sleep(1)
 

@@ -1251,3 +1251,480 @@ tbody tr:hover {
 }
 /* a hair of separation before the utility pair */
 .library-toolbar .toolbar-buttons .clear-link { margin-left: 0.1rem; }
+"""
+/* ===================================================== Kindle library ==== */
+/* Target is the Paperwhite library, not a web dashboard: flat, high
+   contrast, no gradients, no drop shadows, no hover-only affordances
+   (e-ink has no cursor), and touch targets sized for thumbs. */
+
+.kindle-rail { margin-bottom: 1.25rem; }
+.kindle-rail-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text, #111827);
+}
+.kindle-rail-strip {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scrollbar-width: thin;
+}
+.kindle-rail-card {
+  flex: 0 0 auto;
+  width: 132px;
+  text-decoration: none;
+  color: inherit;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 3px;
+}
+.kindle-rail-card:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+.kindle-rail-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+.kindle-rail-cover img,
+.kindle-book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.kindle-rail-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.1rem 0.15rem;
+}
+.kindle-rail-book {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kindle-rail-pct {
+  flex: none;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #111827);
+}
+.kindle-muted { color: var(--muted, #6b7280); }
+
+/* progress: a hard-edged bar, no rounding, no shadow */
+.kindle-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+}
+.kindle-progress-fill {
+  height: 100%;
+  background: #fff;
+}
+.kindle-progress-pct {
+  position: absolute;
+  right: 4px;
+  bottom: 10px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.62);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.kindle-opened-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text, #111827);
+  background: #fff;
+  border: 1px solid var(--text, #111827);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* shelves as tabs, the way a Kindle collection strip reads */
+.kindle-shelf-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--border, #b9b9b9);
+}
+.kindle-shelf-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.7rem;
+  min-height: 36px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text, #111827);
+  background: transparent;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 4px;
+}
+.kindle-shelf-tab.active {
+  background: var(--text, #111827);
+  color: #fff;
+  border-color: var(--text, #111827);
+}
+.kindle-shelf-tab.active .kindle-shelf-n {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+.kindle-shelf-n {
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+
+/* the grid */
+.kindle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 1rem 0.85rem;
+}
+.kindle-book {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 4px;
+  padding: 2px;
+}
+.kindle-book:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 1px;
+}
+.kindle-book-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+.kindle-book-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.35rem 0.05rem 0;
+}
+.kindle-book-title {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 1.9em;
+}
+.kindle-book-author {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kindle-book-format {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7280);
+  margin-top: 1px;
+}
+
+/* no cover: a plain, legible card rather than an empty grey box */
+.kindle-cover-fallback {
+  width: 100%;
+  height: 100%;
+  padding: 8px 7px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  border: 1px solid var(--border, #b9b9b9);
+  background: #fff;
+  color: var(--text, #111827);
+}
+.kindle-fallback-title {
+  font-size: 0.74rem;
+  line-height: 1.2;
+  font-weight: 700;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kindle-fallback-author {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: var(--muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* pagination */
+.kindle-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  font-size: 0.88rem;
+}
+.kindle-pager-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--text, #111827);
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--text, #111827);
+  background: transparent;
+  font-weight: 600;
+}
+.kindle-pager-state { color: var(--muted, #6b7280); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .kindle-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  .kindle-rail-card { width: 112px; }
+}
+
+/* ================================================= e-ink & ereader ====== */
+/* Nick: "lean pages, responsive e ink friendly design. Mirror appearance, not
+   function." The priorities are contrast, touch targets, and small payloads --
+   so nothing here uses shadows, gradients, blurs or webfonts. */
+
+:root {
+  --eink-ink: #000;
+  --eink-paper: #fff;
+  --eink-grey: #4a4a4a;
+}
+
+/* Flatten every decorative effect globally. An e-ink panel renders a drop
+   shadow as a grey smear, which reads as dirt. */
+@media (monochrome), (update: slow) {
+  .card, .library-card, .kindle-book, .kindle-rail-card,
+  .modal-dialog, .author-combobox-list, .view-toggle, .kindle-shelf-tab {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  * { background-image: none !important; }
+}
+
+/* Dark e-ink devices invert: paper becomes black, ink becomes white, and the
+   greys step up so mid-tones survive a 16-level panel. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f2f2f2;
+    --muted: #b4b4b4;
+    --border: #6f6f6f;
+    --surface: #101010;
+    --hover: #242424;
+    --accent: #9ec7ff;
+  }
+  .kindle-grid, .kindle-rail-strip { --paper: var(--surface); }
+  .kindle-book-cover, .kindle-rail-cover, .kindle-cover-fallback {
+    background: #1b1b1b;
+    border-color: #6f6f6f;
+  }
+  .kindle-cover-fallback { color: #f2f2f2; }
+  .kindle-shelf-tab.active {
+    background: #f2f2f2;
+    color: #000;
+    border-color: #f2f2f2;
+  }
+  .kindle-progress { background: rgba(0, 0, 0, 0.75); border-top-color: #999; }
+  .kindle-progress-fill { background: #fff; }
+  .kindle-opened-badge { background: #f2f2f2; color: #000; border-color: #f2f2f2; }
+}
+
+/* Lean typography: the system stack, so no font is ever downloaded. */
+body, .kindle-grid, .kindle-rail, .library-toolbar {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Touch targets. A finger or a stylus, not a cursor, so hover-only affordance
+   is not an option and hit areas grow. */
+@media (pointer: coarse) {
+  .view-toggle,
+  .kindle-shelf-tab,
+  .kindle-pager-link,
+  .library-toolbar button,
+  .library-toolbar .clear-link,
+  .toolbar-buttons button {
+    min-height: 44px;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+  .author-combobox-input { min-height: 44px; }
+  .author-combobox-list li { min-height: 44px; padding: 0.55rem 0.6rem; }
+  /* no hover styling on touch: it sticks after a tap */
+  .view-toggle:hover, .author-combobox-list li:hover { background: none; }
+  .kindle-shelf-tab:active, .view-toggle:active { background: var(--hover); }
+}
+
+/* Small ereader screens: fewer columns, larger relative type, tighter gutters
+   so the covers stay legible without a magnifier. */
+@media (max-width: 600px) {
+  .kindle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem 0.5rem; }
+  .kindle-book-title { font-size: 0.8rem; }
+  .kindle-book-author { font-size: 0.74rem; }
+  .kindle-rail-card { width: 118px; }
+  .library-header { margin-bottom: 0.6rem; }
+  .library-toolbar { padding: 0.5rem 0.55rem; gap: 0.45rem 0.5rem; }
+  .library-toolbar .view-toggle-text { font-size: 0.8rem; }
+  .kindle-shelf-tabs { gap: 0.25rem; }
+  .kindle-shelf-tab { padding: 0.4rem 0.55rem; font-size: 0.84rem; }
+}
+
+/* Very narrow (some 6" panels report ~320px) */
+@media (max-width: 380px) {
+  .kindle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .library-toolbar .view-segments-label { display: none; }
+}
+
+/* e-ink panels have no animation worth keeping, and some refresh visibly. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .view-toggle { transition: none; }
+}
+
+/* High-contrast: pure black on white, thicker borders, no grey text. */
+@media (prefers-contrast: more) {
+  :root { --muted: #1a1a1a; --border: #000; }
+  .kindle-book-title, .kindle-rail-book { font-weight: 700; }
+  .kindle-book-cover, .kindle-rail-cover, .kindle-cover-fallback {
+    border-width: 2px;
+  }
+}
+
+/* Print, for anyone exporting a shelf list. */
+@media print {
+  .library-toolbar, .kindle-pager, .kindle-rail { display: none; }
+  .kindle-book { break-inside: avoid; }
+  .kindle-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* --------------------------------------------------- navbar on small --- */
+/* Measured at a 600px viewport: .nav-links was 489px wide and pushed 52px
+   past the viewport, so the whole page scrolled sideways. Not the library
+   markup -- this is the top nav, and it is the first thing an ereader user
+   sees. The nav wraps to two rows and the theme picker keeps its own line
+   rather than forcing a single wide row. */
+@media (max-width: 760px) {
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.15rem 0.4rem;
+    width: 100%;
+  }
+  .nav-links a,
+  .nav-links > span {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.85rem;
+  }
+  .nav-links select {
+    max-width: 100%;
+  }
+}
+@media (max-width: 420px) {
+  .nav-links a,
+  .nav-links > span {
+    font-size: 0.8rem;
+    padding: 0.28rem 0.36rem;
+  }
+}
+
+/* Nothing should ever scroll the document sideways on a small panel. */
+@media (max-width: 760px) {
+  body { overflow-x: hidden; }
+  .container, main, .library-header, .library-toolbar { max-width: 100%; }
+  /* let long words in metadata wrap instead of stretching the page */
+  .kindle-book-meta, .library-info, .modal-dialog { overflow-wrap: anywhere; }
+}
+
+/* The theme picker forced the nav row wide on a 585px viewport: the select
+   had a hard width, so .nav-links stayed 585px wide but the row's content
+   pushed the document to 733px. Let the select shrink and wrap. */
+@media (max-width: 760px) {
+  .nav-links select,
+  .nav-links .theme-select,
+  .nav-links select[name="theme"] {
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+    width: auto;
+  }
+  /* the select sits inside a span wrapper; let that shrink too */
+  .nav-links > span {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .nav-links a {
+    white-space: nowrap;
+  }
+}
+
+/* Mid-width gap: 600px sat between the <=720px and <=420px rule sets, so
+   neither constrained the nav and the document still scrolled to 733px. Add
+   an explicit band for ereader widths rather than relying on the edges. */
+@media (min-width: 561px) and (max-width: 900px) {
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.2rem 0.35rem;
+    width: 100%;
+  }
+  .nav-links > span,
+  .nav-links select,
+  .nav-links .theme-select {
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+  }
+  .nav-links a { padding: 0.3rem 0.4rem; font-size: 0.82rem; }
+  .nav-links select { font-size: 0.82rem; height: 30px; }
+  .container, main { max-width: 100%; }
+  .kindle-shelf-tabs { overflow-x: auto; flex-wrap: nowrap; }
+}

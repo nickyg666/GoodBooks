@@ -18,21 +18,21 @@
     <!-- Conditional CSS loading based on device type -->
     {% if is_kindle %}
         <!-- Kindle e-ink optimized CSS -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='kindle.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='kindle.css', v=static_v) }}">
     {% else %}
         <!-- Desktop polished CSS -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='desktop.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='desktop.css', v=static_v) }}">
     {% endif %}
 
     <!-- Theme overrides -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/dark.css') }}" disabled data-theme-stylesheet="dark">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/sepia.css') }}" disabled data-theme-stylesheet="sepia">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/high-contrast.css') }}" disabled data-theme-stylesheet="high-contrast">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/matrix.css') }}" disabled data-theme-stylesheet="matrix">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/cyberpunk.css') }}" disabled data-theme-stylesheet="cyberpunk">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/synthwave.css') }}" disabled data-theme-stylesheet="synthwave">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/typewriter.css') }}" disabled data-theme-stylesheet="typewriter">
-    <link rel="stylesheet" href="{{ url_for('static', filename='themes/solarized-dark.css') }}" disabled data-theme-stylesheet="solarized-dark">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/dark.css', v=static_v) }}" disabled data-theme-stylesheet="dark">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/sepia.css', v=static_v) }}" disabled data-theme-stylesheet="sepia">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/high-contrast.css', v=static_v) }}" disabled data-theme-stylesheet="high-contrast">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/matrix.css', v=static_v) }}" disabled data-theme-stylesheet="matrix">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/cyberpunk.css', v=static_v) }}" disabled data-theme-stylesheet="cyberpunk">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/synthwave.css', v=static_v) }}" disabled data-theme-stylesheet="synthwave">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/typewriter.css', v=static_v) }}" disabled data-theme-stylesheet="typewriter">
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/solarized-dark.css', v=static_v) }}" disabled data-theme-stylesheet="solarized-dark">
     <script>
     (function () {
         function applyThemeStylesheets() {

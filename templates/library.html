@@ -229,7 +229,7 @@
 
     <div class="library-header">
         <div class="library-summary">
-            <span>Total titles: <strong id="library-total-count">{{ total_items }}</strong></span>
+            <span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>
             <label class="checkbox select-all-label" style="margin: 0;">
                 <input type="checkbox" id="library-select-all" style="cursor: pointer;">
                 <span>Select all</span>
@@ -264,6 +264,13 @@
                     </svg>
                     <span class="view-toggle-text">Covers</span>
                 </button>
+            <button type="button" id="library-view-kindle" class="view-toggle {% if view_mode_requested == 'kindle' %}active{% endif %}" data-view="kindle" title="Library: Reading Now, shelves and covers, like a Kindle">
+                <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M3 4.5h5.1c.8 0 1.4.4 1.9.9.5-.5 1.1-.9 1.9-.9H17v11h-5.1c-.8 0-1.4.4-1.9.9-.5-.5-1.1-.9-1.9-.9H3z" stroke="currentColor" fill="none" stroke-width="1.3" stroke-linejoin="round"/>
+                    <path d="M10 5.4v11.1" stroke="currentColor" stroke-width="1.3"/>
+                </svg>
+                <span class="view-toggle-text">Library</span>
+            </button>
                 <button type="button" id="library-view-recent" class="view-toggle {% if view_mode_requested == 'recent' %}active{% endif %}" data-view="recent" title="Newest: most recently added books first">
                     <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
                         <circle cx="10" cy="10" r="7.2" stroke="currentColor" fill="none" stroke-width="1.4"/>
@@ -307,10 +314,7 @@
                        and the server-side filter are unchanged. #}
                     <input type="hidden" name="author" id="author-filter-value" value="{{ author_filter or '' }}">
                     <div class="author-combobox">
-                        <input type="text" id="author-filter-input" class="author-combobox-input"
-                               placeholder="Any author" autocomplete="off" role="combobox"
-                               aria-expanded="false" aria-controls="author-filter-list"
-                               aria-autocomplete="list" data-authors="{{ author_options_json }}"
+                        <input type="text" id="author-filter-input" data-authors-url="/api/library-authors"
                                value="{{ author_filter_label or '' }}"
                                data-current-key="{{ author_filter or '' }}">
                         <ul id="author-filter-list" class="author-combobox-list" role="listbox" hidden></ul>
@@ -351,9 +355,42 @@
   var list = document.getElementById('author-filter-list');
   if (!input || !hidden || !list) { return; }
 
-  var AUTHORS = [];
-  try { AUTHORS = JSON.parse(input.getAttribute('data-authors') || '[]'); }
-  catch (e) { AUTHORS = []; }
+  // The author list is ~4,900 entries (~274KB of JSON). It used to be
+  // inlined on every library page load, which is unacceptable on an e-ink
+  // device, so it is fetched once on first use and cached in memory.
+  var AUTHORS = null;
+  var authorsUrl = input.getAttribute('data-authors-url') || '/api/library-authors';
+
+  function loadAuthors() {
+    if (AUTHORS) { return Promise.resolve(AUTHORS); }
+    return fetch(authorsUrl, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) {
+        if (!r.ok) { throw new Error('http ' + r.status); }
+        return r.json();
+      })
+      .then(function (d) {
+        AUTHORS = Array.isArray(d) ? d : [];
+        return AUTHORS;
+      })
+      .catch(function () {
+        // Degrade quietly: the text field still works, the dropdown just
+        // does not open. Never block the page on an optional suggestion list.
+        AUTHORS = [];
+        return AUTHORS;
+      });
+  }
+
+  // The applied filter's label comes from the page, so it can be shown
+  // before the list has been fetched.
+  function labelForKey(key) {
+    if (!key) { return ''; }
+    if (AUTHORS) {
+      for (var i = 0; i < AUTHORS.length; i++) {
+        if (AUTHORS[i].k === key) { return AUTHORS[i].l; }
+      }
+    }
+    return key;
+  }
 
   // The page was rendered with a filter already applied (from a form submit
   // or a hand-edited URL). Show its label so the control reflects the state
@@ -361,12 +398,15 @@
   (function showCurrent() {
     var key = input.getAttribute('data-current-key') || '';
     if (!key) { return; }
-    var label = key;
-    for (var i = 0; i < AUTHORS.length; i++) {
-      if (AUTHORS[i].k === key) { label = AUTHORS[i].l; break; }
-    }
     hidden.value = key;
-    input.value = label;
+    input.value = labelForKey(key);
+    // Refine the label to its proper capitalisation once the list arrives.
+    if (!AUTHORS) {
+      loadAuthors().then(function () {
+        var better = labelForKey(key);
+        if (better && better !== input.value) { input.value = better; }
+      });
+    }
   })();
 
   var MAX = 60;
@@ -462,8 +502,12 @@
     if (el && el.scrollIntoView) { el.scrollIntoView({ block: 'nearest' }); }
   }
 
-  input.addEventListener('input', render);
-  input.addEventListener('focus', render);
+  input.addEventListener('input', function () {
+    if (AUTHORS) { render(); } else { loadAuthors().then(render); }
+  });
+  input.addEventListener('focus', function () {
+    if (AUTHORS) { render(); } else { loadAuthors().then(render); }
+  });
   input.addEventListener('blur', function () {
     // let a mousedown on an option win, then close
     setTimeout(function () { list.hidden = true; }, 120);
@@ -490,8 +534,111 @@
 
 
 
+
+        {# ------------------------------------------------ Kindle library #}
+        {% if view_mode == 'kindle' %}
+        {% set reading_now = kindled_reading_now | default([]) %}
+        {% if reading_now %}
+        <section class="kindle-rail" aria-label="Reading now">
+            <h2 class="kindle-rail-title">Reading Now</h2>
+            <div class="kindle-rail-strip">
+                {% for r in reading_now %}
+                <a class="kindle-rail-card" href="{{ url_for('book_detail', entry_id=r.entry.id) }}">
+                    <div class="kindle-rail-cover">
+                        {% if r.entry.cover %}
+                        <img src="{{ r.entry.cover }}" alt="{{ r.entry.title }}" loading="lazy">
+                        {% else %}
+                        <div class="kindle-cover-fallback">
+                            <span class="kindle-fallback-title">{{ r.entry.title }}</span>
+                        </div>
+                        {% endif %}
+                        {% if r.percent is not none %}
+                        <div class="kindle-progress" role="progressbar"
+                             aria-valuenow="{{ r.percent | round | int }}"
+                             aria-valuemin="0" aria-valuemax="100" aria-label="Reading progress">
+                            <div class="kindle-progress-fill" style="width: {{ r.percent }}%"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="kindle-rail-meta">
+                        <span class="kindle-rail-book">{{ r.entry.title }}</span>
+                        {% if r.percent is not none %}
+                        <span class="kindle-rail-pct">{{ r.percent | round | int }}%</span>
+                        {% else %}
+                        <span class="kindle-rail-pct kindle-muted">Opened</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if kindled_shelves %}
+        <div class="kindle-shelf-tabs" role="tablist" aria-label="Shelves">
+            <a class="kindle-shelf-tab {% if not kindled_shelf %}active{% endif %}"
+               href="{{ url_for('index', view='kindle', prefix=none, search=search_query or none, sort=sort_key) }}"
+               role="tab" aria-selected="{{ 'true' if not kindled_shelf else 'false' }}">
+                All <span class="kindle-shelf-n">{{ kindled_total_count }}</span>
+            </a>
+            {% for name, count in kindled_shelves %}
+            <a class="kindle-shelf-tab {% if kindled_shelf == name %}active{% endif %}"
+               href="{{ url_for('index', view='kindle', prefix=name, search=search_query or none, sort=sort_key) }}"
+               role="tab" aria-selected="{{ 'true' if kindled_shelf == name else 'false' }}">
+                {{ name }} <span class="kindle-shelf-n">{{ count }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div id="library-content" class="kindle-grid" data-view="kindle">
+            {% for entry in kindled_entries %}
+            <a class="kindle-book" href="{{ url_for('book_detail', entry_id=entry.id) }}">
+                <div class="kindle-book-cover">
+                    {% if entry.cover %}
+                    <img src="{{ entry.cover }}" alt="{{ entry.title }}" loading="lazy" decoding="async">
+                    {% else %}
+                    <div class="kindle-cover-fallback">
+                        <span class="kindle-fallback-title">{{ entry.title }}</span>
+                        {% if entry.author %}<span class="kindle-fallback-author">{{ entry.author_display or entry.author }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if entry._read_percent is not none %}
+                    <div class="kindle-progress kindle-progress-oncover" role="progressbar"
+                         aria-valuenow="{{ entry._read_percent | round | int }}"
+                         aria-valuemin="0" aria-valuemax="100" aria-label="Reading progress">
+                        <div class="kindle-progress-fill" style="width: {{ entry._read_percent }}%"></div>
+                    </div>
+                    <span class="kindle-progress-pct">{{ entry._read_percent | round | int }}%</span>
+                    {% elif entry._read_active %}
+                    <span class="kindle-opened-badge">Opened</span>
+                    {% endif %}
+                </div>
+                <div class="kindle-book-meta">
+                    <span class="kindle-book-title">{{ entry.title }}</span>
+                    {% if entry.author %}
+                    <span class="kindle-book-author">{{ entry.author_display or entry.author }}</span>
+                    {% endif %}
+                    <span class="kindle-book-format">{{ (entry.filetype or '?') | upper }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if kindled_pager %}
+        <nav class="kindle-pager" aria-label="Pagination">
+            {% if kindled_pager.has_prev %}
+            <a class="kindle-pager-link" href="{{ url_for('index', view='kindle', prefix=prefix or none, page=kindled_pager.prev_page, search=search_query or none, sort=sort_key) }}">Previous</a>
+            {% endif %}
+            <span class="kindle-pager-state">Page {{ kindled_pager.page }} of {{ kindled_pager.pages }}</span>
+            {% if kindled_pager.has_next %}
+            <a class="kindle-pager-link" href="{{ url_for('index', view='kindle', prefix=prefix or none, page=kindled_pager.next_page, search=search_query or none, sort=sort_key) }}">Next</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+        {% endif %}
     {# Unified grid for both folder cards and book cards #}
-    {% if entries or (folder_cards and not filters_active) %}
+    {% if view_mode != 'kindle' and (entries or (folder_cards and not filters_active)) %}
     <div id="library-content" class="grid results-grid library-view-grid" data-view="{{ view_mode }}">
         {# Folder cards (only when no filters are active) #}
         {% if folder_cards and not filters_active %}
@@ -1283,11 +1430,22 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const gridViewBtn = document.getElementById('library-view-grid');
     const listViewBtn = document.getElementById('library-view-list');
     const recentViewBtn = document.getElementById('library-view-recent');
+    const kindleViewBtn = document.getElementById('library-view-kindle');
+
+    // Single source of truth for which view is active. Each setter used to
+    // hand-remove 'active' from the other buttons, which meant a fifth view
+    // (Library) could never be marked active: the old handlers did not know
+    // it existed and a stale localStorage choice kept Folders lit. Clearing
+    // all and lighting the one that matches makes a new view a template-only
+    // change.
+    function setActiveView(view) {
+        document.querySelectorAll('.view-toggle').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-view') === view);
+        });
+    }
 
     function setGridView() {
-        gridViewBtn.classList.add('active');
-        listViewBtn.classList.remove('active');
-        recentViewBtn?.classList.remove('active');
+        setActiveView('collection');
         localStorage.setItem('library-view', 'grid');
         // Navigate to grid view (collection mode shows all books)
         const url = new URL(window.location);
@@ -1297,9 +1455,7 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     }
 
     function setListView() {
-        gridViewBtn.classList.remove('active');
-        listViewBtn.classList.add('active');
-        recentViewBtn?.classList.remove('active');
+        setActiveView('folder');
         localStorage.setItem('library-view', 'list');
         // Navigate to list view (folder mode at root)
         const url = new URL(window.location);
@@ -1308,10 +1464,19 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         window.location = url.toString();
     }
 
+    function setKindleView() {
+        setActiveView('kindle');
+        localStorage.setItem('library-view', 'kindle');
+        // Kindle view is a flat shelf browser: drop the folder prefix so the
+        // shelf tabs, not a folder, decide what is shown.
+        const url = new URL(window.location);
+        url.searchParams.set('view', 'kindle');
+        url.searchParams.delete('prefix');
+        window.location = url.toString();
+    }
+
     function setRecentView() {
-         gridViewBtn.classList.remove('active');
-         listViewBtn.classList.remove('active');
-         recentViewBtn?.classList.add('active');
+         setActiveView('recent');
          localStorage.setItem('library-view', 'recent');
          // Keep the user's sort / page size / filters. This used to rebuild
          // the URL from scratch, silently discarding them.
@@ -1322,10 +1487,8 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
          window.location = url.toString();
      }
 
-    const coverViewBtn = document.getElementById('library-view-cover');
     function setCoverView() {
-        if (gridViewBtn) gridViewBtn.classList.remove('active');
-        if (listViewBtn) listViewBtn.classList.remove('active');
+        setActiveView('cover');
         if (recentViewBtn) recentViewBtn.classList.remove('active');
         if (coverViewBtn) coverViewBtn.classList.add('active');
         localStorage.setItem('library-view', 'cover');
@@ -1344,28 +1507,21 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         recentViewBtn.addEventListener('click', setRecentView);
     }
 
-    // Restore button active state based on current view mode
+    // Restore the active button from the URL. This block used to branch over
+    // four hardcoded view names and defaulted anything else -- including
+    // "kindle" -- to Folders, so the Library view lit Folders on top of the
+    // server's own marking. setActiveView() keys off data-view instead, so
+    // it is right for every view that exists without being updated.
     const currentView = new URL(window.location).searchParams.get('view') || 'folder';
-    const isRecentlyAdded = window.location.pathname.includes('recently-added')
-        || currentView === 'recent';
-    
+    const isRecentlyAdded = window.location.pathname.includes('recently-added');
     if (isRecentlyAdded) {
-        gridViewBtn.classList.remove('active');
-        listViewBtn.classList.remove('active');
-        recentViewBtn?.classList.add('active');
-    } else if (currentView === 'cover') {
-        coverViewBtn?.classList.add('active');
-        gridViewBtn.classList.remove('active');
-        listViewBtn.classList.remove('active');
-        recentViewBtn?.classList.remove('active');
-    } else if (currentView === 'collection') {
-        gridViewBtn.classList.add('active');
-        listViewBtn.classList.remove('active');
-        recentViewBtn?.classList.remove('active');
+        setActiveView('recent');
     } else {
-        gridViewBtn.classList.remove('active');
-        listViewBtn.classList.add('active');
-        recentViewBtn?.classList.remove('active');
+        setActiveView(currentView);
+    }
+
+    if (kindleViewBtn) {
+        kindleViewBtn.addEventListener('click', setKindleView);
     }
 
 

@@ -75,6 +75,13 @@ def new_job(entry_id: str, epub: Path, voice: str, title: str = "",
         "epub": str(epub),
         "voice": voice,
         "voice_ref": "",
+        "for_user": "",
+        "auto_send": False,
+        "notify": False,
+        "bitrate": "192k",
+        "delivered": None,        # None pending, False failed, True sent
+        "notified": None,
+        "delivery_error": "",
         "title": title or epub.stem,
         "author": author,
         "phase": "queued",
@@ -93,8 +100,9 @@ LIVE_PHASES = ("queued", "parsing", "narrating", "assembling")
 
 
 def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
-            author: str = "", restart: bool = False,
-            voice_ref: str = "") -> dict:
+            author: str = "", restart: bool = False, voice_ref: str = "",
+            for_user: str = "", auto_send: bool = False,
+            notify: bool = False, bitrate: str = "192k") -> dict:
     """Queue a book, WITHOUT destroying a conversion already in progress.
 
     Measured bug: this used to set phase="queued" unconditionally, so every
@@ -127,6 +135,10 @@ def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
     job = existing or new_job(entry_id, epub, voice, title, author)
     job.update({"epub": str(epub), "voice": voice,
                 "voice_ref": voice_ref or job.get("voice_ref") or "",
+                "for_user": for_user or job.get("for_user") or "",
+                "auto_send": bool(auto_send),
+                "notify": bool(notify),
+                "bitrate": bitrate or job.get("bitrate") or "192k",
                 "title": job.get("title") or title or epub.stem,
                 "author": job.get("author") or author,
                 "phase": "queued", "error": None, "updated": time.time()})
@@ -168,6 +180,16 @@ def progress(entry_id: str) -> dict:
         "error": job.get("error"),
         "voice": job.get("voice"),
         "voice_ref": job.get("voice_ref") or "",
+        "for_user": job.get("for_user") or "",
+        "auto_send": bool(job.get("auto_send")),
+        "notify": bool(job.get("notify")),
+        "bitrate": job.get("bitrate") or "192k",
+        "delivered": job.get("delivered"),
+        "notified": job.get("notified"),
+        "delivery_error": job.get("delivery_error") or "",
+        "result_mb": (round(Path(job["result"]).stat().st_size / 1e6, 1)
+                       if job.get("result") and Path(job["result"]).exists()
+                       else None),
         "title": job.get("title"),
         "result": job.get("result"),
         "audio_seconds": round(job.get("audio_seconds") or 0.0, 1),

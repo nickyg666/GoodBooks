@@ -2216,3 +2216,162 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   font-variant-numeric: tabular-nums;
   color: var(--accent, #2563eb);
 }
+
+/* ------------------------------------------ audiobook dialog ---------- */
+.audiobook-dialog { max-width: 560px; }
+.ab-title {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin: 0 0 0.3rem; font-size: 1.05rem;
+}
+.ab-book-name {
+  margin: 0 0 0.7rem; font-size: 0.9rem; color: var(--muted, #6b7280);
+  overflow-wrap: anywhere;
+}
+
+/* The estimate is the reason this dialog is safe to use: it answers "how long
+   and how big" before a multi-hour job is committed to. Give it presence. */
+.ab-estimate {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, #b9b9b9);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent, #2563eb) 6%, transparent);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text, #111827);
+}
+@media (prefers-color-scheme: dark) {
+  .ab-estimate { background: rgba(158, 199, 255, 0.10); }
+}
+
+.ab-field { display: block; margin-bottom: 0.55rem; }
+.ab-field > span {
+  display: block; font-size: 0.7rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--muted, #6b7280); margin-bottom: 0.2rem;
+}
+.ab-select {
+  width: 100%; padding: 0.5rem 0.55rem; min-height: 40px;
+  border: 1px solid var(--border, #d4d4d8); border-radius: 7px;
+  background: var(--surface, #fff); color: var(--text, #111827);
+  font-size: 0.9rem; font-family: inherit;
+}
+.ab-select:disabled { opacity: 0.55; }
+
+/* zero-shot clip picker */
+.ab-clone-field[hidden] { display: none; }
+.ab-file-input {
+  display: block; width: 100%; padding: 0.45rem;
+  border: 1px dashed var(--border, #b9b9b9); border-radius: 7px;
+  background: var(--surface, #fff); color: var(--text, #111827);
+  font-size: 0.85rem; min-height: 40px;
+}
+.ab-file-name {
+  display: block; margin-top: 0.25rem;
+  font-size: 0.8rem; color: var(--muted, #6b7280); overflow-wrap: anywhere;
+}
+.ab-hint {
+  margin: 0.3rem 0 0.7rem; font-size: 0.79rem; color: var(--muted, #6b7280);
+}
+.ab-existing-ref[hidden] { display: none; }
+.ab-existing-ref { margin: 0 0 0.6rem; }
+
+/* auto-send / notify */
+.ab-toggles {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  margin: 0.3rem 0 0.8rem;
+}
+.ab-toggles label { display: flex; align-items: center; gap: 0.45rem; margin: 0; }
+.ab-toggles input[type="checkbox"] { flex: none; margin: 0; }
+.ab-toggles label:has(input:disabled) { opacity: 0.5; }
+.ab-note {
+  margin: 0 0 0.8rem; font-size: 0.78rem; color: var(--muted, #6b7280);
+}
+
+.ab-progress-wrap[hidden] { display: none; }
+.ab-progress-wrap { margin-bottom: 0.8rem; }
+.ab-bar {
+  height: 10px; border: 1px solid var(--border, #b9b9b9);
+  border-radius: 2px; background: var(--surface, #fff); overflow: hidden;
+}
+.ab-bar-fill { height: 100%; width: 0; background: var(--accent, #2563eb); }
+.ab-status {
+  margin: 0.5rem 0 0.15rem; font-size: 0.9rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ab-detail {
+  margin: 0; font-size: 0.8rem; color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.ab-error[hidden] { display: none; }
+.ab-error {
+  margin: 0 0 0.8rem; padding: 0.5rem 0.6rem;
+  border: 1px solid #b91c1c; border-left-width: 3px; border-radius: 4px;
+  background: rgba(185, 28, 28, 0.07); color: #b91c1c; font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+.ab-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.ab-actions button { min-height: 40px; padding: 0.5rem 0.9rem; }
+.ab-actions button[hidden] { display: none; }
+
+/* ------------------------------------------- audiobooks view ---------- */
+/* A list, not a cover grid: an audiobook is a long piece of work whose useful
+   facts (length, size, narrator, chapters, delivery) a cover cannot show. */
+.audiobook-view { margin: 0.5rem 0 1.2rem; }
+.audiobook-summary {
+  margin: 0 0 0.8rem;
+  font-size: 0.88rem;
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+.audiobook-empty {
+  padding: 1.4rem 0.9rem;
+  border: 1px dashed var(--border, #b9b9b9);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--muted, #6b7280);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.audiobook-empty[hidden] { display: none; }
+.audiobook-empty a { color: var(--accent, #2563eb); }
+
+.audiobook-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.audiobook-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+}
+@media (hover: hover) {
+  .audiobook-row:hover { border-color: var(--accent, #2563eb); }
+}
+.ab-main { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.ab-row-title {
+  font-size: 0.95rem; font-weight: 600; color: var(--text, #111827);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ab-row-meta {
+  font-size: 0.8rem; color: var(--muted, #6b7280);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ab-facts { display: flex; gap: 0.5rem; flex: none; flex-wrap: wrap; }
+.ab-fact {
+  font-size: 0.78rem;
+  color: var(--text, #111827);
+  background: color-mix(in srgb, var(--muted, #6b7280) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ab-sent-yes { background: rgba(22, 101, 52, 0.16); color: #166534; }
+.ab-sent-no  { background: color-mix(in srgb, var(--muted, #6b7280) 12%, transparent); }
+@media (max-width: 620px) {
+  .audiobook-row { flex-direction: column; align-items: flex-start; }
+  .ab-facts { width: 100%; }
+}

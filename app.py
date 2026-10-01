@@ -4475,7 +4475,7 @@ def index():
     #   compact   - dense text list, fastest for large libraries
     view_mode = request.args.get("view", "folder").strip().lower()
     if view_mode not in {"folder", "collection", "cover", "compact", "recent",
-                         "kindle"}:
+                         "kindle", "audiobooks"}:
         view_mode = "folder"
     # Keep what the user actually asked for. "recent" is resolved to
     # collection mode below for its behaviour, but the template needs the
@@ -9461,6 +9461,131 @@ def _ab_resolve_path(entry: Dict) -> Optional[str]:
     return None
 
 
+# ------------------------------------------------- audiobooks in library --
+# Narrated books are a different kind of object from ebooks: they have a
+# duration, a size, a narrator, a chapter count and a delivery state. They get
+# their own view instead of being mixed into the book grid.
+
+_AUDIOBOOK_EXTS = (".m4b", ".mp3", ".m4a")
+
+
+def _audiobook_jobs() -> List[Dict]:
+    """Finished and running jobs, newest first."""
+    import json as _json
+    out = []
+    jd = DATA_DIR / "audiobook_jobs"
+    if not jd.is_dir():
+        return out
+    for f in jd.glob("*.json"):
+        try:
+            j = _json.loads(f.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        out.append(j)
+    out.sort(key=lambda j: (j.get("updated") or 0), reverse=True)
+    return out
+
+
+def _audio_index_by_title() -> Dict[str, str]:
+    """lower(title) -> entry id, for matching loose audio files to a book."""
+    idx = {}
+    try:
+        for e in build_library_entries():
+            t = (e.get("title") or "").strip().casefold()
+            if t:
+                idx.setdefault(t, e.get("id"))
+    except Exception:
+        logger.debug("audiobook index: could not list the library")
+    return idx
+
+
+def audiobook_index() -> List[Dict]:
+    """Every audiobook this library knows about.
+
+    Jobs are authoritative. Files found on disk that no job claims are included
+    too, matched to a book by title, so a hand-copied m4b still appears.
+    """
+    import json as _json
+    rows: List[Dict] = []
+    claimed = set()
+    by_title = None
+
+    for j in _audiobook_jobs():
+        result = j.get("result")
+        if not result:
+            continue
+        p = Path(result)
+        if not p.exists():
+            continue
+        claimed.add(p.resolve())
+        secs = float(j.get("audio_seconds") or 0.0)
+        rows.append({
+            "path": str(p),
+            "name": p.name,
+            "title": j.get("title") or p.stem,
+            "author": j.get("author") or "",
+            "narrator": j.get("voice") or ("clone" if j.get("voice_ref") else ""),
+            "cloned": bool(j.get("voice_ref")),
+            "for_user": j.get("for_user") or "",
+            "bitrate": j.get("bitrate") or "192k",
+            "seconds": secs,
+            "hours": round(secs / 3600.0, 2),
+            "mb": round(p.stat().st_size / 1e6, 1),
+            "chapters": len(j.get("chapters") or []),
+            "delivered": j.get("delivered"),
+            "notified": j.get("notified"),
+            "source": "job",
+        })
+
+    if by_title is None:
+        by_title = _audio_index_by_title()
+
+    # loose audio files next to books
+    seen_dirs = set()
+    try:
+        root = Path(settings_manager.settings.library_root)
+    except Exception:
+        root = None
+    if root and root.is_dir():
+        for d in root.iterdir():
+            if not d.is_dir():
+                continue
+            seen_dirs.add(d.resolve())
+            for f in sorted(d.glob("*")):
+                if f.suffix.lower() not in _AUDIOBOOK_EXTS:
+                    continue
+                if f.resolve() in claimed:
+                    continue
+                stem = f.stem
+                entry_id = by_title.get(stem.casefold())
+                title = stem
+                if entry_id:
+                    title = entry_id.split("::", 1)[-1].rsplit(".", 1)[0]
+                secs = 0.0
+                try:
+                    import subprocess as _sp
+                    r = _sp.run(
+                        ["ffprobe", "-v", "error", "-show_entries",
+                         "format=duration", "-of", "csv=p=0", str(f)],
+                        capture_output=True, text=True, timeout=30)
+                    secs = float((r.stdout or "0").strip() or 0)
+                except Exception:
+                    secs = 0.0
+                rows.append({
+                    "path": str(f), "name": f.name, "title": title,
+                    "author": "", "narrator": "", "cloned": False,
+                    "for_user": "", "bitrate": "",
+                    "seconds": secs, "hours": round(secs / 3600.0, 2),
+                    "mb": round(f.stat().st_size / 1e6, 1),
+                    "chapters": 0, "delivered": None, "notified": None,
+                    "source": "file",
+                })
+
+    rows.sort(key=lambda r: (r.get("seconds") or 0), reverse=True)
+    return rows
+
+
+
 # ------------------------------------------------- audiobook: reference ---
 # Zero-shot cloning: pocket_tts clones a voice from a reference clip alone,
 # so a book can be narrated in a voice that is not one of the studio's
@@ -9472,6 +9597,85 @@ def _ab_resolve_path(entry: Dict) -> Optional[str]:
 # the studio fetches it by path.
 
 REFERENCE_DIR = DATA_DIR / "audiobook_refs"
+
+
+# ------------------------------------------- audiobook: options + sizing --
+# The dialog needs to answer "how long and how big?" BEFORE the user commits
+# to a job that runs for hours. Both figures come from measured rates
+# (synthesis words/sec, final bitrate), never from a guess.
+#
+# Kept deliberately small: user, voice, auto-send, notify, bitrate. Anything
+# more is clutter on a dialog most people open once per book.
+
+BITRATE_CHOICES = ("128k", "160k", "192k")
+
+
+@app.route("/audiobook/estimate")
+def audiobook_estimate():
+    """Estimated narration time and final size for a book.
+
+    GET /audiobook/estimate?entry_id=...   (or ?words=...)
+    """
+    import gb_audiobook as AB
+    entry_id = (request.args.get("entry_id") or "").strip()
+    words = request.args.get("words")
+    if not words and entry_id:
+        entry = get_library_entry(entry_id)
+        if not entry:
+            return jsonify({"ok": False, "error": "book not found"}), 404
+        try:
+            import gb_reading
+            path = _ab_resolve_path(entry)
+            book = AB.read_epub(Path(path))
+            words = book.words
+        except Exception as exc:
+            logger.debug("estimate: could not read the epub: %s", exc)
+            return jsonify({"ok": False,
+                            "error": "could not read this book"}), 422
+    try:
+        n = int(words) if words else 0
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "words must be a number"}), 400
+    est = AB.estimate_voice_duration(n)
+    return jsonify({"ok": True, "words": n, **est})
+
+
+def _ab_user_options():
+    """The per-user choices the dialog offers."""
+    out = []
+    for u in (getattr(settings_manager.settings, "users", None) or []):
+        out.append({
+            "name": getattr(u, "name", "") or "",
+            "kindle_email": getattr(u, "kindle_email", "") or "",
+            "notification_email": getattr(u, "notification_email", "") or "",
+        })
+    return out
+
+
+@app.route("/audiobook/options")
+def audiobook_options():
+    """Everything the dialog needs to render: users, voices, bitrates, defaults."""
+    import gb_audiobook as AB
+    voices = []
+    try:
+        import urllib.request
+        import ssl
+        url = AB.TTS_ENDPOINT.rstrip("/") + "/api/voices"
+        ctx = (ssl._create_unverified_context()
+               if url.startswith("https://192.168.") else None)
+        with urllib.request.urlopen(url, timeout=15, context=ctx) as resp:
+            voices = json.loads(resp.read().decode("utf-8", "replace")) \
+                .get("voices") or []
+    except Exception as exc:
+        logger.debug("audiobook options: voice list unavailable: %s", exc)
+    return jsonify({
+        "users": _ab_user_options(),
+        "voices": voices,
+        "bitrates": list(BITRATE_CHOICES),
+        "default_bitrate": AB.AUDIO_BITRATE,
+        "sample_rate": AB.SAMPLE_RATE,
+        "words_per_second": AB.WORDS_PER_SECOND,
+    })
 
 
 @app.route("/audiobook/reference", methods=["POST"])
@@ -9554,9 +9758,21 @@ def audiobook_start():
     # the registered voice, because the clip IS the voice.
     voice_ref = (request.form.get("voice_ref") or "").strip()
 
+    # Dialog options. Everything optional except entry_id: a job with no
+    # auto-send is just a local render, which is a valid choice.
+    for_user = (request.form.get("user") or user_obj_name_for(entry_id)
+                or "").strip()
+    auto_send = (request.form.get("auto_send") or "").strip() in ("1", "true", "on", "yes")
+    notify = (request.form.get("notify") or "").strip() in ("1", "true", "on", "yes")
+    bitrate = (request.form.get("bitrate") or "192k").strip()
+    if bitrate not in BITRATE_CHOICES:
+        bitrate = "192k"
+
     job = gb_abjob.enqueue(entry_id, Path(src_path), voice,
                             entry.get("title", ""), entry.get("author", ""),
-                            restart=restart, voice_ref=voice_ref)
+                            restart=restart, voice_ref=voice_ref,
+                            for_user=for_user, auto_send=auto_send,
+                            notify=notify, bitrate=bitrate)
     return jsonify({"ok": True, "entry_id": entry_id,
                     "progress": gb_abjob.progress(entry_id)})
 
@@ -9740,6 +9956,18 @@ def admin_warm_covers():
     limit = max(1, min(limit, 2000))
     return jsonify({"ok": True, "limit": limit, **warm_cover_cache(limit)})
 
+
+
+@app.route("/api/audiobooks")
+def api_audiobooks():
+    """The audiobook list, for the library view."""
+    rows = audiobook_index()
+    return jsonify({
+        "count": len(rows),
+        "total_hours": round(sum(r["hours"] for r in rows), 2),
+        "total_mb": round(sum(r["mb"] for r in rows), 1),
+        "audiobooks": rows,
+    })
 
 
 if __name__ == "__main__":

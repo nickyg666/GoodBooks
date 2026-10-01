@@ -74,6 +74,7 @@ def new_job(entry_id: str, epub: Path, voice: str, title: str = "",
         "entry_id": entry_id,
         "epub": str(epub),
         "voice": voice,
+        "voice_ref": "",
         "title": title or epub.stem,
         "author": author,
         "phase": "queued",
@@ -92,7 +93,8 @@ LIVE_PHASES = ("queued", "parsing", "narrating", "assembling")
 
 
 def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
-            author: str = "", restart: bool = False) -> dict:
+            author: str = "", restart: bool = False,
+            voice_ref: str = "") -> dict:
     """Queue a book, WITHOUT destroying a conversion already in progress.
 
     Measured bug: this used to set phase="queued" unconditionally, so every
@@ -110,14 +112,21 @@ def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
     if (existing and existing.get("phase") in LIVE_PHASES
             and not restart):
         # already running: adopt the new voice, keep all progress
+        changed = False
         if voice and existing.get("voice") != voice:
             existing["voice"] = voice
+            changed = True
+        if voice_ref and existing.get("voice_ref") != voice_ref:
+            existing["voice_ref"] = voice_ref
+            changed = True
+        if changed:
             existing["updated"] = time.time()
             save_job(entry_id, existing)
         return existing
 
     job = existing or new_job(entry_id, epub, voice, title, author)
     job.update({"epub": str(epub), "voice": voice,
+                "voice_ref": voice_ref or job.get("voice_ref") or "",
                 "title": job.get("title") or title or epub.stem,
                 "author": job.get("author") or author,
                 "phase": "queued", "error": None, "updated": time.time()})
@@ -158,6 +167,7 @@ def progress(entry_id: str) -> dict:
         "total": total,
         "error": job.get("error"),
         "voice": job.get("voice"),
+        "voice_ref": job.get("voice_ref") or "",
         "title": job.get("title"),
         "result": job.get("result"),
         "audio_seconds": round(job.get("audio_seconds") or 0.0, 1),
@@ -186,6 +196,8 @@ def run_job(entry_id: str, log=print) -> dict:
     epub = Path(job["epub"])
     wd = work_dir(entry_id)
     voice = job.get("voice") or ""
+    # (voice_ref is read from the job inside the narrate branch, so a job
+    # updated between chunks picks the change up on its next pass)
 
     # ---- 1. parse -------------------------------------------------------
     if job["phase"] == "queued":
@@ -244,7 +256,10 @@ def run_job(entry_id: str, log=print) -> dict:
         text = texts[nxt]
         t0 = time.time()
         try:
-            wav = AB.synthesize(text, voice)
+            # Zero-shot: when the job carries a reference clip, it is the
+            # voice, and the named voice is irrelevant.
+            wav = AB.synthesize(text, voice,
+                                voice_ref=job.get("voice_ref") or "")
         except Exception as exc:
             job.update({"phase": "error",
                         "error": f"chunk {nxt}: {exc}",

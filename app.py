@@ -9461,6 +9461,64 @@ def _ab_resolve_path(entry: Dict) -> Optional[str]:
     return None
 
 
+# ------------------------------------------------- audiobook: reference ---
+# Zero-shot cloning: pocket_tts clones a voice from a reference clip alone,
+# so a book can be narrated in a voice that is not one of the studio's
+# registered ones. Verified on .168: a reference the studio had never seen
+# returned real 24kHz speech (crest 6.5) through this panel.
+#
+# DAS cannot reach :8021 (loopback-bound on the studio host) and a ~1.8MB
+# clip does not belong in a JSON field, so the reference is uploaded here and
+# the studio fetches it by path.
+
+REFERENCE_DIR = DATA_DIR / "audiobook_refs"
+
+
+@app.route("/audiobook/reference", methods=["POST"])
+def audiobook_upload_reference():
+    """Store a reference clip for zero-shot narration. Returns its path."""
+    entry_id = (request.form.get("entry_id") or "").strip()
+    up = request.files.get("clip")
+    if not up or not up.filename:
+        return jsonify({"ok": False,
+                        "error": "a clip file is required"}), 400
+    if not entry_id:
+        return jsonify({"ok": False, "error": "entry_id is required"}), 400
+
+    blob = up.read()
+    # a reference is a voice prompt, not a book: a few seconds is plenty and
+    # anything huge is a mistake worth rejecting rather than storing
+    if len(blob) < 1000:
+        return jsonify({"ok": False,
+                        "error": "clip is too short to clone from"}), 400
+    if len(blob) > 20 * 1024 * 1024:
+        return jsonify({"ok": False,
+                        "error": "clip is larger than 20MB"}), 400
+
+    REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
+    safe = "".join(c if c.isalnum() or c in "-_" else "_"
+                   for c in entry_id)[-120:]
+    dest = REFERENCE_DIR / f"{safe}.wav"
+    dest.write_bytes(blob)
+    logger.info("audiobook: stored reference %s (%d bytes)", dest, len(blob))
+    return jsonify({"ok": True, "path": str(dest),
+                    "bytes": len(blob)})
+
+
+@app.route("/audiobook/reference")
+def audiobook_reference_status():
+    """Whether a reference clip exists for these entries."""
+    out = {}
+    if REFERENCE_DIR.exists():
+        for p in sorted(REFERENCE_DIR.glob("*.wav")):
+            try:
+                out[p.stem] = {"bytes": p.stat().st_size,
+                               "path": str(p)}
+            except OSError:
+                continue
+    return jsonify({"references": out})
+
+
 @app.post("/audiobook/start")
 def audiobook_start():
     """Queue an EPUB for audiobook conversion. Returns immediately."""
@@ -9490,9 +9548,15 @@ def audiobook_start():
                         f"already converting: {gb_abjob.load_job(running).get('title')}",
                         "active": running}), 409
     restart = (request.form.get("restart") or "").strip() in ("1", "true", "yes")
+
+    # Zero-shot reference. Accepts a path/URL, or the name of a reference
+    # stored by /audiobook/reference. When present it takes precedence over
+    # the registered voice, because the clip IS the voice.
+    voice_ref = (request.form.get("voice_ref") or "").strip()
+
     job = gb_abjob.enqueue(entry_id, Path(src_path), voice,
                             entry.get("title", ""), entry.get("author", ""),
-                            restart=restart)
+                            restart=restart, voice_ref=voice_ref)
     return jsonify({"ok": True, "entry_id": entry_id,
                     "progress": gb_abjob.progress(entry_id)})
 

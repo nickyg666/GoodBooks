@@ -461,11 +461,32 @@ def _fix_wav_header(data: bytes) -> bytes:
 
 
 def synthesize(text: str, voice: str, endpoint: str = TTS_ENDPOINT,
-               timeout: int = REQUEST_TIMEOUT) -> bytes:
-    """One WAV from the voice panel. Form fields, not JSON -- and the panel
-    is reached through Caddy because DAS cannot reach :8092 directly."""
+               timeout: int = REQUEST_TIMEOUT,
+               voice_ref: str = "") -> bytes:
+    """One WAV of speech, in a registered voice OR a zero-shot clone.
+
+    Args:
+        voice: a registered voice name, as the studio lists them.
+        voice_ref: optional reference clip. This is the zero-shot path: the
+            studio uploads it to pocket_tts as voice_wav, which clones the
+            voice from the clip alone. Verified on .168: an unregistered
+            reference returned 240,044 bytes of real 24kHz speech (crest 5.3)
+            in 21.6s.
+
+    Why a reference and not the raw clip: DAS cannot reach :8021 (it is
+    loopback-bound on the studio host) and a 1.8MB upload does not belong in
+    a per-chunk request, so the reference travels as a URL the studio fetches.
+    """
     url = endpoint.rstrip("/") + GENERATE_PATH
-    body = urllib.parse.urlencode({"text": text, "voice": voice}).encode()
+    form = {"text": text}
+    if voice_ref:
+        # Zero-shot: the studio resolves this to a clip and uploads it as
+        # voice_wav, so pocket_tts clones rather than using a preset.
+        form["voice_ref"] = voice_ref
+        form.setdefault("voice", voice or "")
+    else:
+        form["voice"] = voice
+    body = urllib.parse.urlencode(form).encode()
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
     ctx = None

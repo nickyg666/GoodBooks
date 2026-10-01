@@ -1483,3 +1483,95 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   .lib-filters > label.lib-search { flex: 1 1 100%; max-width: none; }
   .lib-filters .toolbar-buttons { flex-wrap: wrap; }
 }
+
+/* ---------------------------------------------------- folder view tidy --- */
+/* The summary row sat left of centre while the toolbar below it was centred,
+   so the two rows disagreed. Nick: align the elements between both rows,
+   centrally. */
+.library-summary {
+  justify-content: center;
+  text-align: center;
+  gap: 0.9rem;
+  margin-bottom: 0.55rem;
+}
+.library-summary .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+/* The "Folder" chip was drawn over the composite art, which now fills the
+   tile. Sit it below the art, on the info row, where nothing overlaps. */
+.library-view-grid .folder-chip {
+  position: static;
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  border: 1px solid var(--border, #b9b9b9);
+  background: transparent;
+  color: var(--muted, #6b7280);
+}
+/* Fill the tile: the composite is a background image, so give the link the
+   full height of the cover box and let the image cover it. */
+.library-view-grid .folder-cover { height: 150px; }
+.library-view-grid .folder-link {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-size: cover;
+  background-position: center;
+}
+.library-view-grid .folder-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  opacity: 0.5;
+  color: var(--accent, #2563eb);
+}
+.library-view-grid .folder-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* ------------------------------------------------------------ folder chip
+   Four rules target .folder-chip and one of them position:absolute, so the
+   label floated over the composite artwork. A previous attempt removed the
+   rules by splicing the file, which broke the toolbar layout entirely, so
+   this keeps every rule and wins on specificity instead: qualifying with
+   .folder-info beats .library-view-grid .folder-chip regardless of order. */
+.library-view-grid .folder-info .folder-chip {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: auto;
+  flex: none;
+  display: inline-block;
+  margin: 0;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+}
+/* And keep the summary row from wrapping "Select all" onto two lines. */
+.library-summary,
+.library-summary .checkbox,
+.library-summary .checkbox > span { white-space: nowrap; }
+.library-summary .checkbox > span,
+.library-summary .checkbox input[type="checkbox"] { flex: none; }

@@ -644,11 +644,11 @@
                                                 {% if not folder.cover %}
                                                 <i class="fas fa-folder folder-icon" aria-hidden="true"></i>
                                                 {% endif %}
-                                                <span class="library-status-chip folder-chip">Folder</span>
                                         </a>
                                 </div>
                                 <div class="library-info folder-info">
                                         <h3 class="library-title folder-name">{{ folder.name }}</h3>
+                                        <span class="folder-chip">Folder</span>
                                         {% if folder.count is defined and folder.count %}
                                         <span class="folder-count">{{ folder.count }} book{% if folder.count != 1 %}s{% endif %}</span>
                                         {% endif %}

@@ -233,8 +233,12 @@
                Goodreads across the library, which is a long network
                operation. It lives here, as a maintenance action, rather than
                among the filters where a select change would fire it. #}
-            <button type="button" id="library-refresh-metadata" class="secondary"
-                    title="Fetch book metadata (genres, ratings) from Goodreads">Refresh metadata</button>
+            <button type="button" id="library-refresh-metadata"
+                    class="library-refresh-btn"
+                    title="Fetch book metadata (genres, ratings) from Goodreads">
+                <span class="library-refresh-label">Refresh metadata</span>
+                <span class="library-refresh-state" aria-live="polite"></span>
+            </button>
             <span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>
             <label class="checkbox select-all-label" style="margin: 0;">
                 <input type="checkbox" id="library-select-all" style="cursor: pointer;">
@@ -289,8 +293,8 @@
                   data-auto-submit="1">
                 <label class="lib-search" style="margin-bottom: 0;">
                     <span>Search</span>
-                    <span class="lib-search-box" style="display:flex;align-items:center;gap:0.1rem;width:100%;min-width:0">
-                        <input type="search" name="search" id="lib-search-input" style="flex:1 1 auto;min-width:0;width:100%;padding-right:0.5rem"
+                    <span class="lib-search-box">
+                        <input type="search" name="search" id="lib-search-input"
                                value="{{ search_query or '' }}"
                                placeholder="Search titles or authors..."
                                autocomplete="off" form="library-filter-form"
@@ -298,8 +302,7 @@
                         {# Submit inline with the field instead of a separate
                            Apply button. #}
                         <button type="submit" class="lib-search-go"
-                                title="Search" aria-label="Search"
-                                style="position:static;flex:0 0 26px;width:26px;height:30px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;cursor:pointer;line-height:0">
+                                title="Search" aria-label="Search">
                             <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"
                                  fill="none" stroke="currentColor" stroke-width="2"
                                  stroke-linecap="round">
@@ -309,8 +312,7 @@
                         </button>
                         {% if search_query %}
                         <a class="lib-search-clear" href="{{ url_for('index', prefix=prefix or none, sort=sort_key, view=view_mode) }}"
-                           title="Clear search" aria-label="Clear search"
-                           style="position:static;flex:0 0 26px;width:26px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none">
+                           title="Clear search" aria-label="Clear search">
                             <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"
                                  fill="none" stroke="currentColor" stroke-width="2"
                                  stroke-linecap="round">
@@ -1678,6 +1680,78 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+
+<script>
+// Refresh metadata: fetch genres and ratings from Goodreads.
+//
+// The button had NO handler anywhere in the page -- it appeared only in the
+// markup, so clicking it did nothing at all. It now POSTs the route that
+// exists and reports the job's progress, because a crawl over 4,800 books with
+// no feedback reads as a broken button.
+//
+// This lives INSIDE the content block on purpose. library.html is a child
+// template; Jinja discards anything written past its endblock, so an earlier
+// copy of this handler sat in the file at line ~1900 while the block closed
+// at 1683, and the served page never contained it.
+document.addEventListener('DOMContentLoaded', function () {
+  var btn = document.getElementById('library-refresh-metadata');
+  if (!btn) { return; }
+  var state = btn.querySelector('.library-refresh-state');
+  var label = btn.querySelector('.library-refresh-label');
+  var poll = null;
+
+  function stop() {
+if (poll) { clearInterval(poll); poll = null; }
+btn.disabled = false;
+  }
+
+  btn.addEventListener('click', function () {
+if (btn.disabled) { return; }
+btn.disabled = true;
+if (label) { label.textContent = 'Working'; }
+if (state) { state.textContent = 'starting'; }
+
+fetch('/library/refresh-metadata', { method: 'POST' })
+  .then(function (r) {
+    return r.json().catch(function () { return {}; })
+      .then(function (d) {
+        if (!r.ok) { throw new Error(d.error || ('http ' + r.status)); }
+        return d;
+      });
+  })
+  .then(function () {
+    if (state) { state.textContent = 'running'; }
+    if (poll) { clearInterval(poll); }
+    poll = setInterval(function () {
+      fetch('/metadata_progress')
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          var m = t.match(/data:\s*(\{.*?\})/);
+          if (!m) { return; }
+          var d = JSON.parse(m[1]);
+          if (d.active) {
+            if (state) { state.textContent = d.percentage + '%'; }
+            return;
+          }
+          stop();
+          if (label) { label.textContent = 'Refresh metadata'; }
+          if (state) { state.textContent = 'done'; }
+          setTimeout(function () {
+            if (state) { state.textContent = ''; }
+            window.location.reload();
+          }, 1200);
+        })
+        .catch(function () {});
+    }, 3000);
+  })
+  .catch(function (e) {
+    stop();
+    if (label) { label.textContent = 'Refresh metadata'; }
+    if (state) { state.textContent = 'failed'; }
+  });
+  });
+});
+</script>
 {% endblock %}
 
 {# Convert a library EPUB into a chaptered audiobook.
@@ -1886,4 +1960,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (btn) { ev.preventDefault(); ev.stopPropagation(); open(btn); }
   });
 })();
+
+
+
 

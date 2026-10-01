@@ -825,7 +825,7 @@ a {
 }
 /* a hair of separation before the utility pair */
 .library-toolbar .toolbar-buttons .clear-link { margin-left: 0.1rem; }
-"""
+
 /* ===================================================== Kindle library ==== */
 /* Target is the Paperwhite library, not a web dashboard: flat, high
    contrast, no gradients, no drop shadows, no hover-only affordances
@@ -1575,7 +1575,7 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
 .library-summary .checkbox > span { white-space: nowrap; }
 .library-summary .checkbox > span,
 .library-summary .checkbox input[type="checkbox"] { flex: none; }
-"""
+
 /* Search box: the field, magnifier and cross must share ONE row.
    The .lib-search-box is a <span>, and a span is inline by default, so the
    absolutely-positioned controls had no positioned box to sit in and the
@@ -1604,8 +1604,7 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   text-align: center;
   margin-bottom: 0.2rem;
 }
-"""
-"""
+
 /* Give the filter row enough width for search + 3 selects on ONE line.
    Measured: form width 725px, children 245 + 150 + 150 + 150 = 695 plus gaps,
    so the search label wrapped onto its own row above the selects. Widening
@@ -1638,8 +1637,7 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   .lib-filters > label { max-width: none; flex: 1 1 30%; }
   .lib-filters > label.lib-search { max-width: none; flex: 1 1 100%; }
 }
-"""
-"""
+
 /* The filter form was capped by a stale flex basis.
    Measured chain: .container 1265px > .card 1265 > .library-header 1263 >
    .library-toolbar 1263 > FORM 725px.
@@ -1660,8 +1658,7 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
 }
 .library-toolbar { flex-wrap: wrap; }
 .library-toolbar > .view-segments { flex: 0 0 auto; }
-"""
-"""
+
 /* Put the view control on its OWN line above the filters, and let the
    filter form have the full width.
 
@@ -1703,8 +1700,7 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   .lib-filters > label { flex: 1 1 30%; max-width: none; }
   .lib-filters > label.lib-search { flex: 1 1 100%; max-width: none; }
 }
-"""
-"""
+
 /* The search field and its two controls must share one line.
    The box is 372px and the input is 100% of it, but the label's inner <span>
    is a block whose label line ("SEARCH") sits above, and the absolutely
@@ -1761,4 +1757,37 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
 @media (pointer: coarse) {
   .lib-search-go, .lib-search-clear { width: 34px; }
 }
-"""
+
+
+/* Refresh metadata is a maintenance action, not the page's primary action.
+   It used to render as a large blue button beside the total, and it had no
+   handler at all, so clicking it did nothing. It now posts the real route and
+   reports progress here. */
+.library-summary .library-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted, #6b7280);
+  background: transparent;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.library-summary .library-refresh-btn:hover:not(:disabled) {
+  color: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+}
+.library-summary .library-refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+.library-refresh-state:empty { display: none; }
+.library-refresh-state {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, #2563eb);
+}

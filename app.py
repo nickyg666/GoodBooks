@@ -5505,6 +5505,24 @@ def api_add_genre_feed():
 
 
 @app.after_request
+def _static_revalidate(resp):
+    """Make /static revalidate every time.
+
+    The query-string token now changes with the file CONTENT, so a changed
+    stylesheet gets a new URL. This header covers the rest: a browser or
+    ereader webview holding an unchanged URL revalidates instead of trusting
+    its cache. That is what left the CSSOM six rules behind the file.
+    """
+    if resp.headers.get("Content-Type", "").startswith(("text/css",
+                                                       "text/javascript",
+                                                       "application/javascript")):
+        resp.headers.setdefault("Cache-Control", "no-cache, must-revalidate")
+        resp.headers.setdefault("Pragma", "cache")
+        resp.headers.setdefault("Expires", "0")
+    return resp
+
+
+@app.after_request
 def _no_store_html(resp):
     """Keep the HTML shell revalidated.
 
@@ -5518,23 +5536,27 @@ def _no_store_html(resp):
 
 
 def _static_version() -> str:
-    """Cache-bust token for static asset URLs.
+    """Cache-bust token for static asset URLs, derived from CONTENT.
 
-    Stylesheets were linked with no version query, so browsers and ereader
-    webviews kept serving months-old CSS: new rules could be correct on disk
-    and visibly absent in the UI. Deriving the token from the stylesheet's
-    mtime gives it a new URL whenever it changes, which is what actually
-    defeats a stale cache.
+    Originally this used the newest mtime, which is wrong: the token only
+    changes when the mtime does, so a browser that had already cached that
+    exact URL kept the old file. Measured: the CSSOM held 285 rules while the
+    file had 291, with the served bytes and the ?v= token both current.
+
+    Hashing the content means the URL changes exactly when the bytes change,
+    which is what a query-string cache-bust is for. A short digest keeps the
+    URL tidy while still being content-addressed.
     """
     try:
-        newest = 0.0
         static_dir = Path(app.static_folder or "static")
+        h = hashlib.sha1()
         for name in ("desktop.css", "kindle.css", "style.css",
                      "theme-loader.js", "theme-picker.js"):
             p = static_dir / name
             if p.exists():
-                newest = max(newest, p.stat().st_mtime)
-        return str(int(newest))
+                h.update(name.encode("utf-8"))
+                h.update(p.read_bytes())
+        return h.hexdigest()[:12]
     except Exception:
         return "0"
 

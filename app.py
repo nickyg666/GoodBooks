@@ -2915,6 +2915,33 @@ def send_batch_notification_email(
 _SORT_ARTICLES = ("the ", "a ", "an ")
 
 
+
+def _atomic_write_metadata(metadata: Dict, sort_keys: bool = False) -> None:
+    """Write library_metadata.json atomically.
+
+    Every writer used LIBRARY_METADATA_PATH.write_text(...), which opens with
+    "w" and therefore TRUNCATES the 8MB file before writing. Killing the
+    service mid-write, or a full disk, or a crash, left the file at 0 bytes
+    and lost all 4,837 records -- which happened for real on 2026-09-30 and
+    was recovered from a backup.
+
+    Write to a temp file in the same directory, fsync it, then os.replace(),
+    which is atomic on POSIX: a reader sees either the old file or the new
+    one, never a truncated one. The lock is taken by the caller, matching the
+    existing convention.
+    """
+    tmp = LIBRARY_METADATA_PATH.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(metadata, fh, indent=2, ensure_ascii=False,
+                  sort_keys=sort_keys)
+        fh.flush()
+        try:
+            os.fsync(fh.fileno())
+        except OSError:
+            pass          # not fatal; the replace below is still atomic
+    os.replace(tmp, LIBRARY_METADATA_PATH)
+
+
 def _normalize_sort_key(value: str) -> str:
     """Sort key for a title or author.
 
@@ -3428,7 +3455,7 @@ def build_library_entries() -> List[Dict]:
 
     # Save updated metadata back to file
     try:
-        LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+        _atomic_write_metadata(metadata)
     except Exception as e:
         logger.debug("Failed to save library metadata after build_library_entries: %s", e)
 
@@ -3588,16 +3615,33 @@ def rename_library_file_to_md5_format(entry_id: str) -> bool:
         new_relpath_unix = str(new_relpath).replace(os.sep, "/")
         new_key = f"{str(root.resolve())}::{new_relpath_unix}"
 
-        # Copy metadata to the new key and remove the old key
-        metadata[new_key] = metadata.pop(entry_id)
-
+        # Hold the lock for the whole mutation. The dict is shared with the
+        # request threads, and mutating it outside the lock is a data race.
         with library_metadata_lock:
+            # The file on disk has ALREADY been renamed at this point, so a
+            # missing key must not abort: doing so used to raise KeyError,
+            # skip the metadata write, and leave a file whose id was absent
+            # from library_metadata.json -- invisible to anything keyed on
+            # the old id. Carry the record forward if we have it, otherwise
+            # note the loss and carry on.
+            record = metadata.pop(entry_id, None)
+            if record is None:
+                logger.warning(
+                    "Renamed %s but no metadata record existed for the old "
+                    "key; the file is on disk without a metadata entry",
+                    new_path)
+            else:
+                metadata[new_key] = record
+
             try:
-                LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                _atomic_write_metadata(metadata)
             except OSError as e:
                 logger.exception("Failed to write library metadata after rename: %s", e)
-                # Restore the metadata to original key since write failed
-                metadata[entry_id] = metadata.pop(new_key)
+                # Restore the metadata to the original key since the write failed
+                if record is not None:
+                    metadata[entry_id] = metadata.pop(new_key, record)
+                else:
+                    metadata.pop(new_key, None)
                 return False
             # Update in-memory cache
             global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
@@ -3700,7 +3744,7 @@ def batch_rename_library_files_to_title_author_format() -> Tuple[int, int]:
                         metadata[new_entry_id] = metadata.pop(entry_id)
                     metadata[new_entry_id or entry_id]["path"] = str(new_path)
                     LIBRARY_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-                    LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                    _atomic_write_metadata(metadata)
                     # Clear the library entries cache since metadata changed
                     global _LIBRARY_ENTRIES_CACHE, _LIBRARY_ENTRIES_LAST_SCAN
                     _LIBRARY_ENTRIES_CACHE = []
@@ -3865,7 +3909,7 @@ def upsert_library_metadata_for_download(
         if metadata_changed:
             try:
                 LIBRARY_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-                LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                _atomic_write_metadata(metadata)
                 # Keep in-memory library metadata cache in sync with disk
                 global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
                 _LIBRARY_METADATA_CACHE = metadata
@@ -4046,10 +4090,7 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
     metadata[library_id] = meta
     try:
         with library_metadata_lock:
-            LIBRARY_METADATA_PATH.write_text(
-                json.dumps(metadata, indent=2, sort_keys=True),
-                encoding="utf-8",
-            )
+            _atomic_write_metadata(metadata, sort_keys=True)
             global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
             _LIBRARY_METADATA_CACHE = metadata
             try:
@@ -4223,10 +4264,7 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
     metadata[library_id] = meta
     try:
         with library_metadata_lock:
-            LIBRARY_METADATA_PATH.write_text(
-                json.dumps(metadata, indent=2, sort_keys=True),
-                encoding="utf-8",
-            )
+            _atomic_write_metadata(metadata, sort_keys=True)
             global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
             _LIBRARY_METADATA_CACHE = metadata
             try:
@@ -4511,10 +4549,7 @@ def ensure_library_metadata(entry: Dict[str, Any], allow_network: bool = False) 
     metadata[library_id] = meta
     try:
         with library_metadata_lock:
-            LIBRARY_METADATA_PATH.write_text(
-                json.dumps(metadata, indent=2, sort_keys=True),
-                encoding="utf-8",
-            )
+            _atomic_write_metadata(metadata, sort_keys=True)
             # Keep in-memory library metadata cache in sync with disk
             global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
             _LIBRARY_METADATA_CACHE = metadata
@@ -5687,10 +5722,7 @@ def library_delete_batch():
     # Save updated metadata
     try:
         with library_metadata_lock:
-            LIBRARY_METADATA_PATH.write_text(
-                json.dumps(metadata, indent=2, sort_keys=True),
-                encoding="utf-8",
-            )
+            _atomic_write_metadata(metadata, sort_keys=True)
             global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
             _LIBRARY_METADATA_CACHE = metadata
             try:
@@ -6146,7 +6178,7 @@ def search():
                         # Update the stored metadata with enriched version
                         metadata[entry_id] = meta
                         with library_metadata_lock:
-                            LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                            _atomic_write_metadata(metadata)
                             # Keep in-memory library metadata cache in sync with disk
                             global _LIBRARY_METADATA_CACHE, _LIBRARY_METADATA_MTIME
                             _LIBRARY_METADATA_CACHE = metadata
@@ -7767,7 +7799,7 @@ def refresh_library_metadata_background() -> None:
                  global _LIBRARY_ENTRIES_CACHE, _LIBRARY_ENTRIES_LAST_SCAN
                  try:
                      with library_metadata_lock:
-                         LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                         _atomic_write_metadata(metadata)
                          _LIBRARY_METADATA_CACHE = {}
                          _LIBRARY_METADATA_MTIME = 0.0
                          _LIBRARY_ENTRIES_CACHE = []
@@ -7780,7 +7812,7 @@ def refresh_library_metadata_background() -> None:
              try:
                  with library_metadata_lock:
                      DATA_DIR.mkdir(exist_ok=True)
-                     LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                     _atomic_write_metadata(metadata)
                  logger.info("Background metadata refresh completed: %d updated, %d already complete", updated_count, skipped_count)
                  # Clear cache so next load reads the updated file
                  _LIBRARY_METADATA_CACHE = {}
@@ -8633,7 +8665,7 @@ def _run_feeds_background():
                 })
                 metadata[entry_id] = meta
                 with library_metadata_lock:
-                    LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+                    _atomic_write_metadata(metadata)
                     # Clear the library entries cache since metadata changed
             except Exception:
                 logger.debug("Failed to record library metadata for %s", item.title, exc_info=True)
@@ -9456,7 +9488,7 @@ def _run_maintenance_cycle() -> None:
         try:
             with library_metadata_lock:
                 LIBRARY_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-                LIBRARY_METADATA_PATH.write_text(json.dumps(library_metadata, indent=2))
+                _atomic_write_metadata(library_metadata)
                 # Clear the library entries cache since metadata changed
                 global _LIBRARY_ENTRIES_CACHE, _LIBRARY_ENTRIES_LAST_SCAN
                 _LIBRARY_ENTRIES_CACHE = []
@@ -9742,7 +9774,7 @@ def admin_cache_covers():
         cached_count = _cache_metadata_covers_background(metadata, limit=limit)
         
         # Save updated metadata
-        LIBRARY_METADATA_PATH.write_text(json.dumps(metadata, indent=2))
+        _atomic_write_metadata(metadata)
         
         # Clear caches since metadata changed
         _LIBRARY_METADATA_CACHE = {}

@@ -1,0 +1,27 @@
+[Unit]
+Description=GoodBooks: goodreads to-read -> search -> download -> Kindle
+Requires=network.target
+After=network.target
+
+[Service]
+User=das
+Group=das
+WorkingDirectory=/usr/local/bin/GoodBooks
+ExecStart=xvfb-run -a python3 /usr/local/bin/GoodBooks/app.py
+StandardOutput=journal
+StandardError=journal
+
+# app.py runs a background maintenance thread; SIGINT lets it shut the
+# executor down cleanly instead of leaving a half-written state file.
+KillSignal=SIGINT
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=5
+
+# The data directory holds library metadata that is written on every change.
+# ReadWritePaths keeps the unit from being able to damage anything else.
+ReadWritePaths=/usr/local/bin/GoodBooks/data
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

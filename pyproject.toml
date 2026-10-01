@@ -3,40 +3,85 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "GoodBooks"
+name = "goodbooks"
 version = "1.2.0"
-description = "GoodReads to-read (RSS) -> Kindle automated delivery"
+description = "Goodreads to-read (RSS) -> Anna's Archive / LibGen -> download -> Kindle delivery"
 readme = "README.md"
-license = {text = "MIT"}
-authors = [
-    {name = "Nick", email = "nick@nickyg666.com"}
-]
+license = { text = "MIT" }
+authors = [{ name = "Nick", email = "nick@nickyg666.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "Flask>=2.0.0",
-    "waitress>=2.0.0",
-    "feedparser>=6.0.0",
-    "beautifulsoup4>=4.9.0",
-    "requests>=2.25.0",
-    "lxml>=4.6.0",
-    "playwright>=1.40.0",
-    "playwright-stealth>=1.0.0",
-    "Pillow>=8.0.0",
-    "pytz>=2023.3",
+    "Pillow",
+    "beautifulsoup4",
+    "calibre",
+    "feedparser",
+    "flask",
+    "imagehash",
+    "libgen_api_enhanced",
+    "lxml",
+    "playwright",
+    "playwright-stealth",
+    "pychromecast",
+    "pypdf",
+    "requests",
+    "six",
+    "waitress",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "black>=22.0.0",
-    "flake8>=4.0.0",
+dev = ["pytest>=7.0.0", "flake8>=4.0.0"]
+
+# No console script on purpose. This is a service, not a CLI: it starts a
+# Flask server and a background maintenance thread. The previous
+# "goodbooks = goodbooks.app:main" entry point pointed into a src/ layout
+# that no longer exists, so it could never have been created. Use
+# deploy/install.sh.
+
+# FLAT module tree, not src/ layout. setuptools cannot discover a flat tree
+# with packages.find, so every module is listed. Keep this in step when a
+# module is added or removed; scripts/check_packaging.py verifies it.
+[tool.setuptools]
+py-modules = [
+  "amazon_cover_fetcher",
+  "app",
+  "build_epub_v2",
+  "clean_lorenzo_inappropriate",
+  "clean_lorenzo_library",
+  "cover_cache_manager",
+  "debug_progress_bars",
+  "ebook_metadata_extractor",
+  "epub_distributor",
+  "gb_authors",
+  "gb_epub_urls",
+  "gb_fastdl",
+  "gb_goodreads",
+  "gb_gr_run",
+  "gb_isbn",
+  "gb_keyed",
+  "gb_lens",
+  "gb_libgen_dl",
+  "gb_match",
+  "gb_mirrors_live",
+  "gb_ol_par",
+  "gb_ol_repair",
+  "gb_openlib",
+  "gb_reading",
+  "goodbooks_delivery",
+  "goodreads_epub_utils",
+  "goodreads_scraper",
+  "libgen_ua_patch",
+  "library_cleanup",
+  "logging_config",
+  "parser_engine",
+  "post_install",
+  "search_engine",
+  "settings_manager",
+  "slum_canonical",
+  "stealth_browser"
 ]
+include-package-data = true
 
-[project.scripts]
-goodbooks = "goodbooks.app:main"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-goodbooks = ["templates/**/*", "static/**/*"]
+[tool.setuptools.data-files]
+"share/goodbooks/templates" = ["templates/*.html"]
+"share/goodbooks/static" = ["static/*.css", "static/*.js"]
+"share/goodbooks/static/themes" = ["static/themes/*.css"]

@@ -167,15 +167,7 @@ metadata_enrichment_failures_lock = Lock()
 # App setup
 # ---------------------------------------------------------------------------
 
-# templates/ and static/ are resolved against this file, not the process
-# working directory, so the app runs identically from a systemd unit, a venv,
-# or a checkout at any path. That is what makes the installed copy
-# runnable from anywhere.
-app = Flask(
-    __name__,
-    template_folder=str(Path(__file__).resolve().parent / "templates"),
-    static_folder=str(Path(__file__).resolve().parent / "static"),
-)
+app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET", "dev-secret-key")
 
 @app.context_processor
@@ -1190,6 +1182,8 @@ metadata_progress_state = {
 # App setup
 # ---------------------------------------------------------------------------
 
+app = Flask(__name__)
+app.secret_key = os.environ.get("APP_SECRET", "dev-secret-key")
 
 def sanitize_filename_for_kindle(filename: str) -> str:
     """

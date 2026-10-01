@@ -39,7 +39,8 @@ args = p.parse_args()
 if not args.force:
     try:
         out = os.popen(
-            "pgrep -f 'GoodBooks/app.py' | wc -l").read().strip()
+            "ps -eo cmd | grep -c '[p]ython3 /usr/local/bin/GoodBooks/app.py'"
+        ).read().strip()
     except Exception:
         out = "?"
     if out not in ("0", ""):
@@ -74,39 +75,64 @@ def stem_of(key):
     return name
 
 
-def base_title(name):
-    # cut the catalogue "-Author" tail: take the part before a " - " that is
-    # followed by a capitalised word and not a number
-    s = os.path.splitext(name)[0]
+def split_name(name):
+    """(title, author) for a catalogue filename.
+
+    "Title-Author.ext" -> ("Title", "Author"). The rename appends
+    ".<author tokens>", which is dropped first. Matching on the title alone
+    was too loose: it matched "What Lies in the Woods-Kate; Alice;
+    Marshall.epub" against an unrelated file, so the author must agree too.
+    """
+    s = os.path.splitext(os.path.basename(name))[0]
+    if "." in s:
+        s = s.split(".")[0]
     if " - " in s:
         head, _, tail = s.rpartition(" - ")
-        if tail and not tail[0].isdigit():
-            s = head
-    return s.strip().casefold()
+        if tail and not tail[0].isdigit() and len(tail.split()) <= 5:
+            return head.strip().casefold(), tail.strip().casefold()
+    return s.strip().casefold(), ""
+
+
+def base_title(name):
+    return split_name(name)[0]
 
 
 disk_by_title = {}
 for k, path in disk.items():
-    disk_by_title.setdefault(base_title(os.path.basename(path)), []).append(k)
+    t, a = split_name(os.path.basename(path))
+    disk_by_title.setdefault(t, []).append((k, a))
 
 rekeyed = 0
+rekey_map = {}
+adopted_keys = set()
 for old in sorted(before_keys - set(disk)):
-    want = base_title(os.path.split(old)[-1])
-    cands = disk_by_title.get(want, [])
-    if len(cands) == 1:
-        new = cands[0]
-        meta[new] = meta.pop(old)
-        print(f"  rekeyed -> {os.path.basename(new)[:70]}")
-        rekeyed += 1
-    elif len(cands) > 1:
-        # ambiguous: do not guess
-        print(f"  AMBIGUOUS ({len(cands)} candidates), left alone: "
+    want_t, want_a = split_name(os.path.split(old)[-1])
+    cands = disk_by_title.get(want_t, [])
+    exact = [k for k, a in cands if a == want_a and want_a]
+    loose = [k for k, a in cands if a == want_a and not want_a]
+    pick = None
+    if len(exact) == 1:
+        pick = exact[0]
+    elif len(exact) > 1:
+        print(f"  AMBIGUOUS ({len(exact)}), left alone: "
               f"{os.path.basename(old)[:60]}")
+    elif len(loose) == 1:
+        pick = loose[0]
+    elif len(loose) > 1:
+        print(f"  AMBIGUOUS author-less ({len(loose)}), left alone: "
+              f"{os.path.basename(old)[:60]}")
+    if pick:
+        meta[pick] = meta.pop(old)
+        rekey_map[old] = pick
+        rekeyed += 1
+        print(f"  rekeyed -> {os.path.basename(pick)[:70]}")
     else:
-        print(f"  no file found, left as phantom: {os.path.basename(old)[:60]}")
+        print(f"  no unambiguous file, left as phantom: "
+              f"{os.path.basename(old)[:60]}")
 
 # ---- 2. orphans: adopt real files that have no metadata -----------------
 adopted = 0
+adopted_keys = set()
 for k, path in sorted(disk.items()):
     if k in meta:
         continue
@@ -134,15 +160,30 @@ for k, path in sorted(disk.items()):
         "title": title.strip(),
     }
     meta[k] = rec
+    adopted_keys.add(k)
     adopted += 1
     if adopted <= 5:
         print(f"  adopted: {title[:66]}")
 
 # ---- invariants ----------------------------------------------------------
 after_keys = set(meta)
-dropped = before_keys - after_keys
+# A deliberate rekey REMOVES the old key and adds the new one, so comparing
+# key sets always looks like a drop -- the original invariant could never be
+# satisfied. What must hold: every key we popped has reappeared under its new
+# name, nothing vanished for another reason, and nothing appeared that we did
+# not deliberately add.
+dropped = before_keys - after_keys - set(rekey_map)
 if dropped:
-    print("\nREFUSING: would drop existing keys:", len(dropped))
+    print("\nREFUSING: keys vanished without a rekey:", len(dropped))
+    for x in sorted(dropped)[:5]:
+        print("    ", x.split("::")[-1][:70])
+    sys.exit(1)
+unaccounted = (after_keys - before_keys - set(rekey_map.values())
+               - adopted_keys)
+if unaccounted:
+    print("\nREFUSING: unexpected new keys:", len(unaccounted))
+    for x in sorted(unaccounted)[:5]:
+        print("    ", x.split("::")[-1][:70])
     sys.exit(1)
 
 print(f"\nrekeyed={rekeyed} adopted={adopted} entries {len(before_keys)}"

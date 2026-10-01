@@ -19,3 +19,17 @@ venv/
 debug.log.*
 # rotated info.log backups
 info.log.*
+
+# build outputs, venvs, and dated backups
+build/
+dist/
+*.egg-info/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.bak-deadqueue*
+*.bak-deadflush*
+*.bak-flaskdup*
+*.repairbak-*
+*.zeroed-*
+data/temp/*

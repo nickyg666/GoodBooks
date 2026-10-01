@@ -1836,6 +1836,10 @@ fetch('/library/refresh-metadata', { method: 'POST' })
       <span>Quality</span>
       <select id="ab-bitrate" class="ab-select"></select>
     </label>
+    {# Say what the file IS, because that is half the choice: AAC in an M4B.
+       And say why there is no 192 kbps -- at this sample rate AAC stops
+       improving there, so it would encode identically to 96. #}
+    <p class="ab-hint" id="ab-quality-note"></p>
 
     <div class="ab-toggles">
       <label class="checkbox" style="margin:0">
@@ -1952,8 +1956,8 @@ fetch('/library/refresh-metadata', { method: 'POST' })
   var sendEl   = document.getElementById('ab-auto-send');
   var notifyEl = document.getElementById('ab-notify');
   var estEl    = document.getElementById('ab-estimate');
-  var opts = {users: [], voices: [], bitrates: ['128k','160k','192k'],
-              default_bitrate: '192k'};
+  var opts = {users: [], voices: [], qualities: [],
+              default_bitrate: '64k', codec: 'aac', container: 'm4b'};
 
   function fmtHours(h) {
     if (!h || h < 1) { return Math.round((h || 0) * 60) + ' min'; }
@@ -1963,19 +1967,19 @@ fetch('/library/refresh-metadata', { method: 'POST' })
   function loadEstimate() {
     if (!entryId || !estEl) { return; }
     estEl.textContent = 'Working out how long this takes...';
-    fetch('/audiobook/estimate?entry_id=' + encodeURIComponent(entryId))
+    // The server knows the real kbps for each option (measured, not nominal),
+    // so ask it rather than scaling a guess here.
+    var b = bitEl && bitEl.value ? bitEl.value : opts.default_bitrate;
+    fetch('/audiobook/estimate?entry_id=' + encodeURIComponent(entryId) +
+          '&bitrate=' + encodeURIComponent(b))
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d.ok) {
           estEl.textContent = 'Could not work out the size for this book.';
           return;
         }
-        var b = bitEl && bitEl.value ? bitEl.value : opts.default_bitrate;
-        var kbps = parseInt(b, 10) || 192;
-        // scale the 192k figure to whatever the user picked
-        var mb = d.seconds * (kbps * 1000 / 8) / 1e6;
         estEl.textContent = 'About ' + fmtHours(d.hours) + ' of audio, ' +
-                             mb.toFixed(0) + ' MB at ' + kbps + ' kbps. ' +
+                             d.megabytes.toFixed(0) + ' MB. ' +
                              (d.words || 0).toLocaleString() + ' words.';
       })
       .catch(function () {
@@ -1994,13 +1998,15 @@ fetch('/library/refresh-metadata', { method: 'POST' })
             return '<option value="' + u.name + '">' + label + '</option>';
           }).join('') || '<option value="">(no users configured)</option>';
         }
+        var note = document.getElementById('ab-quality-note');
         if (bitEl) {
-          bitEl.innerHTML = (opts.bitrates || []).map(function (b) {
-            return '<option value="' + b + '"' +
-                   (b === opts.default_bitrate ? ' selected' : '') + '>' +
-                   b.replace('k', ' kbps') + '</option>';
+          bitEl.innerHTML = (opts.qualities || []).map(function (q) {
+            return '<option value="' + q.bitrate + '"' +
+                   (q.bitrate === opts.default_bitrate ? ' selected' : '') +
+                   '>' + (q.label || q.bitrate) + '</option>';
           }).join('');
         }
+        if (note && opts.note) { note.textContent = opts.note; }
         if (voiceEl) {
           voiceEl.innerHTML = (opts.voices || []).map(function (v) {
             return '<option value="' + v + '">' + v + '</option>';

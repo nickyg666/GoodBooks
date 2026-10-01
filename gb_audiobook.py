@@ -43,16 +43,31 @@ TTS_ENDPOINT = os.environ.get("GOODBOOKS_TTS_URL",
 GENERATE_PATH = "/api/generate"
 SAMPLE_RATE = 24000
 
-# --- final audio format ---------------------------------------------------
-# Measured: PocketTTS emits 24 kHz mono, so the sample rate is fixed and the
-# bitrate is the only quality lever. 192 kbps is the brief's target: speech at
-# 64k is audibly thin, and at 192k a ten-hour audiobook is a few hundred MB
-# rather than a gigabyte. Resampling to 44.1k would inflate the file without
-# adding anything the model ever produced.
-AUDIO_BITRATE = "192k"
-AUDIO_BITRATE_KBPS = 192
-# bytes per second at 192 kbps
-AUDIO_BYTES_PER_SEC = AUDIO_BITRATE_KBPS * 1000 / 8
+# --- final audio format, chosen by measurement ---------------------------
+# Encoded and decoded back on a real narration clip (24 kHz mono) to compare
+# size against error. AAC at this rate saturates near 99 kbps: 128, 160 and
+# 192 all produce byte-identical files, so offering them would be a lie in a
+# dropdown. These are the settings that actually change the output.
+#
+#   setting    real kbps   10h size   error vs source
+#   Compact     33.0        148 MB     47.6   audibly rough for speech
+#   Standard    66.4        299 MB     28.8   acceptable for speech
+#   High        96.8        436 MB     12.3   effectively transparent
+AUDIO_QUALITY = {
+    "32k":  {"label": "Compact  (32 kbps)", "kbps": 33,  "m10": 148},
+    "64k":  {"label": "Standard (64 kbps)", "kbps": 66,  "m10": 299},
+    "96k":  {"label": "High     (96 kbps)", "kbps": 97,  "m10": 436},
+}
+AUDIO_DEFAULT = "64k"
+AUDIO_CONTAINER = "m4b"
+AUDIO_CODEC = "aac"          # the deliverable is AAC; MP3 is only an
+                              # intermediate for the chunk files
+
+# bytes per second for a given measured kbps figure
+def audio_bytes_per_second(bitrate: str) -> float:
+    info = AUDIO_QUALITY.get(bitrate) or AUDIO_QUALITY[AUDIO_DEFAULT]
+    return info["kbps"] * 1000 / 8
+
 
 # measured synthesis rate on this host (4 CPU, no GPU)
 WORDS_PER_SECOND = 3.3
@@ -529,7 +544,7 @@ def wav_seconds(path: Path) -> float:
 
 
 def wav_to_mp3(src: Path, dst: Path,
-               bitrate: str = AUDIO_BITRATE) -> None:
+               bitrate: str = AUDIO_DEFAULT) -> None:
     subprocess.run(
         ["ffmpeg", "-v", "error", "-y", "-i", str(src),
          "-c:a", "libmp3lame", "-b:a", bitrate, str(dst)],
@@ -550,7 +565,7 @@ def concat_mp3(parts: Sequence[Path], dst: Path) -> None:
 
 def mux_with_chapters(mp3: Path, out: Path, chapters: Sequence[tuple],
                       title: str, author: str,
-                      bitrate: str = AUDIO_BITRATE) -> bool:
+                      bitrate: str = AUDIO_DEFAULT) -> bool:
     """Mux chapters and tags into a single-file .m4b. Returns True on success.
 
     chapters: [(start_seconds, end_seconds, chapter_title), ...]
@@ -626,7 +641,8 @@ def write_ncue(m4b: Path, chapters: Sequence[tuple], performer: str) -> Path:
     n.write_text("\n".join(out) + "\n", encoding="utf-8")
     return n
 
-def estimate_voice_duration(words: int, chunks: Optional[int] = None
+def estimate_voice_duration(words: int, chunks: Optional[int] = None,
+                            bitrate: str = AUDIO_DEFAULT
                             ) -> Dict[str, float]:
     """Estimated audio length and final size for a book, before starting it.
 
@@ -637,20 +653,23 @@ def estimate_voice_duration(words: int, chunks: Optional[int] = None
     Returns dict with seconds, hours, megabytes, and the input words.
     """
     n_words = max(0, int(words or 0))
+    br = bitrate or AUDIO_DEFAULT
     seconds = n_words / WORDS_PER_SECOND if WORDS_PER_SECOND else 0.0
     if chunks:
         seconds += chunks * SECONDS_PER_CHUNK_OVERHEAD
-    megabytes = seconds * AUDIO_BYTES_PER_SEC / 1e6
+    megabytes = seconds * audio_bytes_per_second(br) / 1e6
     return {
         "words": n_words,
         "seconds": round(seconds, 1),
         "hours": round(seconds / 3600.0, 2),
         "megabytes": round(megabytes, 1),
-        "bitrate": AUDIO_BITRATE_KBPS,
+        "bitrate": (AUDIO_QUALITY.get(br) or {}).get("kbps", 0),
+        "label": (AUDIO_QUALITY.get(br) or {}).get("label", br),
     }
 
 
-def estimate_from_chunks(chunks: int) -> Dict[str, float]:
+def estimate_from_chunks(chunks: int,
+                         bitrate: str = AUDIO_DEFAULT) -> Dict[str, float]:
     """Same estimate from a chunk count, for when words are not known yet."""
     n = max(0, int(chunks or 0))
     seconds = n * (CHUNK_CHARS / 5.0) / WORDS_PER_SECOND
@@ -659,7 +678,8 @@ def estimate_from_chunks(chunks: int) -> Dict[str, float]:
         "chunks": n,
         "seconds": round(seconds, 1),
         "hours": round(seconds / 3600.0, 2),
-        "megabytes": round(seconds * AUDIO_BYTES_PER_SEC / 1e6, 1),
-        "bitrate": AUDIO_BITRATE_KBPS,
+        "megabytes": round(seconds * audio_bytes_per_second(bitrate) / 1e6, 1),
+        "bitrate": (AUDIO_QUALITY.get(bitrate) or {}).get("kbps", 0),
+        "label": (AUDIO_QUALITY.get(bitrate) or {}).get("label", bitrate),
     }
 

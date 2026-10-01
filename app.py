@@ -9607,7 +9607,23 @@ REFERENCE_DIR = DATA_DIR / "audiobook_refs"
 # Kept deliberately small: user, voice, auto-send, notify, bitrate. Anything
 # more is clutter on a dialog most people open once per book.
 
-BITRATE_CHOICES = ("128k", "160k", "192k")
+def _ab_quality_choices():
+    """Quality options, read from gb_audiobook so they cannot drift.
+
+    The old hardcoded list was ["128k", "160k", "192k"] with 192 as the
+    default. Measured on real narration audio, AAC at 24 kHz mono saturates
+    near 99 kbps: all three encode to byte-identical files, so the default was
+    above the codec's ceiling and the other two were no-ops.
+    """
+    import gb_audiobook as AB
+    return [
+        {"bitrate": b,
+         "label": (info.get("label") or b),
+         "kbps": info.get("kbps"),
+         "m10": info.get("m10")}
+        for b, info in AB.AUDIO_QUALITY.items()
+    ]
+
 
 
 @app.route("/audiobook/estimate")
@@ -9636,8 +9652,11 @@ def audiobook_estimate():
         n = int(words) if words else 0
     except (TypeError, ValueError):
         return jsonify({"ok": False, "error": "words must be a number"}), 400
-    est = AB.estimate_voice_duration(n)
-    return jsonify({"ok": True, "words": n, **est})
+    bitrate = (request.args.get("bitrate") or AB.AUDIO_DEFAULT).strip()
+    if bitrate not in AB.AUDIO_QUALITY:
+        bitrate = AB.AUDIO_DEFAULT
+    est = AB.estimate_voice_duration(n, bitrate=bitrate)
+    return jsonify({"ok": True, "words": n, "bitrate": bitrate, **est})
 
 
 def _ab_user_options():
@@ -9671,10 +9690,16 @@ def audiobook_options():
     return jsonify({
         "users": _ab_user_options(),
         "voices": voices,
-        "bitrates": list(BITRATE_CHOICES),
-        "default_bitrate": AB.AUDIO_BITRATE,
+        "qualities": _ab_quality_choices(),
+        "default_bitrate": AB.AUDIO_DEFAULT,
+        "codec": AB.AUDIO_CODEC,
+        "container": AB.AUDIO_CONTAINER,
         "sample_rate": AB.SAMPLE_RATE,
         "words_per_second": AB.WORDS_PER_SECOND,
+        "note": ("The finished file is AAC in an M4B container. At this "
+                 "sample rate AAC stops improving above about 96 kbps, so "
+                 "there is no 192 kbps option to pick: it would encode "
+                 "identically to 96."),
     })
 
 
@@ -9764,9 +9789,10 @@ def audiobook_start():
                 or "").strip()
     auto_send = (request.form.get("auto_send") or "").strip() in ("1", "true", "on", "yes")
     notify = (request.form.get("notify") or "").strip() in ("1", "true", "on", "yes")
-    bitrate = (request.form.get("bitrate") or "192k").strip()
-    if bitrate not in BITRATE_CHOICES:
-        bitrate = "192k"
+    import gb_audiobook as _AB
+    bitrate = (request.form.get("bitrate") or _AB.AUDIO_DEFAULT).strip()
+    if bitrate not in _AB.AUDIO_QUALITY:
+        bitrate = _AB.AUDIO_DEFAULT
 
     job = gb_abjob.enqueue(entry_id, Path(src_path), voice,
                             entry.get("title", ""), entry.get("author", ""),

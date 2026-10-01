@@ -716,6 +716,17 @@
                                     data-entry-id="{{ entry.id }}">
                                 Send to Kindle
                             </button>
+                            {% if (entry.filetype or '?')|lower == 'epub' %}
+                            <button type="button"
+                                    class="library-status-chip chip chip-compact ab-start-btn"
+                                    data-action="library-audiobook"
+                                    data-entry-id="{{ entry.id }}"
+                                    data-title="{{ entry.title }}"
+                                    title="Convert this book to an audiobook">
+                                <svg class="ab-icon" width="22" height="22" viewBox="0 0 38 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3.4h4.1a2.2 2.2 0 0 1 2.2 2.2v10.9a1.7 1.7 0 0 0-1.7-1.7H2Z"/><path d="M11 3.4H6.1A2.2 2.2 0 0 0 4.1 5"/><path d="M4.1 8.4h4.9M4.1 10.7h3.6"/><path d="M13.8 10h6.2"/><path d="m17.6 7.2 2.6 2.8-2.6 2.8"/><path d="M24.4 12.6V10a4.6 4.6 0 0 1 9.2 0v2.6"/><path d="M24.4 11.8h1.9v5h-2.5a1.2 1.2 0 0 1-1.2-1.2v-2.6a1.2 1.2 0 0 1 1.8-1.2Z"/><path d="M33.6 11.8h-1.9v5h2.5a1.2 1.2 0 0 0 1.2-1.2v-2.6a1.2 1.2 0 0 0-1.8-1.2Z"/></svg>
+                                <span class="ab-btn-label">Audiobook</span>
+                            </button>
+                            {% endif %}
                         </div>
                         <div class="library-title-overlay">
                             {{ entry.title }}
@@ -1611,3 +1622,210 @@ if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 </script>
 {% endblock %}
 
+{# Convert a library EPUB into a chaptered audiobook.
+   Enqueues a background job: synthesis measures ~3.3 words/sec, so a novel is
+   4-10 hours and a blocking request would time out. Progress is polled. #}
+<div class="modal hidden" id="audiobook-modal" role="dialog" aria-modal="true"
+     aria-labelledby="audiobook-modal-title">
+  <div class="modal-dialog audiobook-dialog">
+    <h2 id="audiobook-modal-title" class="ab-title"><svg class="ab-icon" width="22" height="22" viewBox="0 0 38 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3.4h4.1a2.2 2.2 0 0 1 2.2 2.2v10.9a1.7 1.7 0 0 0-1.7-1.7H2Z"/><path d="M11 3.4H6.1A2.2 2.2 0 0 0 4.1 5"/><path d="M4.1 8.4h4.9M4.1 10.7h3.6"/><path d="M13.8 10h6.2"/><path d="m17.6 7.2 2.6 2.8-2.6 2.8"/><path d="M24.4 12.6V10a4.6 4.6 0 0 1 9.2 0v2.6"/><path d="M24.4 11.8h1.9v5h-2.5a1.2 1.2 0 0 1-1.2-1.2v-2.6a1.2 1.2 0 0 1 1.8-1.2Z"/><path d="M33.6 11.8h-1.9v5h2.5a1.2 1.2 0 0 0 1.2-1.2v-2.6a1.2 1.2 0 0 0-1.8-1.2Z"/></svg><span>Convert to audiobook</span></h2>
+    <p class="ab-book-name" id="ab-book-name"></p>
+
+    <label class="ab-field" for="ab-voice">
+      <span>Voice</span>
+      <select id="ab-voice" class="ab-select"></select>
+    </label>
+    <p class="ab-hint" id="ab-voice-hint">Cloned voices from the voice studio.</p>
+
+    <div class="ab-progress-wrap" id="ab-progress-wrap" hidden>
+      <div class="ab-bar" id="ab-bar" role="progressbar" aria-valuemin="0"
+           aria-valuemax="100" aria-valuenow="0">
+        <div class="ab-bar-fill" id="ab-bar-fill"></div>
+      </div>
+      <p class="ab-status" id="ab-status">Starting...</p>
+      <p class="ab-detail" id="ab-detail"></p>
+    </div>
+
+    <p class="ab-error" id="ab-error" hidden></p>
+
+    <div class="modal-actions ab-actions">
+      <button type="button" class="secondary" id="ab-cancel">Close</button>
+      <button type="button" class="secondary" id="ab-stop" hidden>Stop</button>
+      <button type="button" class="primary" id="ab-start">Start conversion</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Convert-to-audiobook dialog: enqueue a job, then poll its progress.
+(function () {
+  var modal = document.getElementById('audiobook-modal');
+  if (!modal) return;
+  var entryId = null, timer = null;
+
+  var nameEl    = document.getElementById('ab-book-name');
+  var voiceEl   = document.getElementById('ab-voice');
+  var hintEl    = document.getElementById('ab-voice-hint');
+  var wrap      = document.getElementById('ab-progress-wrap');
+  var bar       = document.getElementById('ab-bar');
+  var fill      = document.getElementById('ab-bar-fill');
+  var statusEl  = document.getElementById('ab-status');
+  var detailEl  = document.getElementById('ab-detail');
+  var errEl     = document.getElementById('ab-error');
+  var startBtn  = document.getElementById('ab-start');
+  var stopBtn   = document.getElementById('ab-stop');
+  var cancelBtn = document.getElementById('ab-cancel');
+
+  var LIVE = { queued:1, parsing:1, narrating:1, assembling:1 };
+
+  function showErr(m) { errEl.hidden = false; errEl.textContent = m; }
+  function clearErr() { errEl.hidden = true; errEl.textContent = ''; }
+
+  function loadVoices() {
+    fetch('/audiobook/voices')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var v = d.voices || [];
+        if (!v.length) {
+          voiceEl.innerHTML = '<option value="nick">nick (default)</option>';
+          hintEl.textContent = d.error
+            ? ('Voice list unavailable: ' + d.error)
+            : 'No cloned voices found on the voice studio.';
+          return;
+        }
+        voiceEl.innerHTML = v.map(function (n) {
+          return '<option value="' + n + '">' + n + '</option>';
+        }).join('');
+      })
+      .catch(function (e) {
+        voiceEl.innerHTML = '<option value="nick">nick (default)</option>';
+        hintEl.textContent = 'Could not reach the voice studio.';
+      });
+  }
+
+  function open(btn) {
+    entryId = btn.getAttribute('data-entry-id');
+    clearErr();
+    wrap.hidden = true;
+    startBtn.hidden = false; startBtn.disabled = false;
+    startBtn.textContent = 'Start conversion';
+    stopBtn.hidden = true;
+    nameEl.textContent = btn.getAttribute('data-title') || '';
+    modal.classList.remove('hidden');
+    loadVoices();
+    poll(false);
+  }
+
+  function close() {
+    modal.classList.add('hidden');
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
+
+  function render(p) {
+    if (!p || p.phase === 'none' || p.phase === 'idle') return;
+    wrap.hidden = false;
+    var pct = p.pct || 0;
+    fill.style.width = pct + '%';
+    bar.setAttribute('aria-valuenow', String(pct));
+
+    if (p.phase === 'done') {
+      statusEl.textContent = 'Finished: ' + (p.title || 'audiobook');
+      var secs = p.audio_seconds || 0;
+      detailEl.textContent = (secs >= 3600 ? (secs / 3600).toFixed(1) + ' hours'
+                                        : Math.round(secs) + ' seconds')
+        + (p.result ? (' - ' + p.result.split('/').pop()) : '');
+      startBtn.hidden = true; stopBtn.hidden = true;
+      return;
+    }
+    if (p.phase === 'error') {
+      statusEl.textContent = 'Conversion failed';
+      detailEl.textContent = p.error || '';
+      showErr(p.error || 'unknown error');
+      startBtn.hidden = false; startBtn.disabled = false;
+      startBtn.textContent = 'Try again';
+      stopBtn.hidden = true;
+      return;
+    }
+    if (p.phase === 'cancelled') {
+      statusEl.textContent = 'Stopped';
+      startBtn.hidden = false; startBtn.disabled = false;
+      startBtn.textContent = 'Start conversion';
+      stopBtn.hidden = true;
+      return;
+    }
+    var what = { queued: 'Queued', parsing: 'Reading the book',
+                 narrating: 'Recording', assembling: 'Building chapters' };
+    statusEl.textContent = (what[p.phase] || p.phase) + ' - ' + pct + '%';
+    detailEl.textContent = (p.done || 0) + ' of ' + (p.total || 0)
+      + ' passages, voice ' + (p.voice || '?');
+    startBtn.hidden = true;
+    stopBtn.hidden = false;
+  }
+
+  function poll(once) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    var url = '/audiobook/progress'
+      + (entryId ? ('?entry_id=' + encodeURIComponent(entryId)) : '');
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (p) {
+        render(p);
+        if (LIVE[p.phase] && !once) {
+          timer = setTimeout(function () { poll(false); }, 3000);
+        }
+      })
+      .catch(function () {
+        if (!once) timer = setTimeout(function () { poll(false); }, 5000);
+      });
+  }
+
+  startBtn.addEventListener('click', function () {
+    clearErr();
+    startBtn.disabled = true;
+    startBtn.textContent = 'Starting...';
+    var fd = new FormData();
+    fd.append('entry_id', entryId);
+    fd.append('voice', voiceEl.value || 'nick');
+    fetch('/audiobook/start', { method: 'POST', body: fd })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          showErr(res.d.error || 'could not start');
+          startBtn.disabled = false;
+          startBtn.textContent = 'Start conversion';
+          return;
+        }
+        startBtn.disabled = false;
+        poll(false);
+      })
+      .catch(function (e) {
+        showErr(String(e));
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start conversion';
+      });
+  });
+
+  stopBtn.addEventListener('click', function () {
+    if (!entryId) return;
+    var fd = new FormData();
+    fd.append('entry_id', entryId);
+    fetch('/audiobook/cancel', { method: 'POST', body: fd })
+      .then(function () { poll(false); })
+      .catch(function () {});
+  });
+
+  cancelBtn.addEventListener('click', close);
+  modal.addEventListener('click', function (ev) {
+    if (ev.target === modal) close();
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && !modal.classList.contains('hidden')) close();
+  });
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.ab-start-btn');
+    if (btn) { ev.preventDefault(); ev.stopPropagation(); open(btn); }
+  });
+})();
+</script>

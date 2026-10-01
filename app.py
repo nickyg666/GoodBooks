@@ -8930,6 +8930,30 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
         return (entry_idx, None)
 
 
+def _advance_audiobook_job() -> None:
+    """Advance an audiobook job by one step, if one is queued.
+
+    One chunk per maintenance tick, on purpose: synthesis is slow enough that
+    a tight loop would hold the GIL and starve the rest of the app, and a
+    crash should cost one chunk rather than the whole book.
+    """
+    try:
+        import gb_abjob
+    except Exception:
+        return
+    try:
+        entry_id = gb_abjob.active_job()
+        if not entry_id:
+            return
+        state = gb_abjob.load_job(entry_id) or {}
+        if state.get("phase") not in ("queued", "narrating", "assembling"):
+            return
+        gb_abjob.run_job(entry_id, log=logger.info)
+    except Exception:
+        logger.debug("audiobook job step failed", exc_info=True)
+
+
+
 def _poll_feeds_in_maintenance() -> None:
     """Poll configured feeds from the background maintenance cycle.
 
@@ -8978,6 +9002,12 @@ def _run_maintenance_cycle() -> None:
         return
 
     logger.info("Background maintenance: cycle start")
+
+    # Advance any audiobook conversion FIRST, and independently of feeds.
+    # It used to live inside _poll_feeds_in_maintenance(), which returns
+    # early when no feeds are configured -- so a queued job sat at
+    # phase=queued forever. Conversion is not a feed concern.
+    _advance_audiobook_job()
 
     # 1) Warm the library scan cache
     try:
@@ -9281,6 +9311,148 @@ try:
     _refresh_mirrors_from_slum()
 except Exception:
     pass
+
+# ------------------------------------------------------------ audiobook ---
+# Convert a library EPUB into a chaptered audiobook using the Pocket Voice
+# Studio on the other host.
+#
+# This is a job, not a request. Synthesis measured at ~3.3 words/sec, so a
+# novel is 4-10 hours; POST /audiobook/start enqueues and returns at once, and
+# the background maintenance thread advances one chunk per tick. Progress is
+# polled by /audiobook/progress.
+#
+# DAS cannot reach the TTS backend directly: :8021 and :8092 are bound to
+# 127.0.0.1 on the other host and DAS gets 000 for both. It reaches the panel
+# through Caddy at /voice-studio/, which is the endpoint gb_audiobook uses.
+
+
+def _ab_entry(entry_id: str):
+    entry = get_library_entry(entry_id)
+    if not entry:
+        raise HTTPException(404, "book not found in library")
+    return entry
+
+
+def _ab_resolve_path(entry: Dict) -> Optional[str]:
+    """The real file for a library entry.
+
+    build_library_entries() sets no "path" key. The id is a composite
+    "<resolved root>::<relpath with forward slashes>" (app.py:3002-3004), so
+    the file is recovered by splitting it. Reading entry["path"] returned None
+    and the route wrongly reported the file as missing.
+    """
+    explicit = entry.get("path")
+    if explicit and os.path.exists(explicit):
+        return explicit
+
+    eid = str(entry.get("id") or "")
+    root = settings_manager.settings.library_root
+    rel = None
+    if "::" in eid:
+        rel = eid.split("::", 1)[1]
+    elif root and eid.startswith(str(root)):
+        rel = os.path.relpath(eid, str(root))
+    if rel:
+        candidate = os.path.join(str(root), rel.replace("/", os.sep))
+        if os.path.exists(candidate):
+            return os.path.realpath(candidate)
+
+    # last resort: match on the file name alone
+    name = os.path.basename(eid)
+    if name and root:
+        for p in Path(root).rglob(name):
+            if p.is_file():
+                return str(p)
+    return None
+
+
+@app.post("/audiobook/start")
+def audiobook_start():
+    """Queue an EPUB for audiobook conversion. Returns immediately."""
+    entry_id = (request.form.get("entry_id") or request.form.get("id") or "").strip()
+    voice = (request.form.get("voice") or "").strip()
+    if not entry_id:
+        return jsonify({"ok": False, "error": "entry_id is required"}), 400
+    entry = _ab_entry(entry_id)
+    if not voice:
+        settings_ = settings_manager.settings
+        voice = (getattr(settings_, "audiobook_voice", "")
+                 or os.environ.get("GOODBOOKS_TTS_VOICE", "nick"))
+    src_path = _ab_resolve_path(entry)
+    if not src_path:
+        return jsonify({"ok": False,
+                        "error": "the file for this book is missing on disk"}), 400
+    if os.path.splitext(src_path)[1].lower() != ".epub":
+        return jsonify({"ok": False,
+                        "error": "only EPUB books can be converted"}), 400
+    try:
+        import gb_abjob
+    except Exception as exc:
+        return jsonify({"ok": False, "error": f"converter unavailable: {exc}"}), 500
+    running = gb_abjob.active_job()
+    if running and running != entry_id:
+        return jsonify({"ok": False, "error":
+                        f"already converting: {gb_abjob.load_job(running).get('title')}",
+                        "active": running}), 409
+    restart = (request.form.get("restart") or "").strip() in ("1", "true", "yes")
+    job = gb_abjob.enqueue(entry_id, Path(src_path), voice,
+                            entry.get("title", ""), entry.get("author", ""),
+                            restart=restart)
+    return jsonify({"ok": True, "entry_id": entry_id,
+                    "progress": gb_abjob.progress(entry_id)})
+
+
+@app.get("/audiobook/progress")
+def audiobook_progress():
+    """Polled by the UI. Cheap: reads one small JSON file."""
+    entry_id = (request.args.get("entry_id") or "").strip()
+    if not entry_id:
+        try:
+            import gb_abjob
+            active = gb_abjob.active_job()
+            if not active:
+                return jsonify({"phase": "idle"})
+            entry_id = active
+        except Exception:
+            return jsonify({"phase": "unavailable"}), 503
+    try:
+        import gb_abjob
+    except Exception as exc:
+        return jsonify({"phase": "unavailable", "error": str(exc)}), 503
+    return jsonify(gb_abjob.progress(entry_id))
+
+
+@app.post("/audiobook/cancel")
+def audiobook_cancel():
+    entry_id = (request.form.get("entry_id") or "").strip()
+    if not entry_id:
+        return jsonify({"ok": False, "error": "entry_id is required"}), 400
+    try:
+        import gb_abjob
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 503
+    return jsonify({"ok": gb_abjob.cancel(entry_id)})
+
+
+@app.get("/audiobook/voices")
+def audiobook_voices():
+    """Voices the panel can clone, so the UI can offer a real choice."""
+    try:
+        import gb_audiobook as AB
+        import urllib.request
+        url = AB.TTS_ENDPOINT.rstrip("/") + "/api/voices"
+        ctx = None
+        if url.startswith("https://"):
+            import ssl
+            ctx = ssl._create_unverified_context()
+        with urllib.request.urlopen(url, timeout=15, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        return jsonify({"voices": [v.get("name") for v in
+                                   (data.get("voices") or []) if v.get("name")]})
+    except Exception as exc:
+        logger.debug("voice list unavailable: %s", exc)
+        return jsonify({"voices": [], "error": str(exc)[:120]})
+
 
 if __name__ == "__main__":
     try:

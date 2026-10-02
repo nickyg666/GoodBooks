@@ -27,6 +27,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import gb_audiobook as AB
+import gb_extract as EX      # any library format -> chapters
+import gb_parallel as PAR    # threaded narration, half+1 workers
 
 DATA = Path("/usr/local/bin/GoodBooks/data")
 JOBS = DATA / "audiobook_jobs"
@@ -380,6 +382,17 @@ def _chunk_files(wd: Path) -> List[Path]:
                   key=lambda p: int(p.stem.split("_")[1]))
 
 
+def sum_safe(parts, AB):
+    """Total duration of the chunk files, tolerating one unreadable file."""
+    total = 0.0
+    for p in parts:
+        try:
+            total += AB.wav_seconds(p)
+        except Exception:
+            continue
+    return total
+
+
 def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
             max_chunks: int = 0) -> dict:
     """Advance a job for up to a time budget, or one chunk by default.
@@ -410,7 +423,7 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
     # ---- 1. parse -------------------------------------------------------
     if job["phase"] == "queued":
         try:
-            book = AB.read_epub(epub)
+            book = EX.read_book(epub)
         except Exception as exc:
             job.update({"phase": "error", "error": f"parse: {exc}",
                         "updated": time.time()})
@@ -445,7 +458,7 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
     # ---- 2. narrate one chunk ------------------------------------------
     if job["phase"] == "narrating":
         if "chunk_texts" not in job or not job.get("chunk_texts"):
-            book = AB.read_epub(epub)
+            book = EX.read_book(epub)
             texts = []
             for ch in book.chapters:
                 texts.extend(AB.split_chunks(ch.text))
@@ -454,69 +467,70 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
 
         texts = job["chunk_texts"]
         total = len(texts)
+        done = set(job.get("chunks_done") or [])
+        todo = [i for i in range(total) if i not in done]
 
-        # A window, not a single chunk.
+        if not todo:
+            job.pop("error", None)
+            job.pop("error", None)
+            job["phase"] = "assembling"
+            job["updated"] = time.time()
+            save_job(entry_id, job)
+            return job
+
+        # A window of work, not a single chunk.
         #
         # The branch used to end with an unconditional `return job` after one
         # chunk, so a 600s budget did exactly one chunk and a book took
         # 32.9 days at one chunk per 15-minute maintenance tick. Resumability
         # does not depend on the chunk count -- the state is in the job file --
         # so the loop is free, and a crash inside it still costs one chunk.
-        while True:
-            done = set(job.get("chunks_done") or [])
-            nxt = next((i for i in range(total) if i not in done), None)
-            if nxt is None:
-                job["phase"] = "assembling"
-                job["updated"] = time.time()
-                save_job(entry_id, job)
-                return job
+        #
+        # Now the window is narrated CONCURRENTLY. Every chunk is one HTTP POST
+        # to the TTS panel on .168, which releases the GIL, and the per-chunk
+        # ffmpeg encode is a subprocess, so threads scale and no interpreter
+        # memory is duplicated. Worker count is half+1 of the CPU thread
+        # count, hard-capped (DAS: nproc=4 -> 3).
+        wave = max(PAR.synth_workers() * 3, 6)
+        batch = todo[:wave]
 
-            if budget_seconds:
-                if max_chunks and chunks_this_window >= max_chunks:
-                    log(f"[audiobook {entry_id[:20]}] window: "
-                        f"{chunks_this_window} chunks done, pausing")
-                    return job
-                if time.time() - _window_started >= budget_seconds:
-                    log(f"[audiobook {entry_id[:20]}] window: "
-                        f"{time.time() - _window_started:.0f}s of "
-                        f"{budget_seconds:.0f}s used, pausing")
-                    return job
+        completed, errors = PAR.narrate_batch(
+            texts, batch, voice,
+            job.get("voice_ref") or "",
+            wd,
+            lambda t, v, voice_ref="": AB.synthesize(t, v, voice_ref=voice_ref),
+            AB.wav_to_mp3,
+            log=log,
+            budget_seconds=budget_seconds,
+            max_chunks=max_chunks,
+        )
 
-            text = texts[nxt]
-            t0 = time.time()
-            try:
-                # Zero-shot: a reference clip IS the voice, so it wins over
-                # the registered name.
-                wav = AB.synthesize(text, voice,
-                                    voice_ref=job.get("voice_ref") or "")
-            except Exception as exc:
-                job.update({"phase": "error",
-                            "error": f"chunk {nxt}: {exc}",
-                            "updated": time.time()})
-                save_job(entry_id, job)
-                return job
-
-            raw = wd / f"chunk_{nxt:05d}.wav"
-            raw.write_bytes(wav)
-            mp3 = wd / f"chunk_{nxt:05d}.mp3"
-            try:
-                AB.wav_to_mp3(raw, mp3)
-                raw.unlink(missing_ok=True)
-            except Exception as exc:
-                job.update({"phase": "error",
-                            "error": f"encode {nxt}: {exc}",
-                            "updated": time.time()})
-                save_job(entry_id, job)
-                return job
-
-            job.setdefault("chunks_done", []).append(nxt)
-            chunks_this_window += 1
-            job["audio_seconds"] = round(
-                (job.get("audio_seconds") or 0.0) + AB.wav_seconds(mp3), 1)
+        if completed:
+            job.setdefault("chunks_done", []).extend(completed)
+            job["chunks_done"] = sorted(set(job["chunks_done"]))
+            # Recompute from the files on disk rather than incrementing per
+            # chunk: with concurrent workers the increments would interleave,
+            # and a retried chunk would be counted twice. The chunk files are
+            # the ground truth, and they are small to stat.
+            job["audio_seconds"] = round(sum_safe(_chunk_files(wd), AB), 1)
+            job.pop("error", None)
             job["updated"] = time.time()
             save_job(entry_id, job)
-            log(f"[audiobook {entry_id[:28]}] chunk {nxt+1}/{total} "
-                f"{len(text.split())}w in {time.time() - t0:.1f}s")
+            log(f"[audiobook {entry_id[:28]}] window: {len(completed)} chunks "
+                f"done on {PAR.synth_workers()} workers, "
+                f"{len(todo)} remaining")
+
+        # A failed chunk fails the job. Silently skipping it would ship an
+        # audiobook with a hole in it, which is worse than no audiobook.
+        if errors:
+            first = min(errors)
+            job.update({"phase": "error",
+                        "error": f"chunk {first}: {errors[first]}",
+                        "updated": time.time()})
+            save_job(entry_id, job)
+            return job
+
+        return job
 
     # ---- 3. assemble ---------------------------------------------------
     if job["phase"] == "assembling":
@@ -570,6 +584,12 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
             "bytes": result.stat().st_size if result.exists() else 0,
             "updated": time.time(),
         })
+        # A finished job must not still advertise a failure. The measured
+        # audiobook came out phase=done while carrying
+        #   error=chunk 144: synthesize: HTTPError: HTTP Error 502
+        # from a transient refusal that retry had long since recovered from.
+        # Anything reading "error" would report a broken book that is fine.
+        job.pop("error", None)
         job.pop("chunk_texts", None)
         save_job(entry_id, job)
         for p in parts:

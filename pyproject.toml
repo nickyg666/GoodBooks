@@ -51,6 +51,8 @@ py-modules = [
   "debug_progress_bars",
   "ebook_metadata_extractor",
   "epub_distributor",
+  "gb_abjob",
+  "gb_audiobook",
   "gb_authors",
   "gb_epub_urls",
   "gb_fastdl",

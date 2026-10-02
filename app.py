@@ -9020,6 +9020,20 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
         return (entry_idx, None)
 
 
+# --- narration scheduling ---------------------------------------------------
+# Measured: a book is ~3,156 chunks at ~18s each, and the maintenance
+# interval is 900s. Advancing ONE chunk per tick therefore takes 32.9 DAYS for
+# a single book. Filling each whole tick gives 50 chunks/tick, still 39.5
+# days, because the window is only 15 minutes of wall clock. The narration
+# itself is ~15.8 hours, so this is a scheduling bug, not a throughput limit.
+#
+# Give the job a time budget per window. Resumability does not depend on the
+# chunk count: state lives in the job file, so an interrupted run continues
+# where it stopped either way.
+NARRATION_BUDGET_SECONDS = 600     # of the 900s window, leaving headroom
+NARRATION_MAX_CHUNKS = 40          # ~12 min at the measured 18s/chunk
+
+
 def _advance_audiobook_job() -> None:
     """Advance an audiobook job by one step, if one is queued.
 
@@ -9038,7 +9052,10 @@ def _advance_audiobook_job() -> None:
         state = gb_abjob.load_job(entry_id) or {}
         if state.get("phase") not in ("queued", "narrating", "assembling"):
             return
-        gb_abjob.run_job(entry_id, log=logger.info)
+        gb_abjob.run_job(
+            entry_id, log=logger.info,
+            budget_seconds=NARRATION_BUDGET_SECONDS,
+            max_chunks=NARRATION_MAX_CHUNKS)
     except Exception:
         logger.debug("audiobook job step failed", exc_info=True)
 
@@ -9675,6 +9692,7 @@ def _ab_user_options():
 def audiobook_options():
     """Everything the dialog needs to render: users, voices, bitrates, defaults."""
     import gb_audiobook as AB
+    import gb_abjob          # the queue block below reads MAX_QUEUED_JOBS
     voices = []
     try:
         import urllib.request
@@ -9689,6 +9707,12 @@ def audiobook_options():
         logger.debug("audiobook options: voice list unavailable: %s", exc)
     return jsonify({
         "users": _ab_user_options(),
+        "queue": {
+            "limit": gb_abjob.MAX_QUEUED_JOBS,
+            "depth": len([j for j in gb_abjob._all_jobs()
+                          if j.get("phase") in ("queued", "parsing",
+                                                "narrating", "assembling")]),
+        },
         "voices": voices,
         "qualities": _ab_quality_choices(),
         "default_bitrate": AB.AUDIO_DEFAULT,
@@ -9777,6 +9801,12 @@ def audiobook_start():
                         f"already converting: {gb_abjob.load_job(running).get('title')}",
                         "active": running}), 409
     restart = (request.form.get("restart") or "").strip() in ("1", "true", "yes")
+    # Regenerate is deliberate. A book that is already narrated is returned as
+    # it stands unless the user asks for it again -- the escape hatch for a
+    # corrupt output.
+    regenerate = (request.form.get("regenerate")
+                 or request.form.get("force") or "").strip() in (
+                     "1", "true", "yes", "on")
 
     # Zero-shot reference. Accepts a path/URL, or the name of a reference
     # stored by /audiobook/reference. When present it takes precedence over
@@ -9794,12 +9824,45 @@ def audiobook_start():
     if bitrate not in _AB.AUDIO_QUALITY:
         bitrate = _AB.AUDIO_DEFAULT
 
-    job = gb_abjob.enqueue(entry_id, Path(src_path), voice,
-                            entry.get("title", ""), entry.get("author", ""),
-                            restart=restart, voice_ref=voice_ref,
-                            for_user=for_user, auto_send=auto_send,
-                            notify=notify, bitrate=bitrate)
+    # Already narrated? Hand back the finished file and say so, so the
+    # dialog can offer a deliberate regenerate instead of pretending to start.
+    if not regenerate:
+        done = gb_abjob.completed_for(entry_id)
+        if done:
+            return jsonify({
+                "ok": True, "already_done": True, "entry_id": entry_id,
+                "result": done.get("result"),
+                "title": done.get("title"),
+                "message": ("This book is already narrated. Use regenerate to "
+                            "do it again (for example if the audio is "
+                            "damaged)."),
+                "progress": gb_abjob.progress(entry_id),
+            })
+
+    try:
+        job = gb_abjob.enqueue(
+            entry_id, Path(src_path), voice,
+            entry.get("title", ""), entry.get("author", ""),
+            restart=restart or regenerate, voice_ref=voice_ref,
+            for_user=for_user, auto_send=auto_send,
+            notify=notify, bitrate=bitrate, regenerate=regenerate)
+    except gb_abjob.QueueFull as exc:
+        # 409 so the dialog can say why nothing started, instead of a bare 500
+        return jsonify({"ok": False, "queued": False, "error": str(exc),
+                        "queue_full": True,
+                        "limit": gb_abjob.MAX_QUEUED_JOBS}), 409
+
+    at = gb_abjob.queue_position(entry_id)
+    live = [j for j in gb_abjob._all_jobs()
+            if j.get("phase") in ("queued", "parsing", "narrating",
+                                  "assembling")]
+    if at and at > 1:
+        logger.info("audiobook %s queued at position %d of %d",
+                    entry_id, at, len(live))
     return jsonify({"ok": True, "entry_id": entry_id,
+                    "queue_position": at,
+                    "queue_depth": len(live),
+                    "queue_limit": gb_abjob.MAX_QUEUED_JOBS,
                     "progress": gb_abjob.progress(entry_id)})
 
 

@@ -33,6 +33,9 @@ JOBS = DATA / "audiobook_jobs"
 WORK = DATA / "audiobook_work"
 
 
+class QueueFull(RuntimeError):
+    """Raised when the narration queue is at its limit."""
+
 def _jobs_dir() -> Path:
     JOBS.mkdir(parents=True, exist_ok=True)
     return JOBS
@@ -99,10 +102,107 @@ def new_job(entry_id: str, epub: Path, voice: str, title: str = "",
 LIVE_PHASES = ("queued", "parsing", "narrating", "assembling")
 
 
+# --- queue rules ----------------------------------------------------------
+# One book narrating at a time, and a bounded backlog. A box like this one
+# takes ~15.8 hours of CPU-bound narration per novel, so letting 30 jobs start
+# at once would starve everything else and tell the user nothing useful.
+MAX_QUEUED_JOBS = 8
+
+
+def queue_position(entry_id: str) -> Optional[int]:
+    """1-based place in the queue, or None if not queued."""
+    jobs = _all_jobs()
+    live = [j for j in jobs if j.get("phase") in
+            ("queued", "parsing", "narrating", "assembling")]
+    for n, j in enumerate(live, 1):
+        if j.get("entry_id") == entry_id:
+            return n
+    return None
+
+
+def _all_jobs() -> List[dict]:
+    import json as _json
+    out = []
+    for f in _jobs_dir().glob("*.json"):
+        try:
+            out.append(_json.loads(f.read_text(encoding="utf-8",
+                                              errors="replace")))
+        except Exception:
+            continue
+    out.sort(key=lambda j: j.get("created") or 0)
+    return out
+
+
+def completed_for(entry_id: str) -> Optional[dict]:
+    """A finished job for this book, if its output still exists."""
+    for j in _all_jobs():
+        if j.get("entry_id") != entry_id:
+            continue
+        if j.get("phase") != "done":
+            continue
+        res = j.get("result")
+        if res and Path(res).exists():
+            return j
+    return None
+
+
 def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
             author: str = "", restart: bool = False, voice_ref: str = "",
             for_user: str = "", auto_send: bool = False,
-            notify: bool = False, bitrate: str = "192k") -> dict:
+            notify: bool = False, bitrate: str = "192k",
+            regenerate: bool = False) -> dict:
+    """Queue a book, refusing work that is already done or already queued.
+
+    Rules the user asked for:
+      * a book that is already narrated is NOT regenerated silently -- its
+        finished file is returned. Pass regenerate=True to force it, which is
+        the escape hatch for a corrupt output.
+      * a book that is already queued is not added twice.
+      * the queue is bounded, so a pile of books cannot all start at once.
+    """
+    rewrite = bool(restart or regenerate)
+
+    # restart and regenerate are the same instruction from the user's point of
+    # view -- "I mean it, do the work again" -- so the dedupe guard must honour
+    # either. It previously only checked regenerate, which silently swallowed
+    # an explicit restart and returned the in-progress job unchanged.
+    forced = bool(rewrite or regenerate)
+    if not forced:
+        done = completed_for(entry_id)
+        if done:
+            # Already narrated. Return the finished job; regeneration is
+            # deliberate (regenerate=True), so nothing is silently redone.
+            return done
+        at = queue_position(entry_id)
+        if at:
+            # Already queued: return the SAME job so nothing is duplicated,
+            # but still adopt the options the user just picked. Returning
+            # early here made the narrator silently unchangeable, which the
+            # regression test caught.
+            live = load_job(entry_id) or {}
+            changed = False
+            if voice and live.get("voice") != voice:
+                live["voice"] = voice
+                changed = True
+            if voice_ref and live.get("voice_ref") != voice_ref:
+                live["voice_ref"] = voice_ref
+                changed = True
+            if bitrate and live.get("bitrate") != bitrate:
+                live["bitrate"] = bitrate
+                changed = True
+            if changed:
+                live["updated"] = time.time()
+                save_job(entry_id, live)
+            return live
+
+    live = [j for j in _all_jobs()
+            if j.get("phase") in ("queued", "parsing", "narrating", "assembling")]
+    if len(live) >= MAX_QUEUED_JOBS:
+        raise QueueFull(
+            f"{len(live)} books are already queued (limit {MAX_QUEUED_JOBS}). "
+            "Wait for one to finish, or raise the limit.")
+
+
     """Queue a book, WITHOUT destroying a conversion already in progress.
 
     Measured bug: this used to set phase="queued" unconditionally, so every
@@ -203,11 +303,17 @@ def _chunk_files(wd: Path) -> List[Path]:
                   key=lambda p: int(p.stem.split("_")[1]))
 
 
-def run_job(entry_id: str, log=print) -> dict:
-    """Advance a job as far as it can. Safe to call repeatedly.
+def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
+            max_chunks: int = 0) -> dict:
+    """Advance a job for up to a time budget, or one chunk by default.
 
-    Each call does at most ONE chunk, so the maintenance thread stays
-    responsive and a crash costs one chunk, not the book.
+    budget_seconds > 0 means keep going until the budget is spent, capped
+    at max_chunks so one pathological chunk cannot hold the whole window.
+    A budget of 0 keeps the original one-chunk behaviour, which is what
+    the unit tests exercise.
+
+    Resumability does not depend on the chunk count: the state lives in the
+    job file, so an interrupted run continues either way.
     """
     job = load_job(entry_id)
     if not job:
@@ -217,6 +323,9 @@ def run_job(entry_id: str, log=print) -> dict:
 
     epub = Path(job["epub"])
     wd = work_dir(entry_id)
+    # window accounting for the time budget
+    _window_started = time.time()
+    chunks_this_window = 0
     voice = job.get("voice") or ""
     # (voice_ref is read from the job inside the narrate branch, so a job
     # updated between chunks picks the change up on its next pass)
@@ -267,49 +376,70 @@ def run_job(entry_id: str, log=print) -> dict:
             save_job(entry_id, job)
 
         texts = job["chunk_texts"]
-        done = set(job.get("chunks_done") or [])
-        nxt = next((i for i in range(len(texts)) if i not in done), None)
-        if nxt is None:
-            job["phase"] = "assembling"
+        total = len(texts)
+
+        # A window, not a single chunk.
+        #
+        # The branch used to end with an unconditional `return job` after one
+        # chunk, so a 600s budget did exactly one chunk and a book took
+        # 32.9 days at one chunk per 15-minute maintenance tick. Resumability
+        # does not depend on the chunk count -- the state is in the job file --
+        # so the loop is free, and a crash inside it still costs one chunk.
+        while True:
+            done = set(job.get("chunks_done") or [])
+            nxt = next((i for i in range(total) if i not in done), None)
+            if nxt is None:
+                job["phase"] = "assembling"
+                job["updated"] = time.time()
+                save_job(entry_id, job)
+                return job
+
+            if budget_seconds:
+                if max_chunks and chunks_this_window >= max_chunks:
+                    log(f"[audiobook {entry_id[:20]}] window: "
+                        f"{chunks_this_window} chunks done, pausing")
+                    return job
+                if time.time() - _window_started >= budget_seconds:
+                    log(f"[audiobook {entry_id[:20]}] window: "
+                        f"{time.time() - _window_started:.0f}s of "
+                        f"{budget_seconds:.0f}s used, pausing")
+                    return job
+
+            text = texts[nxt]
+            t0 = time.time()
+            try:
+                # Zero-shot: a reference clip IS the voice, so it wins over
+                # the registered name.
+                wav = AB.synthesize(text, voice,
+                                    voice_ref=job.get("voice_ref") or "")
+            except Exception as exc:
+                job.update({"phase": "error",
+                            "error": f"chunk {nxt}: {exc}",
+                            "updated": time.time()})
+                save_job(entry_id, job)
+                return job
+
+            raw = wd / f"chunk_{nxt:05d}.wav"
+            raw.write_bytes(wav)
+            mp3 = wd / f"chunk_{nxt:05d}.mp3"
+            try:
+                AB.wav_to_mp3(raw, mp3)
+                raw.unlink(missing_ok=True)
+            except Exception as exc:
+                job.update({"phase": "error",
+                            "error": f"encode {nxt}: {exc}",
+                            "updated": time.time()})
+                save_job(entry_id, job)
+                return job
+
+            job.setdefault("chunks_done", []).append(nxt)
+            chunks_this_window += 1
+            job["audio_seconds"] = round(
+                (job.get("audio_seconds") or 0.0) + AB.wav_seconds(mp3), 1)
             job["updated"] = time.time()
             save_job(entry_id, job)
-            return job
-
-        text = texts[nxt]
-        t0 = time.time()
-        try:
-            # Zero-shot: when the job carries a reference clip, it is the
-            # voice, and the named voice is irrelevant.
-            wav = AB.synthesize(text, voice,
-                                voice_ref=job.get("voice_ref") or "")
-        except Exception as exc:
-            job.update({"phase": "error",
-                        "error": f"chunk {nxt}: {exc}",
-                        "updated": time.time()})
-            save_job(entry_id, job)
-            return job
-
-        raw = wd / f"chunk_{nxt:05d}.wav"
-        raw.write_bytes(wav)
-        mp3 = wd / f"chunk_{nxt:05d}.mp3"
-        try:
-            AB.wav_to_mp3(raw, mp3)
-            raw.unlink(missing_ok=True)
-        except Exception as exc:
-            job.update({"phase": "error", "error": f"encode {nxt}: {exc}",
-                        "updated": time.time()})
-            save_job(entry_id, job)
-            return job
-
-        job.setdefault("chunks_done", []).append(nxt)
-        job["audio_seconds"] = round(
-            (job.get("audio_seconds") or 0.0) + AB.wav_seconds(mp3), 1)
-        job["updated"] = time.time()
-        save_job(entry_id, job)
-        words = len(text.split())
-        log(f"[audiobook {entry_id[:28]}] chunk {nxt+1}/{len(texts)} "
-            f"{words}w in {time.time()-t0:.1f}s")
-        return job
+            log(f"[audiobook {entry_id[:28]}] chunk {nxt+1}/{total} "
+                f"{len(text.split())}w in {time.time() - t0:.1f}s")
 
     # ---- 3. assemble ---------------------------------------------------
     if job["phase"] == "assembling":

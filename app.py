@@ -4458,7 +4458,6 @@ def send_kindle_batch_email(
 # ---------------------------------------------------------------------------
 
 # Keep debug.log bounded from the first request onwards.
-_rotate_debug_log(force=True)
 
 @app.route("/cover.png")
 def navbar_cover():
@@ -10364,3 +10363,7 @@ def main():
 if __name__ == "__main__":
     main()
 
+# Rotate debug.log once at startup, now that _rotate_debug_log is defined.
+# It must appear AFTER the definition: a call above it is a NameError, which
+# is what broke the service on 2026-10-02.
+_rotate_debug_log(force=True)

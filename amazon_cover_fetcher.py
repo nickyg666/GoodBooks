@@ -112,6 +112,78 @@ def get_cover_urls(title=None, authors=None, identifiers=None, timeout=10):
     return list(urls)
 
 
+import threading as _gb_threading
+import time as _gb_time
+
+# Goodreads refuses under load by returning a 202/200 with an EMPTY body.
+# That is a throttle signal, not a parse failure, and treating it as one is
+# how a block gets earned: the thread pool keeps re-asking a site that is
+# already saying no.
+#
+# Measured 2026-10-02: the log filled with
+#   "Error searching Goodreads for edition: Document is empty"
+# from 6 concurrent workers, continuously, for hours.
+_GOODREADS_LOCK = _gb_threading.Lock()
+_GOODREADS_REFUSALS = 0
+_GOODREADS_OPEN_UNTIL = 0.0
+# After this many refusals, stop searching entirely for a cool-down.
+_GOODREADS_REFUSAL_LIMIT = 3
+_GOODREADS_BASE_COOLDOWN = 300.0   # 5 min, doubling to a 30 min ceiling
+_GOODREADS_MAX_COOLDOWN = 1800.0
+
+
+def goodreads_is_throttled() -> bool:
+    """True while Goodreads is refusing us and we should stay quiet."""
+    global _GOODREADS_OPEN_UNTIL
+    with _GOODREADS_LOCK:
+        return _GOODREADS_OPEN_UNTIL > _gb_time.time()
+
+
+def _note_goodreads_refusal() -> None:
+    """Count a refusal and open the circuit breaker when it is sustained."""
+    global _GOODREADS_REFUSALS, _GOODREADS_OPEN_UNTIL
+    with _GOODREADS_LOCK:
+        _GOODREADS_REFUSALS += 1
+        if _GOODREADS_REFUSALS >= _GOODREADS_REFUSAL_LIMIT:
+            over = _GOODREADS_REFUSALS - _GOODREADS_REFUSAL_LIMIT
+            cd = min(_GOODREADS_BASE_COOLDOWN * (2 ** min(over, 3)),
+                     _GOODREADS_MAX_COOLDOWN)
+            _GOODREADS_OPEN_UNTIL = _gb_time.time() + cd
+            logger.warning(
+                "Goodreads refusing (empty document) %d times -- pausing "
+                "searches for %.0f min", _GOODREADS_REFUSALS, cd / 60.0)
+
+
+def _note_goodreads_ok() -> None:
+    """A real response clears the refusal counter."""
+    global _GOODREADS_REFUSALS
+    with _GOODREADS_LOCK:
+        if _GOODREADS_REFUSALS:
+            logger.info("Goodreads responding again after %d refusals",
+                        _GOODREADS_REFUSALS)
+        _GOODREADS_REFUSALS = 0
+
+
+def _looks_like_refusal(exc: Exception) -> bool:
+    """Is this exception Goodreads saying 'go away' rather than a bug?
+
+    An empty document reaches us as a parser IndexError or lxml exception;
+    a 202 reaches us as an HTTP error. Both are refusals, not code faults,
+    and both must drive the back-off instead of being logged and ignored.
+    """
+    # By TYPE first: str(IndexError(...)) is the message, never the type
+    # name, so matching "indexerror" against the text could never fire.
+    # An empty Goodreads result set reaches us as books[0] on an empty list.
+    if isinstance(exc, (IndexError, StopIteration)):
+        return True
+    # HTTP cases: the status code only appears in the message text.
+    text = str(exc).lower()
+    return ("document is empty" in text
+            or "202" in text
+            or "no elements found" in text
+            or "empty document" in text)
+
+
 def search_edition_goodreads(query, timeout=10):
     """
     Search Goodreads for a book and return the edition URL.
@@ -127,10 +199,21 @@ def search_edition_goodreads(query, timeout=10):
         br = requests.Session()
         br.headers.update({'User-Agent': USER_AGENT})
         
+        if goodreads_is_throttled():
+            logger.debug('Goodreads circuit open -- skipping search for %s',
+                         query)
+            return None
+
         search_url = urljoin(GOODREADS_URL, '/search?q=' + quote_plus(query))
         logger.info('Searching Goodreads for book: %s', search_url)
-        
+
         resp = br.get(search_url, timeout=timeout)
+        # Goodreads signals a throttle with an empty body on 200 or 202.
+        # raise_for_status() would let the 202 through as success.
+        if not resp.content.strip():
+            _note_goodreads_refusal()
+            logger.debug('Goodreads returned an empty document for %s', query)
+            return None
         resp.raise_for_status()
         
         # Check if we were redirected (perfect match)
@@ -149,14 +232,22 @@ def search_edition_goodreads(query, timeout=10):
             edition_url = resp.url
         
         if edition_url:
+            _note_goodreads_ok()
             # Make sure it's a full URL
             if not edition_url.startswith('http'):
                 edition_url = urljoin(GOODREADS_URL, edition_url)
             return edition_url
             
     except Exception as e:
-        logger.debug('Error searching Goodreads for edition: %s', e)
-    
+        if _looks_like_refusal(e):
+            _note_goodreads_refusal()
+            logger.debug('Goodreads refused the search for %s: %s', query, e)
+        else:
+            # A genuine fault, not a throttle. Swallowing it into a debug
+            # line is how this became invisible in the first place.
+            logger.warning('Unexpected error searching Goodreads for %s: %s',
+                           query, e, exc_info=True)
+
     return None
 
 

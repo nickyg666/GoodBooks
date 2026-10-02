@@ -3576,6 +3576,83 @@ def upsert_library_metadata_for_download(
                 logger.exception("Failed to save library metadata to %s", LIBRARY_METADATA_PATH)
 
 
+# --- Goodreads enrichment rate limiting -----------------------------------
+# Measured 2026-10-01: the log was full of
+#     amazon_cover_fetcher: Error searching Goodreads for edition:
+#     Document is empty
+# which is a refused/empty response, not a parse failure. 1,247 covered books
+# had no description, rating or genres, and 1,218 of those had no
+# goodreads_link at all -- because app.py:1907 gates the whole rich scrape on
+# a Goodreads SEARCH succeeding first, and that search is what is being
+# refused. The covers came from Amazon, which returns a cover and nothing
+# else, so "has a cover" was never evidence the metadata path had run.
+#
+# Repeatedly re-asking a site that is already saying no is what earns a block,
+# so failures are recorded and retried on a growing cool-down instead.
+GOODREADS_ENRICH_COOLDOWN = 900          # 15 min after a refusal
+GOODREADS_ENRICH_BACKOFF_MAX = 86400      # never retry more than daily
+GOODREADS_ENRICH_MIN_INTERVAL = 4.0        # floor between requests
+
+
+def _goodreads_last_attempt_path() -> Path:
+    return DATA_DIR / ".goodreads_enrich_state.json"
+
+
+def _load_goodreads_state() -> dict:
+    p = _goodreads_last_attempt_path()
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_goodreads_state(d: dict) -> None:
+    p = _goodreads_last_attempt_path()
+    try:
+        p.write_text(json.dumps(d), encoding="utf-8")
+    except Exception:
+        logger.debug("could not persist goodreads enrich state")
+
+
+def goodreads_backoff_ok(book_id: str) -> bool:
+    """True when it is worth asking Goodreads about this book again.
+
+    First failure backs off 15 minutes, doubling up to a day. This is the whole
+    fix for the empty responses: stop re-asking.
+    """
+    st = _load_goodreads_state().get(book_id) or {}
+    fails = int(st.get("fails") or 0)
+    if not fails:
+        return True
+    wait = min(GOODREADS_ENRICH_COOLDOWN * (2 ** (fails - 1)),
+               GOODREADS_ENRICH_BACKOFF_MAX)
+    return (time.time() - float(st.get("at") or 0)) >= wait
+
+
+def record_goodreads_result(book_id: str, ok: bool) -> None:
+    """Remember the outcome so the back-off grows or resets."""
+    d = _load_goodreads_state()
+    cur = d.get(book_id) or {}
+    fails = int(cur.get("fails") or 0)
+    if ok:
+        d[book_id] = {"fails": 0, "at": time.time()}
+    else:
+        d[book_id] = {"fails": fails + 1, "at": time.time()}
+    # keep it bounded: this is a rate-limit ledger, not a database
+    if len(d) > 20000:
+        cutoff = time.time() - GOODREADS_ENRICH_BACKOFF_MAX
+        d = {k: v for k, v in d.items() if float(v.get("at") or 0) >= cutoff}
+    _save_goodreads_state(d)
+
+
+def goodreads_refusal_count() -> int:
+    """How many books are currently in back-off. For the health check."""
+    return sum(1 for v in _load_goodreads_state().values()
+               if int(v.get("fails") or 0) > 0)
+
+
+
 def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, Any]:
     """
     Fast metadata enrichment from Goodreads only (no Anna's Archive search).
@@ -3602,6 +3679,16 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
     meta.setdefault("filetype", entry.get("filetype", ""))
     meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
 
+    # A cover is usually a sign enrichment ran, so a covered book with no
+    # description/rating/genres is worth marking rather than leaving to look
+    # like an oversight. Measured 2026-10-01: 1,247 of 2,785 covered books
+    # were in this state, and 1,218 of those had no goodreads_link at all --
+    # the search behind the whole scrape is what Goodreads is refusing, which
+    # the back-off ledger now records as "refused".
+    if meta.get("cover") and not any(
+            meta.get(k) for k in ("description", "rating", "genres")):
+        meta.setdefault("enrichment_note", "cover_only")
+
     # Check skip conditions - if already has good metadata in goodreads_meta, skip enrichment
     goodreads_meta_existing = meta.get("goodreads_meta", {}) or {}
     has_genres = bool(goodreads_meta_existing.get("genres"))
@@ -3625,6 +3712,19 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
         # Try to find Goodreads link
         gr_link = meta.get("goodreads_link")
 
+
+        # Back off when Goodreads is already refusing this book.
+        #
+        # Measured 2026-10-01: the log was full of
+        #   "Error searching Goodreads for edition: Document is empty"
+        # which is a refusal, not a parse failure, and 1,218 of the 1,247
+        # covered books with no description had NO goodreads_link at all --
+        # because the search that finds the link is the thing being refused,
+        # and the whole rich scrape is gated behind it (was: `if gr_link:`).
+        # Re-asking a site that is already saying no is how a block is earned.
+        if not gr_link and not goodreads_backoff_ok(library_id):
+            meta["enrichment_note"] = "refused"
+            return meta
         if not gr_link:
             # Search Goodreads directly for the link
             try:
@@ -3653,9 +3753,12 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
                                     gr_link = "https://www.goodreads.com" + gr_link
                                 if gr_link:
                                     meta["goodreads_link"] = gr_link
+                                    record_goodreads_result(library_id, True)
                                     logger.debug("Found Goodreads link for %s: %s", title, gr_link)
                                     break
             except Exception as e:
+                record_goodreads_result(library_id, False)
+                meta["enrichment_note"] = "search_failed"
                 logger.debug("Failed to search Goodreads for %s: %s", title, e)
 
         # If we have a Goodreads link, scrape it for rich metadata
@@ -4353,6 +4456,9 @@ def send_kindle_batch_email(
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+# Keep debug.log bounded from the first request onwards.
+_rotate_debug_log(force=True)
 
 @app.route("/cover.png")
 def navbar_cover():
@@ -9643,6 +9749,53 @@ def _ab_quality_choices():
 
 
 
+# ------------------------------------------------------ audiobook: preview --
+# Hear a passage before committing to a multi-hour narration. The clip is
+# ~25 words taken from the book's own prose (not the front matter) and
+# synthesised through the real pipeline, so it is a true sample of the voice.
+
+@app.route("/audiobook/preview", methods=["POST"])
+def audiobook_preview_post():
+    import gb_audiobook as AB
+    entry_id = (request.form.get("entry_id") or "").strip()
+    voice = (request.form.get("voice") or "").strip()
+    voice_ref = (request.form.get("voice_ref") or "").strip()
+    if not entry_id:
+        return jsonify({"ok": False, "error": "entry_id is required"}), 400
+    entry = get_library_entry(entry_id)
+    if not entry:
+        return jsonify({"ok": False, "error": "book not found"}), 404
+    path = _ab_resolve_path(entry)
+    if not path:
+        return jsonify({"ok": False,
+                        "error": "the file for this book is missing"}), 400
+    try:
+        wav = AB.make_preview(entry_id, Path(path), voice,
+                              voice_ref=voice_ref)
+    except Exception as exc:
+        logger.warning("preview failed for %s: %s", entry_id, exc)
+        return jsonify({"ok": False, "error": str(exc)[:160]}), 422
+    return jsonify({"ok": True, "entry_id": entry_id,
+                    "url": url_for("audiobook_preview_get", entry_id=entry_id,
+                                    voice=voice or "clone",
+                                    voice_ref=voice_ref),
+                    "bytes": wav.stat().st_size})
+
+
+@app.route("/audiobook/preview")
+def audiobook_preview_get():
+    """Serve a cached preview. Cheap, so the dialog can reload it freely."""
+    import gb_audiobook as AB
+    entry_id = (request.args.get("entry_id") or "").strip()
+    voice = (request.args.get("voice") or "").strip()
+    voice_ref = (request.args.get("voice_ref") or "").strip()
+    if not entry_id:
+        return "", 404
+    p = AB.preview_path(entry_id, voice, voice_ref)
+    if not p.exists():
+        return "", 404
+    return send_file(str(p), mimetype="audio/wav", conditional=True)
+
 @app.route("/audiobook/estimate")
 def audiobook_estimate():
     """Estimated narration time and final size for a book.
@@ -9675,6 +9828,44 @@ def audiobook_estimate():
     est = AB.estimate_voice_duration(n, bitrate=bitrate)
     return jsonify({"ok": True, "words": n, "bitrate": bitrate, **est})
 
+
+# ------------------------------------------------------------- log rotation
+# debug.log is the service's own log and was growing without bound. Rotate
+# once past 512MB, keeping a single previous file, and check on startup then
+# hourly so it does not depend on request traffic.
+DEBUG_LOG_MAX_BYTES = 512 * 1024 * 1024
+DEBUG_LOG_KEEP = 1
+_log_rotated_at = {"t": 0.0}
+
+
+def _rotate_debug_log(force: bool = False) -> None:
+    """Keep debug.log under the cap. Cheap enough to call often."""
+    now = time.time()
+    if not force and (now - _log_rotated_at["t"]) < 3600:
+        return
+    _log_rotated_at["t"] = now
+    try:
+        log_path = BASE_DIR / "debug.log"
+        if not log_path.exists():
+            return
+        if log_path.stat().st_size < DEBUG_LOG_MAX_BYTES:
+            return
+        prev = log_path.with_suffix(".log.%d" % DEBUG_LOG_KEEP)
+        for old in BASE_DIR.glob("debug.log.*"):
+            if old != prev:
+                try:
+                    old.unlink()
+                except OSError:
+                    pass
+        if prev.exists():
+            prev.unlink()
+        log_path.replace(prev)
+        # recreate so the running handler keeps writing where it expects
+        log_path.touch()
+        logger.info("rotated debug.log: kept %s, cap is %d MB",
+                    prev.name, DEBUG_LOG_MAX_BYTES // (1024 * 1024))
+    except Exception:
+        logger.debug("debug.log rotation failed", exc_info=True)
 
 def _ab_user_options():
     """The per-user choices the dialog offers."""

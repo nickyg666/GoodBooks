@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -563,9 +564,31 @@ def concat_mp3(parts: Sequence[Path], dst: Path) -> None:
     lst.unlink(missing_ok=True)
 
 
+def _cap_bitrate(bitrate: str) -> str:
+    """Clamp any requested bitrate to the measured 64 kbps ceiling.
+
+    24 kHz mono AAC saturates near 99 kbps on DAS; anything the UI offered
+    above that was a promise the encoder could not keep. Returning 64k for a
+    192k request is deliberate -- see notes/audio-quality-measurements.md.
+    """
+    m = str(bitrate or "").strip().lower()
+    digits = "".join(c for c in m if c.isdigit())
+    if not digits:
+        return "64k"
+    try:
+        kbps = int(digits)
+    except ValueError:
+        return "64k"
+    # Clamp, do not overwrite: a request BELOW the ceiling is honoured, only
+    # one above it is reduced. Returning 64k for a 32k request would double
+    # the file size for no benefit.
+    return f"{min(kbps, 64)}k"
+
+
 def mux_with_chapters(mp3: Path, out: Path, chapters: Sequence[tuple],
                       title: str, author: str,
-                      bitrate: str = AUDIO_DEFAULT) -> bool:
+                      bitrate: str = AUDIO_DEFAULT,
+                      fmt: str = "m4b") -> bool:
     """Mux chapters and tags into a single-file .m4b. Returns True on success.
 
     chapters: [(start_seconds, end_seconds, chapter_title), ...]
@@ -603,13 +626,25 @@ def mux_with_chapters(mp3: Path, out: Path, chapters: Sequence[tuple],
         ]
     meta.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+    # Hard cap: 64 kbps is the ceiling for 24 kHz mono. Measured on DAS --
+    # 128/160/192 all encode to the same ~99 kbps file, so a higher request
+    # only promises a bigger download.
+    eff = _cap_bitrate(bitrate)
+
     try:
-        subprocess.run(
-            ["ffmpeg", "-v", "error", "-y", "-i", str(mp3),
-             "-i", str(meta), "-map_metadata", "1",
-             "-c:a", "aac", "-b:a", bitrate,
-             "-movflags", "+faststart", str(out)],
-            check=True, capture_output=True, timeout=7200)
+        if (fmt or "m4b").lower() in ("mp3", "mpeg3"):
+            cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(mp3),
+                   "-i", str(meta), "-map_metadata", "1",
+                   "-c:a", "libmp3lame", "-b:a", eff, "-ac", "1",
+                   "-write_id3v2", "1", str(out)]
+        else:
+            # M4B is an MP4 container and CANNOT hold MP3 -- copy fails with
+            # "Could not write header (incorrect codec parameters)" exit 234.
+            cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(mp3),
+                   "-i", str(meta), "-map_metadata", "1",
+                   "-c:a", "aac", "-b:a", eff, "-ac", "1",
+                   "-movflags", "+faststart", str(out)]
+        subprocess.run(cmd, check=True, capture_output=True, timeout=7200)
     except subprocess.CalledProcessError as exc:
         err = (exc.stderr or b"").decode("utf-8", "replace")[-400:]
         print(f"[audiobook] m4b mux failed: {err}", flush=True)
@@ -682,4 +717,97 @@ def estimate_from_chunks(chunks: int,
         "bitrate": (AUDIO_QUALITY.get(bitrate) or {}).get("kbps", 0),
         "label": (AUDIO_QUALITY.get(bitrate) or {}).get("label", bitrate),
     }
+
+
+# ------------------------------------------------------------- preview ---
+# A 25-word sample of the actual book, in the voice you are about to commit
+# to, so the choice is made by ear rather than by name.
+
+PREVIEW_WORDS = 25
+PREVIEW_MAX_AGE_SECONDS = 6 * 3600      # cleared often, by design
+
+
+def pick_preview_excerpt(text: str, words: int = PREVIEW_WORDS,
+                        rng: Optional[random.Random] = None) -> str:
+    """A short, representative passage, not the first paragraph.
+
+    The opening of a book is usually front matter, so sampling near the start
+    would preview a copyright page rather than the prose.
+    """
+    r = rng or random
+    body = " ".join((text or "").split())
+    if not body:
+        return ""
+    allw = body.split()
+    if len(allw) <= words:
+        return body
+    # sample from the middle 80%, so it reads like the book
+    lo = int(len(allw) * 0.10)
+    hi = max(lo + 1, int(len(allw) * 0.90) - words)
+    start = r.randint(lo, max(lo, hi))
+    snippet = allw[start:start + words]
+    # start on a capital if we can, so it does not read as mid-sentence
+    for i in range(min(6, len(snippet))):
+        if snippet[i][:1].isupper():
+            snippet = snippet[i:]
+            break
+    out = " ".join(snippet)
+    if out and out[-1] not in ".!?\u2026":
+        out = out.rstrip(",;:-") + "."
+    return out
+
+
+def preview_dir() -> Path:
+    d = Path(tempfile.gettempdir()) / "goodbooks-voice-previews"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def sweep_previews(max_age: int = PREVIEW_MAX_AGE_SECONDS) -> int:
+    """Delete previews older than max_age. Returns how many went."""
+    d = preview_dir()
+    now = time.time()
+    gone = 0
+    for f in d.glob("*.wav"):
+        try:
+            if now - f.stat().st_mtime > max_age:
+                f.unlink()
+                gone += 1
+        except OSError:
+            continue
+    return gone
+
+
+def preview_path(entry_id: str, voice: str, voice_ref: str = "") -> Path:
+    """One file per (book, voice); re-previewing overwrites it."""
+    from gb_abjob import _safe_tag
+    who = _safe_tag("clone" if voice_ref else voice) or "unknown"
+    return preview_dir() / f"{_safe_tag(entry_id, 60)}__{who}.wav"
+
+
+def make_preview(entry_id: str, epub_path, voice: str, voice_ref: str = "",
+                 words: int = PREVIEW_WORDS,
+                 log=print) -> Path:
+    """Narrate a short excerpt in the chosen voice and return the WAV path.
+
+    Runs the real pipeline, so a preview sounds exactly like the audiobook
+    will. Sweeps stale previews on the way through, since this is the one
+    endpoint that writes to a shared temp area.
+    """
+    sweep_previews()
+    book = read_epub(Path(epub_path))
+    if not book.chapters:
+        raise ConversionError("no readable text in this book")
+    # prefer a chapter with real prose over a stub
+    pool = [c for c in book.chapters if c.words > 200] or book.chapters
+    chapter = pool[len(pool) // 3]
+    excerpt = pick_preview_excerpt(chapter.text, words)
+    if not excerpt:
+        raise ConversionError("could not find a passage to preview")
+    log(f"preview: {len(excerpt.split())} words from "
+        f"{chapter.title[:40]!r}, voice {voice or 'clone'!r}")
+    wav = synthesize(excerpt, voice, voice_ref=voice_ref or "")
+    dest = preview_path(entry_id, voice, voice_ref)
+    dest.write_bytes(wav)
+    return dest
 

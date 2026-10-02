@@ -109,13 +109,16 @@ LIVE_PHASES = ("queued", "parsing", "narrating", "assembling")
 MAX_QUEUED_JOBS = 8
 
 
-def queue_position(entry_id: str) -> Optional[int]:
-    """1-based place in the queue, or None if not queued."""
-    jobs = _all_jobs()
-    live = [j for j in jobs if j.get("phase") in
+def queue_position(entry_id: str, want_variant: str = "") -> Optional[int]:
+    """1-based place in the queue for this book AND variant, or None.
+
+    Per variant, so a book already queued as "nick" does not block a request
+    to queue the same book as "sage".
+    """
+    live = [j for j in _all_jobs() if j.get("phase") in
             ("queued", "parsing", "narrating", "assembling")]
     for n, j in enumerate(live, 1):
-        if j.get("entry_id") == entry_id:
+        if j.get("entry_id") == entry_id and j.get("variant") == want_variant:
             return n
     return None
 
@@ -133,8 +136,77 @@ def _all_jobs() -> List[dict]:
     return out
 
 
-def completed_for(entry_id: str) -> Optional[dict]:
-    """A finished job for this book, if its output still exists."""
+# --- narration variants ----------------------------------------------------
+# A book can be narrated more than once: another voice, or another quality.
+# The output is therefore named after (book, voice, bitrate), so a second
+# version is a new file rather than an overwrite of the first. The plain
+# <Book>.m4b name is kept when nothing else exists yet, because that is the
+# name a person expects to see.
+_VARIANT_SEP = "__"
+
+
+def _safe_tag(value: str, limit: int = 24) -> str:
+    v = "".join(c if c.isalnum() or c in "-_" else "-"
+                for c in (value or "").strip().casefold())
+    v = "-".join(p for p in v.split("-") if p).strip("-")
+    return v[:limit]
+
+
+def variant_key(voice: str = "", voice_ref: str = "", bitrate: str = "",
+                fmt: str = "") -> str:
+    """Stable identity for one narration of a book.
+
+    Includes the format, because the same book in the same voice at the same
+    bitrate is a different artefact as an .m4b and as an .mp3, and neither may
+    be mistaken for the other.
+    """
+    who = _safe_tag("clone" if voice_ref else voice)
+    if not who:
+        return ""
+    return (f"{who}{_VARIANT_SEP}{_safe_tag(bitrate, 6)}"
+            f"{_VARIANT_SEP}{_safe_tag(fmt, 4)}")
+
+
+def output_path(epub_path, voice: str = "", voice_ref: str = "",
+                bitrate: str = "", fmt: str = "m4b") -> Path:
+    """Where this narration is written.
+
+    <Book>.m4b for the first version, then <Book>__<voice>__<rate>.m4b, so a
+    second voice never clobbers the first.
+    """
+    base = Path(epub_path).with_suffix("." + (fmt or "m4b"))
+    existing = sorted(base.parent.glob(base.stem + _VARIANT_SEP + "*.m4b"))
+    if not existing and base.exists():
+        return base
+    key = variant_key(voice, voice_ref, bitrate)
+    if not key:
+        return base
+    return base.with_name(f"{base.stem}{_VARIANT_SEP}{key}.m4b")
+
+
+def find_existing_variant(epub_path, voice: str = "", voice_ref: str = "",
+                         bitrate: str = "") -> Optional[dict]:
+    """A finished job for THIS book AND this voice/quality, if it exists."""
+    key = variant_key(voice, voice_ref, bitrate)
+    for j in _all_jobs():
+        if j.get("phase") != "done":
+            continue
+        if j.get("variant") == key and key:
+            res = j.get("result")
+            if res and Path(res).exists():
+                return j
+        elif not key and j.get("variant") in (None, "") and \
+                j.get("result") and Path(j["result"]).exists():
+            return j
+    return None
+
+def completed_for(entry_id: str, want_variant: str = "") -> Optional[dict]:
+    """A finished job for this book AND this voice/quality, if it exists.
+
+    Keyed on the variant, not just the book: a book narrated in a second voice
+    is a different artefact and must not be mistaken for the first, or the
+    second request would be refused and the voice silently ignored.
+    """
     for j in _all_jobs():
         if j.get("entry_id") != entry_id:
             continue
@@ -142,15 +214,16 @@ def completed_for(entry_id: str) -> Optional[dict]:
             continue
         res = j.get("result")
         if res and Path(res).exists():
-            return j
+            if j.get("variant") == want_variant:
+                return j
     return None
 
 
 def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
             author: str = "", restart: bool = False, voice_ref: str = "",
             for_user: str = "", auto_send: bool = False,
-            notify: bool = False, bitrate: str = "192k",
-            regenerate: bool = False) -> dict:
+            notify: bool = False, bitrate: str = "64k",
+            regenerate: bool = False, fmt: str = "m4b") -> dict:
     """Queue a book, refusing work that is already done or already queued.
 
     Rules the user asked for:
@@ -168,12 +241,14 @@ def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
     # an explicit restart and returned the in-progress job unchanged.
     forced = bool(rewrite or regenerate)
     if not forced:
-        done = completed_for(entry_id)
+        done = completed_for(
+            entry_id, variant_key(voice, voice_ref, bitrate, fmt))
         if done:
             # Already narrated. Return the finished job; regeneration is
             # deliberate (regenerate=True), so nothing is silently redone.
             return done
-        at = queue_position(entry_id)
+        at = queue_position(entry_id,
+                            variant_key(voice, voice_ref, bitrate, fmt))
         if at:
             # Already queued: return the SAME job so nothing is duplicated,
             # but still adopt the options the user just picked. Returning
@@ -234,6 +309,8 @@ def enqueue(entry_id: str, epub: Path, voice: str, title: str = "",
 
     job = existing or new_job(entry_id, epub, voice, title, author)
     job.update({"epub": str(epub), "voice": voice,
+                "variant": variant_key(voice, voice_ref, bitrate, fmt),
+                "format": fmt,
                 "voice_ref": voice_ref or job.get("voice_ref") or "",
                 "for_user": for_user or job.get("for_user") or "",
                 "auto_send": bool(auto_send),
@@ -472,12 +549,14 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
 
         title = job.get("book_title") or job.get("title") or epub.stem
         author = job.get("book_author") or job.get("author") or ""
-        out = epub.with_suffix(".m4b")
+        fmt = job.get("format") or "m4b"
+        out = output_path(epub, voice, job.get("voice_ref") or "",
+                          job.get("bitrate") or "", fmt)
         # mux_with_chapters returns False rather than raising, and leaves the
         # metadata file behind for diagnosis. A failed chapter mux must NOT
         # discard the mp3: it is a usable audiobook, and throwing it away
         # would destroy hours of synthesis.
-        if AB.mux_with_chapters(full, out, bounds, title, author):
+        if AB.mux_with_chapters(full, out, bounds, title, author, fmt=fmt):
             AB.write_ncue(out, bounds, author)
             result, failed = out, False
         else:

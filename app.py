@@ -3161,6 +3161,62 @@ def build_library_entries() -> List[Dict]:
     _LIBRARY_ENTRIES_CACHE = entries
     _LIBRARY_ENTRIES_LAST_SCAN = now
     return entries
+# --- enrichment failure handling -----------------------------------------
+# failed_to_enrich used to be a bare boolean that never expired, which turned
+# one transient refusal into a permanent exclusion. Measured 2026-10-03:
+# 4,216 of 4,869 records (86.6%) carried it, the maintenance loop had been
+# working the same 106 books for six hours, and 560 of the excluded records
+# already had complete metadata. Goodreads throttles this library constantly,
+# so most were refusals mistaken for "no such book".
+#
+# It now records WHY and WHEN, and transient reasons expire.
+ENRICH_RETRY_AFTER_SECONDS = 3 * 24 * 3600      # 3 days
+
+# Worth trying again. Anything unlisted is permanent, so a genuinely
+# unfindable book is not re-queried every cycle -- the reason the flag exists.
+ENRICH_TRANSIENT_REASONS = frozenset({
+    "refused", "search_failed", "timeout",
+    "http_error", "connection_error", "no_scrape", "unknown",
+})
+
+
+def enrich_failure_is_retryable(flag) -> bool:
+    """Should this tombstone be cleared and the book retried?
+
+    Legacy bare True/False carry no reason and no timestamp, so they cannot be
+    judged -- treated as expired and retried. A repeat failure re-stamps them.
+    """
+    if not flag:
+        return False
+    if isinstance(flag, dict):
+        if flag.get("reason") not in ENRICH_TRANSIENT_REASONS:
+            return False                    # a real "no such book"
+        at = float(flag.get("at") or 0)
+        return (time.time() - at) >= ENRICH_RETRY_AFTER_SECONDS
+    return True
+
+
+def record_enrich_failure(meta: dict, reason: str, tries: int = 1) -> None:
+    """Stamp a structured tombstone, preserving the attempt count."""
+    prior = meta.get("failed_to_enrich")
+    n = int(prior.get("tries") or 0) + 1 if isinstance(prior, dict) else tries
+    meta["failed_to_enrich"] = {"reason": reason or "unknown",
+                                "at": time.time(), "tries": n}
+
+
+def has_rich_metadata(meta: dict) -> bool:
+    """Complete enough to stop asking: description, rating, genres, link."""
+    gm = meta.get("goodreads_meta") or {}
+    return bool(
+        (meta.get("description") or gm.get("description"))
+        and gm.get("rating") is not None
+        and gm.get("genres")
+        and (gm.get("goodreads_url") or meta.get("goodreads_link")
+             or meta.get("goodreads_url"))
+    )
+
+
+
 def filter_entries_needing_enrichment(entries: List[Dict], metadata: Dict[str, Dict]) -> List[Dict]:
     """Filter entries needing enrichment - missing description, rating, genres, or goodreads_url.
     
@@ -3172,8 +3228,22 @@ def filter_entries_needing_enrichment(entries: List[Dict], metadata: Dict[str, D
         library_id = entry["id"]
         meta = metadata.get(library_id, {})
         
-        # Skip entries that previously failed enrichment (don't loop infinitely)
-        if meta.get("failed_to_enrich"):
+        # Skip ONLY when a LIVE tombstone blocks this record.
+        #
+        # The sense matters and was wrong the first time:
+        #     if not enrich_failure_is_retryable(meta.get("failed_to_enrich")):
+        #         continue
+        # retryable(None) is False, so a record with NO failure was skipped --
+        # and once the 4,216 tombstones were cleared the loop reported
+        # "0 of 4837 need enrichment", i.e. nothing could ever be enriched.
+        # Retryability is a question about a FAILURE, so it is only consulted
+        # when a tombstone exists:
+        _flag = meta.get("failed_to_enrich")
+        if _flag and not enrich_failure_is_retryable(_flag):
+            continue
+        if has_rich_metadata(meta):
+            if _flag:
+                meta.pop("failed_to_enrich", None)
             continue
         
         goodreads_meta = meta.get("goodreads_meta", {}) or {}
@@ -3940,6 +4010,68 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
     return meta
 
 
+def _enrich_from_openlibrary(entry: Dict[str, Any],
+                             meta: Dict[str, Any]) -> List[str]:
+    """Fill rating and genres from OpenLibrary, only where empty.
+
+    Goodreads is unreachable from this host (AWS WAF "goku" JS challenge, a
+    0-byte 202 even for the homepage), so OpenLibrary is the only source still
+    serving. It returns real ratings and subjects -- it simply was never asked
+    for them, which is why a 3,922-book backlog stayed empty. Verified live:
+
+        Dune        rating=4.3   genres: Dune (Imaginary place), Fiction,
+                                    Science fiction, Science-fiction
+        Fingersmith rating=4.12  genres: Fiction, Social conditions, Pickpockets
+        Neuromancer rating=4.06  genres: Information superhighway, Conspiracies
+
+    Fills rating, rating_count, genres. NOT description: OpenLibrary's
+    search.json has no synopsis, and first_sentence is a quotation rather than
+    a synopsis, so presenting one as a description would be wrong.
+
+    Never overwrites an existing value. Records provenance so a later Goodreads
+    result is distinguishable from this fallback. Identity is gated by
+    gb_openlib._pick_best, which still requires title and author to agree --
+    a wrong-book match stays worse than no match.
+    """
+    title = (entry.get("title") or "").strip()
+    author = (entry.get("author") or "").strip()
+    if not title:
+        return []
+    try:
+        import gb_openlib as OL
+        got = OL.fetch_by_search(title, author)
+    except Exception as exc:
+        logger.debug("openlibrary enrichment failed for %s: %s", title, exc)
+        return []
+    if not got:
+        return []
+
+    filled = []
+    if meta.get("rating") is None and got.get("rating") is not None:
+        meta["rating"] = got["rating"]
+        if got.get("rating_count"):
+            meta["rating_count"] = got["rating_count"]
+        filled.append("rating")
+
+    existing = meta.get("genres") or []
+    fresh = [g for g in (got.get("genres") or []) if g and g not in existing]
+    if fresh and not existing:
+        meta["genres"] = fresh[:8]
+        filled.append("genres")
+
+    if filled:
+        sources = meta.get("enrichment_sources") or []
+        if isinstance(sources, list):
+            sources = [s for s in sources
+                       if s not in ("amazon", "amazon_or_zlib")]
+            if "openlibrary" not in sources:
+                sources.append("openlibrary")
+            meta["enrichment_sources"] = sources
+        logger.debug("openlibrary filled %s for %s", ",".join(filled), title)
+    return filled
+
+
+
 def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, Any]:
     """
     Comprehensive metadata enrichment from all available sources.
@@ -3968,8 +4100,32 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
     meta.setdefault("filetype", entry.get("filetype", ""))
     meta.setdefault("cover", entry.get("cover", "") or meta.get("cover", ""))
     
-    # Start with Goodreads enrichment (primary source)
-    meta = enrich_library_metadata_from_goodreads(entry)
+    # Start with Goodreads enrichment (primary source).
+    #
+    # MERGE, do not rebind. This used to be:
+    #
+    #     meta = enrich_library_metadata_from_goodreads(entry)
+    #
+    # which threw away the record loaded four lines above -- its cover,
+    # rating, genres and enrichment_sources -- making the seven setdefault
+    # calls above it dead code. Measured: books that already had a cover lost
+    # it whenever Goodreads returned nothing (the "RICH ONLY (no cover)"
+    # bucket in the coverage audit), and the OpenLibrary fallback tagged 0 of
+    # 61 records because the provenance list it appends to had gone.
+    #
+    # Goodreads still wins on conflict; an EMPTY value must not overwrite a
+    # real one, or a throttled fetch erases good data.
+    _gr = enrich_library_metadata_from_goodreads(entry) or {}
+    for _k, _v in _gr.items():
+        if _v in (None, "", [], {}):
+            continue
+        meta[_k] = _v
+
+    # Goodreads is behind an AWS WAF JavaScript challenge from this host (a
+    # 0-byte 202 even for the homepage), so try OpenLibrary immediately
+    # rather than waiting for it to fail down the chain. It fills rating and
+    # genres -- it has no synopsis -- and never overwrites a supplied value.
+    _enrich_from_openlibrary(entry, meta)
     
     # Check if we need additional metadata from other sources
     # Determine if we have sufficient metadata
@@ -4086,8 +4242,12 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
     }
     meta["goodreads_meta"] = goodreads_meta
     
-    # Add enrichment source tracking
-    enrichment_sources = []
+    # Add enrichment source tracking.
+    #
+    # This used to start from an empty list, discarding any tag set earlier in
+    # the same call -- including "openlibrary". Provenance must accumulate:
+    # it is what distinguishes a scraped value from a fallback one.
+    enrichment_sources = list(meta.get("enrichment_sources") or [])
     if meta.get("goodreads_link"):
         enrichment_sources.append("goodreads")
     if has_good_cover and meta.get("cover") and "amazon" in str(meta.get("cover", "")):
@@ -4095,7 +4255,12 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
     elif has_good_cover and meta.get("cover") and ("data/covers" in str(meta.get("cover", ""))):
         # Check if it's likely from Amazon or ZLib by seeing if it's a local file
         enrichment_sources.append("amazon_or_zlib")
-    meta["enrichment_sources"] = enrichment_sources
+    seen_src, ordered_src = set(), []
+    for _s in enrichment_sources:
+        if _s and _s not in seen_src:
+            seen_src.add(_s)
+            ordered_src.append(_s)
+    meta["enrichment_sources"] = ordered_src
     
     # Persist updates
     metadata[library_id] = meta
@@ -7709,7 +7874,22 @@ def refresh_library_metadata_background() -> None:
              try:
                  with metadata_progress_lock:
                      metadata_progress_state["current_step"] = "Fetching from Goodreads..."
-                 meta = enrich_library_metadata_from_goodreads(entry)
+                 # MERGE, not rebind -- the same defect this file had on the
+                 # maintenance path. Rebinding discarded the record already loaded
+                 # whenever Goodreads returned nothing, which with the AWS WAF
+                 # challenge in force is every time: the manual 'Refresh metadata'
+                 # button erased the book the user was looking at and reported
+                 # success. This line also sat at 17 spaces, one off its block --
+                 # harmless to Python, but it defeats indentation-based patching.
+                 _gr = enrich_library_metadata_from_goodreads(entry) or {}
+                 meta = dict(meta or {})
+                 for _k, _v in _gr.items():
+                     if _v in (None, "", [], {}):
+                         continue
+                     meta[_k] = _v
+                 # ...and the manual path gets the same OpenLibrary fallback the
+                 # background loop has, so Refresh is not strictly weaker.
+                 _enrich_from_openlibrary(entry, meta)
                  
                  # Track what was actually fetched
                  fetched_fields = []
@@ -9284,7 +9464,10 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
         )
         
         if not needs_enrichment:
-            # Already has complete metadata
+            # Already complete. Clear any stale tombstone, or the record stays
+            # excluded from a pass it no longer needs (560 were).
+            if meta.get("failed_to_enrich"):
+                meta.pop("failed_to_enrich", None)
             return (entry_idx, meta)
         
         # Fetch enrichment from all available sources
@@ -9294,8 +9477,10 @@ def _enrich_entry_worker(entry_idx: int, entry: Dict[str, Any], library_metadata
             # Clear failed flag if enrichment succeeded
             meta.pop("failed_to_enrich", None)
         else:
-            # Mark as failed to prevent infinite loops on unfindable books
-            meta["failed_to_enrich"] = True
+            # Structured tombstone: WHY and WHEN, so a transient refusal is
+            # distinguishable from a book with no record, and it can expire.
+            record_enrich_failure(meta, getattr(entry, "_enrich_reason", None)
+                                  or "unknown")
             logger.debug("Marking entry %s as failed_to_enrich (could not find on any source)", entry_id)
         
         return (entry_idx, meta)

@@ -210,7 +210,14 @@ def fetch_by_search(title: str, author: str = "", limit: int = 5) -> Optional[di
     try:
         r = requests.get(OL_SEARCH, timeout=30, headers=UA, params={
             "q": q[:180], "limit": limit,
-            "fields": "title,author_name,cover_i,isbn,first_publish_year",
+            # Ask for the fields that actually carry metadata. The previous
+            # list was identifiers only, so every hit came back as a bare
+            # title and a cover even though OpenLibrary returns ratings and
+            # subjects for the same query:
+            #   ratings_average: 4.3049326   ratings_count: 446
+            #   subject: ['Fiction', 'Fiction, science fiction, general', ...]
+            "fields": ("title,author_name,cover_i,isbn,first_publish_year,"
+                       "ratings_average,ratings_count,subject"),
         })
     except Exception as exc:
         logger.debug("openlibrary search failed: %s", exc)
@@ -228,13 +235,52 @@ def fetch_by_search(title: str, author: str = "", limit: int = 5) -> Optional[di
     if not best:
         return None
     ci = best.get("cover_i")
-    return {
+
+    # Map OpenLibrary's vocabulary onto this project's. Subjects are the only
+    # genre-like signal search.json offers; first_sentence is a QUOTATION, not
+    # a synopsis, so it is deliberately not used as a description.
+    genres = []
+    for s in (best.get("subject") or []):
+        s = str(s).strip()
+        if not s or len(s) > 60:
+            continue
+        # drop headings that are really index/plural artefacts
+        low = s.lower()
+        if low in ("fiction", "accessible book") and len(genres) < 3:
+            genres.append(s)
+        elif "," in s or low.startswith(("new york times", "protected daisy")):
+            continue
+        else:
+            genres.append(s)
+        if len(genres) >= 8:
+            break
+
+    avg = best.get("ratings_average")
+    try:
+        rating = round(float(avg), 2) if avg is not None else None
+    except (TypeError, ValueError):
+        rating = None
+    try:
+        rating_count = int(best.get("ratings_count") or 0) or None
+    except (TypeError, ValueError):
+        rating_count = None
+
+    out = {
         "title": best.get("title") or "",
         "authors": best.get("author_name") or [],
         "cover": OL_COVER.format(cid=ci) if ci else "",
         "isbn": (best.get("isbn") or [None])[0],
         "year": best.get("first_publish_year") or "",
+        # provenance, so a later Goodreads scrape can be told from this
+        "source": "openlibrary",
     }
+    if rating is not None:
+        out["rating"] = rating
+    if rating_count:
+        out["rating_count"] = rating_count
+    if genres:
+        out["genres"] = genres
+    return out
 
 
 def fetch_cover_bytes(url: str, dest_dir: Path, key: str) -> Optional[Path]:

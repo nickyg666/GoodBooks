@@ -36,6 +36,57 @@ AMAZON_COVER_SOURCES = frozenset([
 ])
 
 
+
+# A complete browser NAVIGATION header set.
+#
+# Measured 2026-10-03 against Goodreads from DAS, same URL, varying only
+# these headers:
+#
+#     User-Agent only                       202   0 bytes
+#     UA only, Chrome/120 (what we sent)    202   0 bytes
+#     UA only, Chrome/131                   202   0 bytes
+#     curl/8.5.0                             202   0 bytes
+#     UA + Accept + Accept-Language + gzip  202   2,427 bytes  <- real body
+#
+# Goodreads serves a JavaScript challenge, and the challenge returns a 202
+# with an EMPTY body unless the request looks like a browser navigation.
+# Sending User-Agent alone is what produced the endless:
+#
+#     Error searching Goodreads for edition: Document is empty
+#
+# and it is why the enrichment circuit breaker kept opening -- every request
+# looked like a challenge response, so the app kept backing off, so the
+# backlog looked "in progress" while nothing was ever fetched.
+BROWSER_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,"
+               "image/avif,image/webp,image/apng,*/*;q=0.8"),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate",
+    "Cache-Control": "max-age=0",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "DNT": "1",
+}
+
+
+def new_session():
+    """A requests session that looks like a browser navigation.
+
+    Every Goodreads fetch goes through here so the header set cannot drift
+    between call sites again -- the defect was that two of them set only
+    User-Agent while a third inherited a different set entirely.
+    """
+    import requests
+    s = requests.Session()
+    s.headers.update(BROWSER_HEADERS)
+    return s
+
+
 def is_kindle_asin(value):
     """Check if a string is a valid Kindle ASIN (10 chars, starts with B)."""
     return value and len(value) == 10 and value.startswith('B')
@@ -197,7 +248,7 @@ def search_edition_goodreads(query, timeout=10):
     """
     try:
         br = requests.Session()
-        br.headers.update({'User-Agent': USER_AGENT})
+        br = new_session()
         
         if goodreads_is_throttled():
             logger.debug('Goodreads circuit open -- skipping search for %s',
@@ -272,7 +323,7 @@ def search_asins_goodreads(edition_url_or_id, timeout=10):
         edition_url = urljoin(GOODREADS_URL, edition_url)
         
         br = requests.Session()
-        br.headers.update({'User-Agent': USER_AGENT})
+        br = new_session()
         
         # Parse the details page and get the link to list all editions
         logger.info('Fetching book details: %s', edition_url)

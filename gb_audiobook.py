@@ -70,8 +70,24 @@ def audio_bytes_per_second(bitrate: str) -> float:
     return info["kbps"] * 1000 / 8
 
 
-# measured synthesis rate on this host (4 CPU, no GPU)
+# SYNTHESIS throughput: how fast this host MAKES audio. Used for ETA.
 WORDS_PER_SECOND = 3.3
+
+# PLAYBACK rate: how fast the finished audiobook PLAYS. Used for the "about
+# N hours of audio" figure the dialog shows.
+#
+# These are different numbers and conflating them made the estimate wrong by
+# ~25x. Measured on DAS from audio this service actually produced:
+#
+#     20 chunks, 286.704 s of finished audio
+#     the job's chapters contain 24,159 words
+#     -> 24,159 / 286.704 = 84.26 words per second of playback
+#
+# WORDS_PER_SECOND = 3.3 was being used for that display, so a 201,709-word
+# book was announced as "About 17.0 h of audio" when it is roughly 40
+# minutes. Narration at ~150 wpm is ~2.5 words/sec, so 84 w/s is right for a
+# synthesiser reading continuous prose.
+WORDS_PER_SECOND_PLAYBACK = 84.0
 # measured overhead per request to the studio, added per chunk
 SECONDS_PER_CHUNK_OVERHEAD = 2.0
 

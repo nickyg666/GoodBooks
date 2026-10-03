@@ -5056,6 +5056,7 @@ def index():
     # the grid paginates over; entries_in_scope is the pre-filter total, which
     # made the banner say "4,837" while the page showed one search result.
     library_headline_count = total_items
+    import gb_extract      # supported audiobook source formats
     return render_template(
         "library.html",
         settings=settings,
@@ -5070,6 +5071,11 @@ def index():
         per_page=per_page,
         prefix=prefix,
         genre_options=genre_options,
+        # What the converter can actually read, so the Convert control
+        # renders for mobi/azw3/azw/pdf too and not only for epub.
+        # Measured: the old `filetype == 'epub'` gate removed the button
+        # from 12 of 50 cards.
+        audiobook_supported_formats=set(gb_extract.SUPPORTED_FORMATS),
         author_options=author_options,
         genre_filter=genre_filter,
         author_filter=author_filter,
@@ -10052,14 +10058,18 @@ def audiobook_estimate():
         if not entry:
             return jsonify({"ok": False, "error": "book not found"}), 404
         try:
-            import gb_reading
             path = _ab_resolve_path(entry)
-            book = AB.read_epub(Path(path))
+            # EX.read_book(), not AB.read_epub(): the estimate has to work
+            # for every format the library holds. read_epub only opens a
+            # zip, so every mobi/azw3/azw/pdf returned 422 "could not read
+            # this book" -- 34.6% of the library had no size estimate at all,
+            # even though the converter handles all of them.
+            import gb_extract as EX
+            book = EX.read_book(path)
             words = book.words
         except Exception as exc:
-            logger.debug("estimate: could not read the epub: %s", exc)
-            return jsonify({"ok": False,
-                            "error": "could not read this book"}), 422
+            logger.debug("estimate: could not read the book: %s", exc)
+            return jsonify({"ok": False, "error": str(exc)[:200]}), 422
     try:
         n = int(words) if words else 0
     except (TypeError, ValueError):
@@ -10068,7 +10078,30 @@ def audiobook_estimate():
     if bitrate not in AB.AUDIO_QUALITY:
         bitrate = AB.AUDIO_DEFAULT
     est = AB.estimate_voice_duration(n, bitrate=bitrate)
-    return jsonify({"ok": True, "words": n, "bitrate": bitrate, **est})
+
+    # est["hours"] is SYNTHESIS time (how long this host takes to make the
+    # audio, at WORDS_PER_SECOND). The dialog labelled it "of audio", which
+    # users read as listening time -- so a 201,709-word book was announced as
+    # "About 17.0 h of audio" when it is roughly 40 minutes. Measured from
+    # real output: 24,159 words in 286.704 s of finished audio = 84.26 w/s of
+    # playback.
+    #
+    # So return BOTH, explicitly named, and keep `hours` as synthesis time
+    # for anything already treating it as an ETA.
+    play_seconds = (n / AB.WORDS_PER_SECOND_PLAYBACK) if AB.WORDS_PER_SECOND_PLAYBACK else 0.0
+    return jsonify({
+        "ok": True,
+        "words": n,
+        "bitrate": bitrate,
+        **est,
+        # listening length -- what "of audio" means to a reader
+        "play_seconds": round(play_seconds, 1),
+        "play_hours": round(play_seconds / 3600.0, 2),
+        # synthesis time -- what "ETA" means
+        "synth_hours": est.get("hours"),
+        "words_per_second": AB.WORDS_PER_SECOND,
+        "words_per_second_playback": AB.WORDS_PER_SECOND_PLAYBACK,
+    })
 
 
 # ------------------------------------------------------------- log rotation

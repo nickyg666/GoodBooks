@@ -770,7 +770,8 @@
                             {% endif %}
                         </div>
                     </div>
-                </a>                        {% if (entry.filetype or '?')|lower == 'epub' %}
+                </a>                        {% set _ab_fmt = (entry.filetype or '')|lower %}
+                        {% if _ab_fmt in audiobook_supported_formats %}
                         <button type="button"
                                 class="library-status-chip chip chip-compact ab-start-btn"
                                 data-action="library-audiobook"
@@ -1978,9 +1979,19 @@ fetch('/library/refresh-metadata', { method: 'POST' })
           estEl.textContent = 'Could not work out the size for this book.';
           return;
         }
-        estEl.textContent = 'About ' + fmtHours(d.hours) + ' of audio, ' +
+        // d.play_hours is how long it PLAYS; d.synth_hours is how long this
+        // host takes to make it. Showing the synthesis figure under the
+        // words "of audio" overstated a 201,709-word book as 17 hours
+        // instead of ~40 minutes.
+        var playH = (d.play_hours !== undefined) ? d.play_hours : d.hours;
+        var synthH = d.synth_hours;
+        estEl.textContent = 'About ' + fmtHours(playH) + ' of audio, ' +
                              d.megabytes.toFixed(0) + ' MB. ' +
                              (d.words || 0).toLocaleString() + ' words.';
+        if (synthH && synthH > 0 && synthH > playH * 1.5) {
+          estEl.textContent += ' Takes about ' + fmtHours(synthH) +
+                               ' to render here.';
+        }
       })
       .catch(function () {
         if (estEl) { estEl.textContent = 'Could not work out the size.'; }
@@ -2008,8 +2019,16 @@ fetch('/library/refresh-metadata', { method: 'POST' })
         }
         if (note && opts.note) { note.textContent = opts.note; }
         if (voiceEl) {
-          voiceEl.innerHTML = (opts.voices || []).map(function (v) {
-            return '<option value="' + v + '">' + v + '</option>';
+          // opts.voices are OBJECTS from /audiobook/options
+          // ({name, size, added}). Concatenating one yields
+          // "[object Object]" as both the label AND the submitted value, so
+          // the narrator could not be chosen at all.
+          voiceEl.innerHTML = (opts.voices || []).map(function (o) {
+            var name = (o && o.name) ? o.name : String(o);
+            var mb = (o && o.size)
+              ? ' \u2014 ' + (o.size / 1048576).toFixed(1) + ' MB'
+              : '';
+            return '<option value="' + name + '">' + name + mb + '</option>';
           }).join('') || '<option value="">(no studio voices)</option>';
         }
         applyUserDefaults();
@@ -2039,9 +2058,16 @@ fetch('/library/refresh-metadata', { method: 'POST' })
             : 'No cloned voices found on the voice studio.';
           return;
         }
-        voiceEl.innerHTML = v.map(function (n) {
-          return '<option value="' + n + '">' + n + '</option>';
-        }).join('');
+                  // v is a list of OBJECTS from /audiobook/options
+          // ({name, size, added}), not strings. The previous mapping was
+          // left over from when this fetched /audiobook/voices, which does
+          // return strings -- so every option rendered as
+          // "[object Object]" and every one submitted an unusable value.
+          voiceEl.innerHTML = v.map(function (o) {
+            var name = (o && o.name) ? o.name : String(o);
+            var mb = (o && o.size) ? ' \u2014 ' + (o.size / 1048576).toFixed(1) + ' MB' : '';
+            return '<option value="' + name + '">' + name + mb + '</option>';
+          }).join('');
       })
       .catch(function (e) {
         voiceEl.innerHTML = '<option value="nick">nick (default)</option>';

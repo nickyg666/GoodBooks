@@ -37,6 +37,11 @@ from flask import (
     jsonify,
 )
 
+# HTTPException is raised by _ab_entry for an unknown book. Without this
+# import that raise was a NameError, so the audiobook dialog 500'd for
+# EVERY book instead of returning the intended 404 (2026-10-03).
+from werkzeug.exceptions import HTTPException, NotFound
+
 from logging_config import configure_logging
 from parser_engine import FeedParser, ParsedItem
 from search_engine import (
@@ -9719,10 +9724,72 @@ except Exception:
 # through Caddy at /voice-studio/, which is the endpoint gb_audiobook uses.
 
 
+def user_obj_name_for(entry_id: str) -> str:
+    """Which configured user owns this book, or "" when unknown.
+
+    audiobook_start used this as a FALLBACK -- the form's "user" field wins,
+    and this only matters when the form omits it. It did not exist at all:
+
+        NameError: name 'user_obj_name_for' is not defined
+        File "app.py", line 10233, in audiobook_start
+
+    so audiobook creation 500'd before it could queue anything.
+
+    The library is laid out in per-user top-level directories, e.g.
+
+        /mnt/8tbdas/GoodBooks/sagey/The House on the Strand-...mobi
+        /mnt/8tbdas/GoodBooks/Lorenzo/Best Books/...epub
+
+    so the first path segment under the library root names the owner.
+
+    Two wrinkles this handles, both from real entry ids:
+
+      * metadata keys carry a legacy separator, e.g.
+        "/mnt/8tbdas/GoodBooks::Listopia/LorenzoGrade2/..." -- so the path is
+        normalised before the first segment is read.
+      * the segment must match a CONFIGURED user. Anything else (a "settings
+        backup" dir, a stray folder) returns "" rather than guessing, because
+        auto-sending to the wrong Kindle address is worse than not
+        auto-sending at all.
+    """
+    if not entry_id:
+        return ""
+    try:
+        roots = get_library_roots()
+    except Exception:
+        roots = []
+
+    norm = str(entry_id).replace("::", "/")
+    try:
+        known = set()
+        for u in (getattr(settings_manager.settings, "users", None) or []):
+            nm = str(getattr(u, "name", "") or "").strip()
+            if nm:
+                known.add(nm)
+    except Exception:
+        known = set()
+
+    for root in roots:
+        r = str(root).rstrip("/")
+        if norm.startswith(r + "/"):
+            rest = norm[len(r) + 1:]
+            first = rest.split("/", 1)[0].strip()
+            if first and (not known or first in known):
+                return first
+            return first or ""
+    return ""
+
+
 def _ab_entry(entry_id: str):
     entry = get_library_entry(entry_id)
     if not entry:
-        raise HTTPException(404, "book not found in library")
+        # NotFound(description=...), NOT HTTPException(404, "...").
+        # The two-argument form passes the message as `response`, and
+        # HTTPException.__call__ then expects a WSGI callable there:
+        #   TypeError: 'str' object is not callable
+        #   werkzeug/exceptions.py, line 162, in __call__
+        # Flask turns a raised NotFound into a proper 404 response.
+        raise NotFound(description="book not found in library")
     return entry
 
 
@@ -10171,9 +10238,36 @@ def audiobook_start():
     if not src_path:
         return jsonify({"ok": False,
                         "error": "the file for this book is missing on disk"}), 400
-    if os.path.splitext(src_path)[1].lower() != ".epub":
-        return jsonify({"ok": False,
-                        "error": "only EPUB books can be converted"}), 400
+    # Format check via the extractor, NOT a suffix comparison. The route used
+    # to hard-refuse anything that was not .epub, which meant the
+    # multi-format support (mobi/azw3/azw/pdf -- verified on 30 real books)
+    # was unreachable from the UI: a MOBI POST returned
+    #   {"ok": false, "error": "only EPUB books can be converted"}
+    #
+    # detect_format also sniffs CONTENT, so it can report "drm" for an
+    # encrypted file. That deserves its own message: the text cannot be read
+    # by any tool, which is different from "we do not support this format".
+    try:
+        import gb_extract
+        fmt = gb_extract.detect_format(src_path)
+    except Exception as exc:
+        logger.warning("could not detect audiobook source format: %s", exc)
+        fmt = os.path.splitext(src_path)[1].lower().lstrip(".")
+
+    if fmt == "drm":
+        return jsonify({
+            "ok": False,
+            "error": ("This book is DRM-encrypted, so the text cannot be "
+                      "read. Try a DRM-free edition."),
+            "drm": True,
+        }), 400
+    if fmt not in gb_extract.SUPPORTED_FORMATS:
+        return jsonify({
+            "ok": False,
+            "error": (f"Cannot convert '{fmt or 'unknown'}'. "
+                      f"Supported: {', '.join(gb_extract.SUPPORTED_FORMATS)}"),
+            "format": fmt,
+        }), 400
     try:
         import gb_abjob
     except Exception as exc:

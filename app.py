@@ -9560,6 +9560,20 @@ def _poll_feeds_in_maintenance() -> None:
 
 
 
+# --- per-cycle enrichment budget -----------------------------------------
+# Narration and enrichment share ONE maintenance thread. Narration runs first
+# and has always had a budget (NARRATION_BUDGET_SECONDS); enrichment had none
+# and joined a ThreadPoolExecutor over every queued entry, so a 3,922-book
+# backlog held the thread indefinitely.
+#
+# Measured over a 12-minute window with 3,922 queued:
+#     audiobook chunks logged : 0
+#     enrichment actions      : 231
+# and a job stalled at 348/603. Calling run_job() directly produced 3 chunks
+# in 56 s, so the converter was healthy and purely starved.
+ENRICHMENT_BUDGET_SECONDS = 240     # of the 900 s window
+ENRICHMENT_MAX_ENTRIES = 400        # per cycle, not per backlog
+
 def _run_maintenance_cycle() -> None:
     # Rotate from the maintenance loop, not just at startup.
     # Rotation previously ran exactly once at import, so a
@@ -9619,6 +9633,23 @@ def _run_maintenance_cycle() -> None:
         len(entries_needing_enrichment),
         len(entries)
     )
+
+    # Respect settings overrides, and cap the per-cycle work so this
+    # thread always returns to let narration run in the next window.
+    # Without this, a large backlog joined a ThreadPoolExecutor over
+    # every entry and held the single maintenance thread for minutes:
+    # measured 0 audiobook chunks against 231 enrichment actions in a
+    # 12-minute window.
+    try:
+        _budget = float(getattr(settings, "enrichment_budget_seconds",
+                                 ENRICHMENT_BUDGET_SECONDS)
+                         or ENRICHMENT_BUDGET_SECONDS)
+        _max_entries = int(getattr(settings, "enrichment_max_entries",
+                                   ENRICHMENT_MAX_ENTRIES)
+                           or ENRICHMENT_MAX_ENTRIES)
+    except Exception:
+        _budget, _max_entries = (ENRICHMENT_BUDGET_SECONDS,
+                                 ENRICHMENT_MAX_ENTRIES)
     
     # Initialize progress tracking for background maintenance with filtered count
     with metadata_progress_lock:
@@ -9647,14 +9678,34 @@ def _run_maintenance_cycle() -> None:
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all jobs to thread pool
+        # Submit only a bounded slice. Submitting all of them built a
+        # future list the `with` block then JOINED, which is what held the
+        # maintenance thread for minutes at a time.
+        _slice = list(entries_needing_enrichment[:max(1, _max_entries)])
+        if len(_slice) < len(entries_needing_enrichment):
+            logger.info("Enrichment: processing %d of %d this cycle "
+                        "(budget %ds, cap %d)", len(_slice),
+                        len(entries_needing_enrichment), int(_budget),
+                        _max_entries)
         futures = {
-            executor.submit(_enrich_entry_worker, idx, entry, library_metadata): idx 
-            for idx, entry in enumerate(entries_needing_enrichment)
+            executor.submit(_enrich_entry_worker, idx, entry, library_metadata): idx
+            for idx, entry in enumerate(_slice)
         }
         
         # Process results as they complete (not in submission order)
         from concurrent.futures import as_completed
+        _deadline = time.time() + max(30.0, _budget)
         for future in as_completed(futures):
+            if time.time() >= _deadline:
+                # Out of budget. Stop WAITING so the cycle can return and
+                # narration runs next window; nothing is lost, because the
+                # enrichment state lives in the metadata file and unfinished
+                # entries are simply picked up next cycle.
+                for _f in futures:
+                    _f.cancel()
+                logger.info("Enrichment: budget of %ds spent after %d books",
+                            int(_budget), len(enrichment_results))
+                break
             idx = futures[future]
             try:
                 result_idx, enriched_meta = future.result(timeout=120)

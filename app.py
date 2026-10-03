@@ -4860,7 +4860,11 @@ def index():
 
     # Filter out adult/explicit genres
     genre_set = {g for g in genre_set if is_genre_allowed(g)}
-    genre_options = sorted(genre_set, key=lambda s: s.casefold())
+    # Bounded for the CONTROL; filtering is untouched (see
+    # genres_for_dropdown). Measured: the full set is 2,085 genres producing
+    # 125.1 KB of <option> tags per page load, and the tail is single-book
+    # catalogue noise.
+    genre_options = genres_for_dropdown(genre_set)
 
     # Author options come from gb_authors, which parses the catalogue blobs
     # into real people and merges every representation of the same person
@@ -5798,6 +5802,44 @@ def _author_options_payload() -> list:
     logger.debug("author options cache: %d entries (gen %.0f)",
                  len(payload), gen)
     return payload
+
+
+
+# --- genre dropdown: bound the control, do NOT bound the filter ------------
+#
+# Measured 2026-10-02: the library has 2,085 DISTINCT genres across 4,837
+# books, and the genre <select> rendered one <option> for each -- 2,100 option
+# tags and 125.1 KB of the 504 KB page, on every load. The tail is catalogue
+# noise: Fiction 585, Mystery 294, Thriller 259, ... and roughly 1,900
+# single-book strings.
+#
+# So this bounds the CONTROL only:
+#   * genres used by at least LIBRARY_GENRE_MIN_BOOKS books are listed
+#   * never more than LIBRARY_GENRE_MAX_OPTIONS are listed
+# Filtering itself is untouched -- any genre string still matches exactly as
+# before, including ones that are no longer listed. Otherwise a bookmarked
+# ?genre=... URL would silently return a different library than the user
+# expects, which is far worse than a long dropdown.
+LIBRARY_GENRE_MIN_BOOKS = 3
+LIBRARY_GENRE_MAX_OPTIONS = 60
+
+
+def genres_for_dropdown(genres) -> List[str]:
+    """The genres worth OFFERING, most-used first.
+
+    Returns a short list. It is a UI affordance, not a filter: the filter
+    accepts every genre regardless of what this returns.
+    """
+    if not genres:
+        return []
+    counts: Dict[str, int] = {}
+    for g in genres:
+        name = str(g or "").strip()
+        if name:
+            counts[name] = counts.get(name, 0) + 1
+    ranked = [(n, c) for n, c in counts.items() if c >= LIBRARY_GENRE_MIN_BOOKS]
+    ranked.sort(key=lambda t: (-t[1], t[0].casefold()))
+    return [n for n, _ in ranked[:LIBRARY_GENRE_MAX_OPTIONS]]
 
 
 

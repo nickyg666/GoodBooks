@@ -692,6 +692,42 @@ def write_ncue(m4b: Path, chapters: Sequence[tuple], performer: str) -> Path:
     n.write_text("\n".join(out) + "\n", encoding="utf-8")
     return n
 
+def list_voices() -> List[str]:
+    """Registered voice names from the studio.
+
+    This logic used to be inline in an app.py route. It is a module function
+    now so the audiobook PLUGIN can render the picker without importing the
+    host -- importing app.py boots a second service instance with its own
+    metadata cache, which has destroyed live library data three times.
+    """
+    import urllib.request
+    try:
+        ctx = None
+        if TTS_ENDPOINT.startswith("https://192.168.") or \
+                TTS_ENDPOINT.startswith("https://localhost"):
+            import ssl
+            ctx = ssl._create_unverified_context()
+        req = urllib.request.Request(
+            TTS_ENDPOINT.rstrip("/") + "/api/voices")
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT,
+                                    context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        names = [v["name"] if isinstance(v, dict) else str(v)
+                 for v in (data.get("voices") or [])]
+        return sorted(n for n in names if n)
+    except Exception:
+        return []
+
+
+def _bitrate_kbps(info: Dict) -> int:
+    """kbps for a quality entry, so the UI does not recompute it."""
+    try:
+        return int(info.get("kbps") or 0)
+    except Exception:
+        return 0
+
+
+
 def estimate_voice_duration(words: int, chunks: Optional[int] = None,
                             bitrate: str = AUDIO_DEFAULT
                             ) -> Dict[str, float]:

@@ -9601,6 +9601,15 @@ def _run_maintenance_cycle() -> None:
 
     logger.info("Background maintenance: cycle start")
 
+    # Plugins first, and by hook rather than by a hardcoded call. Narration
+    # is visible progress and has its own budget inside the plugin; a plugin
+    # that raises is isolated by the manager and cannot stop the cycle.
+    if PLUGINS is not None:
+        try:
+            PLUGINS.run_maintenance()
+        except Exception:
+            logger.exception("plugin maintenance hooks failed")
+
     # Advance any audiobook conversion FIRST, and independently of feeds.
     # It used to live inside _poll_feeds_in_maintenance(), which returns
     # early when no feeds are configured -- so a queued job sat at
@@ -10238,106 +10247,9 @@ def _ab_quality_choices():
 # ~25 words taken from the book's own prose (not the front matter) and
 # synthesised through the real pipeline, so it is a true sample of the voice.
 
-@app.route("/audiobook/preview", methods=["POST"])
-def audiobook_preview_post():
-    import gb_audiobook as AB
-    entry_id = (request.form.get("entry_id") or "").strip()
-    voice = (request.form.get("voice") or "").strip()
-    voice_ref = (request.form.get("voice_ref") or "").strip()
-    if not entry_id:
-        return jsonify({"ok": False, "error": "entry_id is required"}), 400
-    entry = get_library_entry(entry_id)
-    if not entry:
-        return jsonify({"ok": False, "error": "book not found"}), 404
-    path = _ab_resolve_path(entry)
-    if not path:
-        return jsonify({"ok": False,
-                        "error": "the file for this book is missing"}), 400
-    try:
-        wav = AB.make_preview(entry_id, Path(path), voice,
-                              voice_ref=voice_ref)
-    except Exception as exc:
-        logger.warning("preview failed for %s: %s", entry_id, exc)
-        return jsonify({"ok": False, "error": str(exc)[:160]}), 422
-    return jsonify({"ok": True, "entry_id": entry_id,
-                    "url": url_for("audiobook_preview_get", entry_id=entry_id,
-                                    voice=voice or "clone",
-                                    voice_ref=voice_ref),
-                    "bytes": wav.stat().st_size})
 
 
-@app.route("/audiobook/preview")
-def audiobook_preview_get():
-    """Serve a cached preview. Cheap, so the dialog can reload it freely."""
-    import gb_audiobook as AB
-    entry_id = (request.args.get("entry_id") or "").strip()
-    voice = (request.args.get("voice") or "").strip()
-    voice_ref = (request.args.get("voice_ref") or "").strip()
-    if not entry_id:
-        return "", 404
-    p = AB.preview_path(entry_id, voice, voice_ref)
-    if not p.exists():
-        return "", 404
-    return send_file(str(p), mimetype="audio/wav", conditional=True)
 
-@app.route("/audiobook/estimate")
-def audiobook_estimate():
-    """Estimated narration time and final size for a book.
-
-    GET /audiobook/estimate?entry_id=...   (or ?words=...)
-    """
-    import gb_audiobook as AB
-    entry_id = (request.args.get("entry_id") or "").strip()
-    words = request.args.get("words")
-    if not words and entry_id:
-        entry = get_library_entry(entry_id)
-        if not entry:
-            return jsonify({"ok": False, "error": "book not found"}), 404
-        try:
-            path = _ab_resolve_path(entry)
-            # EX.read_book(), not AB.read_epub(): the estimate has to work
-            # for every format the library holds. read_epub only opens a
-            # zip, so every mobi/azw3/azw/pdf returned 422 "could not read
-            # this book" -- 34.6% of the library had no size estimate at all,
-            # even though the converter handles all of them.
-            import gb_extract as EX
-            book = EX.read_book(path)
-            words = book.words
-        except Exception as exc:
-            logger.debug("estimate: could not read the book: %s", exc)
-            return jsonify({"ok": False, "error": str(exc)[:200]}), 422
-    try:
-        n = int(words) if words else 0
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "words must be a number"}), 400
-    bitrate = (request.args.get("bitrate") or AB.AUDIO_DEFAULT).strip()
-    if bitrate not in AB.AUDIO_QUALITY:
-        bitrate = AB.AUDIO_DEFAULT
-    est = AB.estimate_voice_duration(n, bitrate=bitrate)
-
-    # est["hours"] is SYNTHESIS time (how long this host takes to make the
-    # audio, at WORDS_PER_SECOND). The dialog labelled it "of audio", which
-    # users read as listening time -- so a 201,709-word book was announced as
-    # "About 17.0 h of audio" when it is roughly 40 minutes. Measured from
-    # real output: 24,159 words in 286.704 s of finished audio = 84.26 w/s of
-    # playback.
-    #
-    # So return BOTH, explicitly named, and keep `hours` as synthesis time
-    # for anything already treating it as an ETA.
-    play_seconds = (n / AB.WORDS_PER_SECOND_PLAYBACK) if AB.WORDS_PER_SECOND_PLAYBACK else 0.0
-    return jsonify({
-        "ok": True,
-        "words": n,
-        "bitrate": bitrate,
-        **est,
-        # listening length -- what "of audio" means to a reader
-        "play_seconds": round(play_seconds, 1),
-        "play_hours": round(play_seconds / 3600.0, 2),
-        # synthesis time -- what "ETA" means
-        "synth_hours": est.get("hours"),
-        "words_per_second": AB.WORDS_PER_SECOND,
-        "words_per_second_playback": AB.WORDS_PER_SECOND_PLAYBACK,
-    })
 
 
 # ------------------------------------------------------------- log rotation
@@ -10407,261 +10319,18 @@ def _ab_user_options():
     return out
 
 
-@app.route("/audiobook/options")
-def audiobook_options():
-    """Everything the dialog needs to render: users, voices, bitrates, defaults."""
-    import gb_audiobook as AB
-    import gb_abjob          # the queue block below reads MAX_QUEUED_JOBS
-    voices = []
-    try:
-        import urllib.request
-        import ssl
-        url = AB.TTS_ENDPOINT.rstrip("/") + "/api/voices"
-        ctx = (ssl._create_unverified_context()
-               if url.startswith("https://192.168.") else None)
-        with urllib.request.urlopen(url, timeout=15, context=ctx) as resp:
-            voices = json.loads(resp.read().decode("utf-8", "replace")) \
-                .get("voices") or []
-    except Exception as exc:
-        logger.debug("audiobook options: voice list unavailable: %s", exc)
-    return jsonify({
-        "users": _ab_user_options(),
-        "queue": {
-            "limit": gb_abjob.MAX_QUEUED_JOBS,
-            "depth": len([j for j in gb_abjob._all_jobs()
-                          if j.get("phase") in ("queued", "parsing",
-                                                "narrating", "assembling")]),
-        },
-        "voices": voices,
-        "qualities": _ab_quality_choices(),
-        "default_bitrate": AB.AUDIO_DEFAULT,
-        "codec": AB.AUDIO_CODEC,
-        "container": AB.AUDIO_CONTAINER,
-        "sample_rate": AB.SAMPLE_RATE,
-        "words_per_second": AB.WORDS_PER_SECOND,
-        "note": ("The finished file is AAC in an M4B container. At this "
-                 "sample rate AAC stops improving above about 96 kbps, so "
-                 "there is no 192 kbps option to pick: it would encode "
-                 "identically to 96."),
-    })
 
 
-@app.route("/audiobook/reference", methods=["POST"])
-def audiobook_upload_reference():
-    """Store a reference clip for zero-shot narration. Returns its path."""
-    entry_id = (request.form.get("entry_id") or "").strip()
-    up = request.files.get("clip")
-    if not up or not up.filename:
-        return jsonify({"ok": False,
-                        "error": "a clip file is required"}), 400
-    if not entry_id:
-        return jsonify({"ok": False, "error": "entry_id is required"}), 400
-
-    blob = up.read()
-    # a reference is a voice prompt, not a book: a few seconds is plenty and
-    # anything huge is a mistake worth rejecting rather than storing
-    if len(blob) < 1000:
-        return jsonify({"ok": False,
-                        "error": "clip is too short to clone from"}), 400
-    if len(blob) > 20 * 1024 * 1024:
-        return jsonify({"ok": False,
-                        "error": "clip is larger than 20MB"}), 400
-
-    REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
-    safe = "".join(c if c.isalnum() or c in "-_" else "_"
-                   for c in entry_id)[-120:]
-    dest = REFERENCE_DIR / f"{safe}.wav"
-    dest.write_bytes(blob)
-    logger.info("audiobook: stored reference %s (%d bytes)", dest, len(blob))
-    return jsonify({"ok": True, "path": str(dest),
-                    "bytes": len(blob)})
 
 
-@app.route("/audiobook/reference")
-def audiobook_reference_status():
-    """Whether a reference clip exists for these entries."""
-    out = {}
-    if REFERENCE_DIR.exists():
-        for p in sorted(REFERENCE_DIR.glob("*.wav")):
-            try:
-                out[p.stem] = {"bytes": p.stat().st_size,
-                               "path": str(p)}
-            except OSError:
-                continue
-    return jsonify({"references": out})
 
 
-@app.post("/audiobook/start")
-def audiobook_start():
-    """Queue an EPUB for audiobook conversion. Returns immediately."""
-    entry_id = (request.form.get("entry_id") or request.form.get("id") or "").strip()
-    voice = (request.form.get("voice") or "").strip()
-    if not entry_id:
-        return jsonify({"ok": False, "error": "entry_id is required"}), 400
-    entry = _ab_entry(entry_id)
-    if not voice:
-        settings_ = settings_manager.settings
-        voice = (getattr(settings_, "audiobook_voice", "")
-                 or os.environ.get("GOODBOOKS_TTS_VOICE", "nick"))
-    src_path = _ab_resolve_path(entry)
-    if not src_path:
-        return jsonify({"ok": False,
-                        "error": "the file for this book is missing on disk"}), 400
-    # Format check via the extractor, NOT a suffix comparison. The route used
-    # to hard-refuse anything that was not .epub, which meant the
-    # multi-format support (mobi/azw3/azw/pdf -- verified on 30 real books)
-    # was unreachable from the UI: a MOBI POST returned
-    #   {"ok": false, "error": "only EPUB books can be converted"}
-    #
-    # detect_format also sniffs CONTENT, so it can report "drm" for an
-    # encrypted file. That deserves its own message: the text cannot be read
-    # by any tool, which is different from "we do not support this format".
-    try:
-        import gb_extract
-        fmt = gb_extract.detect_format(src_path)
-    except Exception as exc:
-        logger.warning("could not detect audiobook source format: %s", exc)
-        fmt = os.path.splitext(src_path)[1].lower().lstrip(".")
-
-    if fmt == "drm":
-        return jsonify({
-            "ok": False,
-            "error": ("This book is DRM-encrypted, so the text cannot be "
-                      "read. Try a DRM-free edition."),
-            "drm": True,
-        }), 400
-    if fmt not in gb_extract.SUPPORTED_FORMATS:
-        return jsonify({
-            "ok": False,
-            "error": (f"Cannot convert '{fmt or 'unknown'}'. "
-                      f"Supported: {', '.join(gb_extract.SUPPORTED_FORMATS)}"),
-            "format": fmt,
-        }), 400
-    try:
-        import gb_abjob
-    except Exception as exc:
-        return jsonify({"ok": False, "error": f"converter unavailable: {exc}"}), 500
-    running = gb_abjob.active_job()
-    if running and running != entry_id:
-        return jsonify({"ok": False, "error":
-                        f"already converting: {gb_abjob.load_job(running).get('title')}",
-                        "active": running}), 409
-    restart = (request.form.get("restart") or "").strip() in ("1", "true", "yes")
-    # Regenerate is deliberate. A book that is already narrated is returned as
-    # it stands unless the user asks for it again -- the escape hatch for a
-    # corrupt output.
-    regenerate = (request.form.get("regenerate")
-                 or request.form.get("force") or "").strip() in (
-                     "1", "true", "yes", "on")
-
-    # Zero-shot reference. Accepts a path/URL, or the name of a reference
-    # stored by /audiobook/reference. When present it takes precedence over
-    # the registered voice, because the clip IS the voice.
-    voice_ref = (request.form.get("voice_ref") or "").strip()
-
-    # Dialog options. Everything optional except entry_id: a job with no
-    # auto-send is just a local render, which is a valid choice.
-    for_user = (request.form.get("user") or user_obj_name_for(entry_id)
-                or "").strip()
-    auto_send = (request.form.get("auto_send") or "").strip() in ("1", "true", "on", "yes")
-    notify = (request.form.get("notify") or "").strip() in ("1", "true", "on", "yes")
-    import gb_audiobook as _AB
-    bitrate = (request.form.get("bitrate") or _AB.AUDIO_DEFAULT).strip()
-    if bitrate not in _AB.AUDIO_QUALITY:
-        bitrate = _AB.AUDIO_DEFAULT
-
-    # Already narrated? Hand back the finished file and say so, so the
-    # dialog can offer a deliberate regenerate instead of pretending to start.
-    if not regenerate:
-        done = gb_abjob.completed_for(entry_id)
-        if done:
-            return jsonify({
-                "ok": True, "already_done": True, "entry_id": entry_id,
-                "result": done.get("result"),
-                "title": done.get("title"),
-                "message": ("This book is already narrated. Use regenerate to "
-                            "do it again (for example if the audio is "
-                            "damaged)."),
-                "progress": gb_abjob.progress(entry_id),
-            })
-
-    try:
-        job = gb_abjob.enqueue(
-            entry_id, Path(src_path), voice,
-            entry.get("title", ""), entry.get("author", ""),
-            restart=restart or regenerate, voice_ref=voice_ref,
-            for_user=for_user, auto_send=auto_send,
-            notify=notify, bitrate=bitrate, regenerate=regenerate)
-    except gb_abjob.QueueFull as exc:
-        # 409 so the dialog can say why nothing started, instead of a bare 500
-        return jsonify({"ok": False, "queued": False, "error": str(exc),
-                        "queue_full": True,
-                        "limit": gb_abjob.MAX_QUEUED_JOBS}), 409
-
-    at = gb_abjob.queue_position(entry_id)
-    live = [j for j in gb_abjob._all_jobs()
-            if j.get("phase") in ("queued", "parsing", "narrating",
-                                  "assembling")]
-    if at and at > 1:
-        logger.info("audiobook %s queued at position %d of %d",
-                    entry_id, at, len(live))
-    return jsonify({"ok": True, "entry_id": entry_id,
-                    "queue_position": at,
-                    "queue_depth": len(live),
-                    "queue_limit": gb_abjob.MAX_QUEUED_JOBS,
-                    "progress": gb_abjob.progress(entry_id)})
 
 
-@app.get("/audiobook/progress")
-def audiobook_progress():
-    """Polled by the UI. Cheap: reads one small JSON file."""
-    entry_id = (request.args.get("entry_id") or "").strip()
-    if not entry_id:
-        try:
-            import gb_abjob
-            active = gb_abjob.active_job()
-            if not active:
-                return jsonify({"phase": "idle"})
-            entry_id = active
-        except Exception:
-            return jsonify({"phase": "unavailable"}), 503
-    try:
-        import gb_abjob
-    except Exception as exc:
-        return jsonify({"phase": "unavailable", "error": str(exc)}), 503
-    return jsonify(gb_abjob.progress(entry_id))
 
 
-@app.post("/audiobook/cancel")
-def audiobook_cancel():
-    entry_id = (request.form.get("entry_id") or "").strip()
-    if not entry_id:
-        return jsonify({"ok": False, "error": "entry_id is required"}), 400
-    try:
-        import gb_abjob
-    except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 503
-    return jsonify({"ok": gb_abjob.cancel(entry_id)})
 
 
-@app.get("/audiobook/voices")
-def audiobook_voices():
-    """Voices the panel can clone, so the UI can offer a real choice."""
-    try:
-        import gb_audiobook as AB
-        import urllib.request
-        url = AB.TTS_ENDPOINT.rstrip("/") + "/api/voices"
-        ctx = None
-        if url.startswith("https://"):
-            import ssl
-            ctx = ssl._create_unverified_context()
-        with urllib.request.urlopen(url, timeout=15, context=ctx) as resp:
-            data = json.loads(resp.read().decode("utf-8", "replace"))
-        return jsonify({"voices": [v.get("name") for v in
-                                   (data.get("voices") or []) if v.get("name")]})
-    except Exception as exc:
-        logger.debug("voice list unavailable: %s", exc)
-        return jsonify({"voices": [], "error": str(exc)[:120]})
 
 
 # ------------------------------------------------------------ cover cache --
@@ -10793,16 +10462,6 @@ def admin_warm_covers():
 
 
 
-@app.route("/api/audiobooks")
-def api_audiobooks():
-    """The audiobook list, for the library view."""
-    rows = audiobook_index()
-    return jsonify({
-        "count": len(rows),
-        "total_hours": round(sum(r["hours"] for r in rows), 2),
-        "total_mb": round(sum(r["mb"] for r in rows), 1),
-        "audiobooks": rows,
-    })
 
 
 
@@ -10856,6 +10515,112 @@ def _serve_production(port: int) -> None:
     except Exception:
         logging.exception("waitress crashed")
         raise
+
+
+@app.route("/api/plugins")
+def api_plugins():
+    """What is installed, what provides what, and what failed."""
+    if PLUGINS is None:
+        return jsonify({"ok": False, "error": "plugin subsystem unavailable",
+                        "plugins": []})
+    return jsonify({"ok": True, "plugins": PLUGINS.summaries()})
+
+
+@app.post("/api/plugins/<plugin_id>/enable")
+def api_plugin_enable(plugin_id):
+    if PLUGINS is None:
+        return jsonify({"ok": False, "error": "plugin subsystem unavailable"}), 503
+    ok = PLUGINS.set_enabled(plugin_id, True)
+    return jsonify({"ok": bool(ok), "plugin_id": plugin_id,
+                    "plugins": PLUGINS.summaries()})
+
+
+@app.post("/api/plugins/<plugin_id>/disable")
+def api_plugin_disable(plugin_id):
+    if PLUGINS is None:
+        return jsonify({"ok": False, "error": "plugin subsystem unavailable"}), 503
+    ok = PLUGINS.set_enabled(plugin_id, False)
+    return jsonify({"ok": bool(ok), "plugin_id": plugin_id,
+                    "plugins": PLUGINS.summaries()})
+
+
+
+# PLUGINS is referenced by the maintenance hook, and module-level
+# order means the hook must be able to see it even if the loader
+# below fails. Without this the cycle raised
+#     NameError: name 'PLUGINS' is not defined
+PLUGINS = None
+
+# ---------------------------------------------------------------------------
+# Plugins
+# ---------------------------------------------------------------------------
+# Loaded here: after the Flask app and the service helpers exist, and before
+# the first request can be served. Loading is wrapped so a broken plugin
+# cannot stop the service starting -- an extension mechanism that can take
+# the host down is worse than no extension mechanism.
+#
+# A plugin receives a PluginContext and must NOT import app.py. Importing the
+# host boots a second service instance with its own metadata cache, and that
+# has destroyed live library data three times in this project.
+try:
+    import gb_plugins as _gbpl
+
+    def _make_plugin_context():
+        from gb_plugins import PluginContext, ServiceAPI
+        return PluginContext(
+            app=app,
+            settings=settings_manager.settings,
+            base_dir=BASE_DIR,
+            data_dir=DATA_DIR,
+            logger=logger,
+            services=ServiceAPI(
+                get_library_entry=get_library_entry,
+                build_library_entries=build_library_entries,
+                load_library_metadata=load_library_metadata,
+                read_metadata=lambda k: (load_library_metadata().get(k) or {}),
+                atomic_write_metadata=_atomic_write_metadata,
+                metadata_path=LIBRARY_METADATA_PATH,
+                settings=settings_manager.settings,
+                log_info=logger.info,
+                log_debug=logger.debug,
+            ),
+        )
+
+    PLUGINS = _gbpl.PluginManager(BASE_DIR, _make_plugin_context, app=app)
+    _loaded = PLUGINS.load_all()
+    logger.info("Plugins: %s", PLUGINS.status_line() or "none")
+except Exception:
+    PLUGINS = None
+    logger.exception("Plugin subsystem failed to initialise; continuing "
+                     "without plugins")
+
+
+@app.before_request
+def _enforce_plugin_state():
+    """A disabled plugin's URLs must not answer.
+
+    Flask's url_map is built once and cannot be subtracted from, so
+    disabling a plugin cannot mean unregistering its routes -- measured:
+    after POST /api/plugins/audiobook/disable the state file correctly
+    recorded {"audiobook": false} and /api/audiobooks still returned 200.
+
+    This refuses the path per request instead. It is one dict lookup on a
+    path the manager has never seen, so the cost is nil in the normal case,
+    and it makes "disabled" mean what a caller expects.
+    """
+    if PLUGINS is None:
+        return None
+    try:
+        path = request.path
+    except Exception:
+        return None
+    try:
+        if not PLUGINS.is_path_enabled(path):
+            return jsonify({"ok": False, "error": "plugin disabled",
+                            "path": path}), 404
+    except Exception:
+        logger.debug("plugin state check failed for %s", path, exc_info=True)
+    return None
 
 
 if __name__ == "__main__":

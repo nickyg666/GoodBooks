@@ -69,6 +69,7 @@ py-modules = [
   "gb_extract",
   "gb_parallel",
   "gb_retry",
+  "gb_plugins",
   "gb_openlib",
   "gb_reading",
   "goodbooks_delivery",
@@ -90,3 +91,8 @@ include-package-data = true
 "share/goodbooks/templates" = ["templates/*.html"]
 "share/goodbooks/static" = ["static/*.css", "static/*.js"]
 "share/goodbooks/static/themes" = ["static/themes/*.css"]
+
+[tool.setuptools.package-data]
+# Plugins are loaded by PATH at runtime by gb_plugins.PluginManager,
+# never imported as a package, so they are data rather than modules.
+"*" = ["plugins/*/plugin.json", "plugins/*/*.py"]

@@ -37,3 +37,5 @@ data/temp/*
 # audiobook conversion work: resumable job state and partial audio
 data/audiobook_jobs/
 data/audiobook_work/
+data/plugins_enabled.json
+plugins/__pycache__/

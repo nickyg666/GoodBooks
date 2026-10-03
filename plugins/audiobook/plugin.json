@@ -1,0 +1,18 @@
+{
+  "id": "audiobook",
+  "name": "Audiobook generator",
+  "version": "1.0.0",
+  "description": "Convert any library book to a chaptered M4B/MP3 audiobook using PocketTTS, with threaded narration at a half+1 CPU cap and any-format source extraction.",
+  "entry": "__init__.py",
+  "provides": ["audiobook.routes", "audiobook.maintenance"],
+  "author": "GoodBooks",
+  "license": "AGPL-3.0-or-later",
+  "requires": {
+    "gb_audiobook": "PocketTTS synthesis, chaptering, AAC/MP3 muxing",
+    "gb_abjob": "queue, narration variants, resumable assembly",
+    "gb_extract": "epub/mobi/azw3/azw/pdf -> chapters",
+    "gb_parallel": "threaded narration, half+1 CPU cap",
+    "gb_retry": "bounded retry for transient TTS failures"
+  },
+  "notes": "Accepts every format gb_extract supports. A DRM-encrypted file is reported as such rather than attempted."
+}

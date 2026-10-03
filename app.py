@@ -2503,6 +2503,10 @@ def _atomic_write_history(history_manager, entries) -> None:
         os.replace(tmp, path)
 
 
+# Monotonic counter backing the unique metadata temp filenames.
+_METADATA_WRITE_SEQ = 0
+
+
 def _atomic_write_metadata(metadata: Dict, sort_keys: bool = False) -> None:
     """Write library_metadata.json atomically.
 
@@ -2517,16 +2521,86 @@ def _atomic_write_metadata(metadata: Dict, sort_keys: bool = False) -> None:
     one, never a truncated one. The lock is taken by the caller, matching the
     existing convention.
     """
-    tmp = LIBRARY_METADATA_PATH.with_suffix(".json.tmp")
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(metadata, fh, indent=2, ensure_ascii=False,
-                  sort_keys=sort_keys)
-        fh.flush()
+    # A UNIQUE temp name per write. The previous code used one shared
+    # "...json.tmp" for every writer, which is only atomic when there is
+    # exactly one writer -- and there are at least four (library-genres-enrich
+    # plus the Amazon/Goodreads cover workers). Two of them interleaved like
+    # this, which is what actually happened on 2026-10-02:
+    #
+    #   A: open(tmp,"w") ... json.dump 8 MB ...
+    #   B: open(tmp,"w")            <- truncates what A is writing
+    #   A: os.replace(tmp, live)     <- tmp renamed away
+    #   B: os.replace(tmp, live)     <- FileNotFoundError
+    #
+    # and the library went 4869 -> 37 -> 1 records, each failed write leaving
+    # whatever the last successful rename produced.
+    #
+    # os.replace() is atomic for ANY source path, so uniqueness is the whole
+    # fix. pid + counter + thread id make a collision impossible within a
+    # process and across the two that have raced here before.
+    _seq = _metadata_write_seq()
+    tmp = LIBRARY_METADATA_PATH.with_name(
+        f"{LIBRARY_METADATA_PATH.name}.tmp.{os.getpid()}."
+        f"{threading.get_ident()}.{_seq}")
+
+    try:
+        # "x" = fail if it exists, so we can never write through a symlink or
+        # clobber a temp file another writer is still using.
+        with open(tmp, "x", encoding="utf-8") as fh:
+            json.dump(metadata, fh, indent=2, ensure_ascii=False,
+                      sort_keys=sort_keys)
+            fh.flush()
+            try:
+                os.fsync(fh.fileno())
+            except OSError:
+                pass          # not fatal; the replace below is still atomic
+        os.replace(tmp, LIBRARY_METADATA_PATH)
+    except BaseException:
+        # Never leave debris behind on failure.
         try:
-            os.fsync(fh.fileno())
+            tmp.unlink(missing_ok=True)
         except OSError:
-            pass          # not fatal; the replace below is still atomic
-    os.replace(tmp, LIBRARY_METADATA_PATH)
+            pass
+        raise
+
+    # fsync the DIRECTORY so the rename itself is durable. fsyncing the file
+    # data alone does not guarantee the directory entry survives a crash --
+    # the same class of loss that emptied this file on 2026-09-30.
+    try:
+        dirfd = os.open(str(LIBRARY_METADATA_PATH.parent), os.O_RDONLY)
+        try:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
+    except OSError:
+        pass
+
+
+def _metadata_write_seq() -> int:
+    """Monotonic per-process counter for unique temp filenames."""
+    global _METADATA_WRITE_SEQ
+    _METADATA_WRITE_SEQ += 1
+    return _METADATA_WRITE_SEQ
+
+
+def sweep_stale_metadata_tmp(max_age_seconds: int = 3600) -> int:
+    """Remove temp metadata files left by a crashed writer.
+
+    Worth having for diagnosis: a leftover "...json.tmp.<pid>..." with no live
+    process holding that pid is the fingerprint of a writer that died
+    mid-write.
+    """
+    removed = 0
+    cutoff = time.time() - max_age_seconds
+    for stale in LIBRARY_METADATA_PATH.parent.glob(
+            f"{LIBRARY_METADATA_PATH.name}.tmp.*"):
+        try:
+            if stale.stat().st_mtime < cutoff:
+                stale.unlink()
+                removed += 1
+        except OSError:
+            continue
+    return removed
 
 
 def _normalize_sort_key(value: str) -> str:
@@ -9197,6 +9271,14 @@ def _poll_feeds_in_maintenance() -> None:
 
 
 def _run_maintenance_cycle() -> None:
+    # Rotate from the maintenance loop, not just at startup.
+    # Rotation previously ran exactly once at import, so a
+    # long-running service never rotated again however large
+    # debug.log grew -- which is the only time it matters.
+    try:
+        _rotate_debug_log()
+    except Exception:
+        pass
     """Perform a single maintenance cycle.
 
     This is designed to be safe and best-effort only. It should never raise
@@ -9839,10 +9921,13 @@ _log_rotated_at = {"t": 0.0}
 
 def _rotate_debug_log(force: bool = False) -> None:
     """Keep debug.log under the cap. Cheap enough to call often."""
-    now = time.time()
-    if not force and (now - _log_rotated_at["t"]) < 3600:
-        return
-    _log_rotated_at["t"] = now
+    # No self-throttle here. There used to be an hourly guard:
+    #     if not force and (now - _log_rotated_at["t"]) < 3600: return
+    # which meant the function silently did nothing when called repeatedly
+    # within an hour. Since rotation only ran ONCE at startup anyway, the
+    # guard was never the constraint -- and a stat() next to an 8 MB log
+    # write is not worth saving.
+    _log_rotated_at["t"] = time.time()
     try:
         log_path = BASE_DIR / "debug.log"
         if not log_path.exists():
@@ -9850,12 +9935,26 @@ def _rotate_debug_log(force: bool = False) -> None:
         if log_path.stat().st_size < DEBUG_LOG_MAX_BYTES:
             return
         prev = log_path.with_suffix(".log.%d" % DEBUG_LOG_KEEP)
+        # Remove every OTHER generation. Measured before this fix:
+        #   debug.log.1  50 MB
+        #   debug.log.2  50 MB     <- never reaped, rotation ran once at boot
+        #   debug.log.3  50 MB
+        #   debug.log.4  50 MB
+        # i.e. ~200 MB of debris against a 512 MB cap, because the cleanup
+        # only ever executed once per process lifetime.
         for old in BASE_DIR.glob("debug.log.*"):
-            if old != prev:
-                try:
-                    old.unlink()
-                except OSError:
-                    pass
+            if old == prev:
+                continue
+            try:
+                old.unlink()
+            except OSError:
+                pass
+        # Any temp file left by a killed writer is debris too.
+        for stale in BASE_DIR.glob("debug.log.*.tmp*"):
+            try:
+                stale.unlink()
+            except OSError:
+                pass
         if prev.exists():
             prev.unlink()
         log_path.replace(prev)
@@ -10249,16 +10348,65 @@ def api_audiobooks():
     })
 
 
+
+
+def _serve_production(port: int) -> None:
+    """Serve with waitress, a real WSGI server.
+
+    This used to call app.run(), which is Flask's DEVELOPMENT server. The
+    live log carried its own warning:
+
+        WARNING: This is a development server. Do not use it in a production
+        deployment.
+
+    while waitress was installed and unused. waitress is a threaded WSGI
+    server with proper queueing, input buffering and timeouts, which is what
+    production traffic needs.
+
+    If waitress cannot be imported we still start, because a slow service
+    beats no service -- but it is logged loudly so the cause is never a
+    mystery.
+    """
+    import os as _os
+
+    # Bounded so a big box cannot spawn an unbounded request pool, which
+    # makes latency worse rather than better once the disk work saturates.
+    cpus = _os.cpu_count() or 2
+    threads = max(4, min(16, cpus * 2 + 1))
+
+    try:
+        from waitress import serve
+    except ImportError:
+        logging.error("waitress is not installed -- falling back to the "
+                      "Flask development server. Install it with: "
+                      "pip install waitress")
+        app.run(host="0.0.0.0", port=port)
+        return
+
+    logging.info("serving with waitress on 0.0.0.0:%d, threads=%d",
+                 port, threads)
+    try:
+        serve(app,
+              host="0.0.0.0",
+              port=port,
+              threads=threads,
+              # Do not trust proxy headers: nothing sits in front of this
+              # service, so a client could otherwise spoof its own IP.
+              clear_untrusted_proxy_headers=True,
+              channel_timeout=120,
+              connection_limit=200,
+              asyncore_use_poll=True)
+    except Exception:
+        logging.exception("waitress crashed")
+        raise
+
+
 if __name__ == "__main__":
     try:
         port = int(os.environ.get("PORT", 5000))
     except Exception:
         port = 5000
-    try:
-        app.run(host="0.0.0.0", port=port)
-    except Exception:
-        logging.exception("Flask crashed")
-        raise
+    _serve_production(port)
 
 def _cache_metadata_covers_background(metadata: Dict, limit: int = 50) -> int:
     """
@@ -10345,6 +10493,8 @@ def admin_cache_covers():
             "success": False,
             "error": str(e)
         }), 500
+
+
 
 
 def main():

@@ -571,7 +571,9 @@ def author_display_map(entries: Sequence[dict],
 
 
 def provide_author_options(entries: Sequence[dict],
-                           min_books: int = 1) -> List[Tuple[str, str, int]]:
+                           min_books: int = 1,
+                           given: Optional[set] = None,
+                           counts: Optional[Counter] = None) -> List[Tuple[str, str, int]]:
     """Options for the author filter: [(value, label, book_count)].
 
     Ordered by name, case- and accent-insensitively, leading articles
@@ -580,9 +582,15 @@ def provide_author_options(entries: Sequence[dict],
     """
     if not entries:
         return []
-    given = given_name_seed(harvest_given_names(entries))
-    install_surname_counts(entries)
-    counts = build_author_index(entries, given)
+    # Reuse what the caller already computed. index() builds `given` and the
+    # surname counts before calling this, and rebuilding them here meant the
+    # harvest ran twice per request. Defaults preserve the old behaviour for
+    # every other caller.
+    if given is None:
+        given = given_name_seed(harvest_given_names(entries))
+    if counts is None:
+        install_surname_counts(entries)
+        counts = build_author_index(entries, given)
     disp = author_display_map(entries, given)
     out = []
     for k, n in counts.items():

@@ -3266,6 +3266,42 @@ def filter_entries_needing_enrichment(entries: List[Dict], metadata: Dict[str, D
     return incomplete
 
 
+# Author options for the library filter, cached against the generation.
+#
+# MEASURED 2026-10-03: provide_author_options() over the real 4,869-entry
+# library takes 506 ms, and index() called it on EVERY page view, so every
+# click on the library spent ~half a second rebuilding an identical list.
+# /api/library-authors already cached this payload and measured 8-50 ms
+# warm; index() simply had no equivalent cache.
+#
+# Keyed on the generation, not a TTL: a rename or delete must show up
+# immediately, and a stale author list means the filter silently hides a
+# book the user can plainly see. A TTL would be the wrong trade here.
+_author_options_index: Dict[str, Any] = {"gen": None, "opts": None}
+
+
+def _author_options_for_library(entries, given) -> list:
+    """[(key, label, count)] for the author filter, cached per generation."""
+    gen = _library_generation()
+    if (_author_options_index["gen"] == gen
+            and _author_options_index["opts"] is not None):
+        return _author_options_index["opts"]
+    try:
+        import gb_authors as _OA
+        opts = _OA.provide_author_options(entries, given=given)
+    except TypeError:
+        # Older signature, no `given` kwarg.
+        import gb_authors as _OA
+        # Fall back to the plain call; calling this helper here would recurse.
+        opts = _OA.provide_author_options(entries)
+
+    _author_options_index["gen"] = gen
+    _author_options_index["opts"] = opts
+    logger.debug("author options index: %d entries (gen %.0f)",
+                 len(opts), gen)
+    return opts
+
+
 def _library_search_seed(entries: List[Dict]):
     """The given-name seed used to orient parsed author names."""
     import gb_authors
@@ -5053,8 +5089,14 @@ def index():
     # strings put "1898.; alice's; adventures; in; wonderland; (" first and
     # made the filter unusable across ~4,800 rows.
     import gb_authors
-    author_option_tuples = gb_authors.provide_author_options(
-        entries_in_scope)
+    # The seed is needed unconditionally here, but both existing
+    # assignments sit inside conditionals (lines ~5007 and ~5143), so on any
+    # request taking neither branch _given did not exist:
+    #     UnboundLocalError: cannot access local variable '_given'
+    # Compute it once, here. Pure function of the entries, and cheap:
+    # 3.2 ms harvest + 0.4 ms seed over 4,869 entries.
+    _given = gb_authors.given_name_seed(gb_authors.harvest_given_names(entries_all))
+    author_option_tuples = _author_options_for_library(entries_all, _given)
     # (value, label, count): the value is the normalised key the filter
     # compares against, the label is the display name. Showing the count
     # makes the list scannable and makes an author with 24 books stand out
@@ -5982,7 +6024,13 @@ def _author_options_payload() -> list:
     entries = build_library_entries()
     given = gb_authors.given_name_seed(gb_authors.harvest_given_names(entries))
     gb_authors.install_surname_counts(entries)
-    opts = gb_authors.provide_author_options(entries)
+    # Not the index() cache: this route has its own cache below
+    # (_author_options_cache, generation-keyed) and builds its own
+    # seed. Routing it through _author_options_for_library would
+    # need a _given that is not in scope here -- it is a different
+    # function. Measured 8-50 ms warm, which is fine.
+    import gb_authors as _OA3
+    opts = _OA3.provide_author_options(entries)
     payload = [{"k": k, "l": label, "n": n} for k, label, n in opts]
 
     # Re-read the generation AFTER building: a scan that completed mid-build

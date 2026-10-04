@@ -242,6 +242,17 @@ _LIBRARY_ENTRIES_LAST_SCAN: float = 0.0
 _LIBRARY_METADATA_MTIME: float = 0.0
 _LIBRARY_ENRICHMENT_IN_PROGRESS = False  # Flag to prevent concurrent enrichment threads
 
+
+# Plugin manager handle.
+#
+# Declared HERE, at module scope near the top, because the
+# maintenance thread starts the moment its Thread object is created
+# and does not wait for the rest of this module to finish executing.
+# It read PLUGINS before that happened and the cycle died with
+#     NameError: name 'PLUGINS' is not defined
+# A placeholder here means a missing or broken plugin subsystem
+# disables plugins, rather than taking the maintenance cycle with it.
+PLUGINS = None
 EBOOK_EXTENSIONS = {".pdf", ".epub", ".mobi", ".azw", ".azw3", ".prc"}
 DIRECT_DL_EXTENSIONS = {"mobi", "prc", "azw", "azw3"}
 LIBRARY_SORT_MODES: Dict[str, str] = {
@@ -9575,14 +9586,48 @@ ENRICHMENT_BUDGET_SECONDS = 240     # of the 900 s window
 ENRICHMENT_MAX_ENTRIES = 400        # per cycle, not per backlog
 
 def _run_maintenance_cycle() -> None:
-    # Rotate from the maintenance loop, not just at startup.
-    # Rotation previously ran exactly once at import, so a
-    # long-running service never rotated again however large
-    # debug.log grew -- which is the only time it matters.
+    """Perform a single maintenance cycle.
+
+    Safe and best-effort by construction: every step is wrapped, so a failure
+    is logged and the next tick still runs.
+
+    NOTE ON STRUCTURE. The docstring used to sit BELOW the rotate call, which
+    turned it into a no-op string expression rather than __doc__. It is first
+    now. The early parts of this body -- the disable guard, the "cycle start"
+    log, the plugin hook -- are also restored here explicitly, because
+    measured silence in the journal ("0 cycle starts in 30 minutes" while
+    jobs sat at phase=narrating) is otherwise impossible to diagnose.
+    """
+    try:
+        settings = settings_manager.settings
+        if settings.disable_background_jobs:
+            logger.debug("Background maintenance: skipped (background jobs "
+                         "disabled)")
+            return
+    except Exception:
+        logger.exception("Failed to check disable_background_jobs setting")
+        return
+
+    logger.info("Background maintenance: cycle start")
+
+    # Rotate from the maintenance loop, not just at startup: rotation
+    # previously ran exactly once at import, so a long-running service never
+    # rotated again however large debug.log grew -- the only time it matters.
     try:
         _rotate_debug_log()
     except Exception:
         pass
+
+    # Plugins first, and by hook rather than by a hardcoded call. Narration
+    # is visible progress and carries its own budget inside the plugin; a
+    # plugin that raises is isolated by the manager.
+    if PLUGINS is not None:
+        try:
+            PLUGINS.run_maintenance()
+        except Exception:
+            logger.exception("plugin maintenance hooks failed")
+
+    logger.debug("Background maintenance: cycle head complete")
     """Perform a single maintenance cycle.
 
     This is designed to be safe and best-effort only. It should never raise
@@ -10549,7 +10594,6 @@ def api_plugin_disable(plugin_id):
 # order means the hook must be able to see it even if the loader
 # below fails. Without this the cycle raised
 #     NameError: name 'PLUGINS' is not defined
-PLUGINS = None
 
 # ---------------------------------------------------------------------------
 # Plugins
@@ -10732,8 +10776,12 @@ def main():
     serve(app, host=host, port=port)
 
 
-if __name__ == "__main__":
-    main()
+# NOTE: a second `if __name__ == "__main__": main()` used to sit here.
+# It ran as well as the block above, called main() -> waitress.serve(),
+# and died on every boot with "address already in use" because the
+# port was already bound by the process running it. Everything main()
+# set up now happens in the reachable block, so it is gone rather than
+# left failing once per start.
 
 # Rotate debug.log once at startup, now that _rotate_debug_log is defined.
 # It must appear AFTER the definition: a call above it is a NameError, which

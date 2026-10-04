@@ -93,6 +93,30 @@ Two genuinely distinct files (the epub is a different edition) plus a
 byte-identical mobi pair. So even inside a class-D cluster the members are not
 equivalent, which is precisely why nothing was auto-removed.
 
+## A real false merge, found by reading the output
+
+One cluster is a genuine false merge, and it is worth recording because it
+limits what `book_key` can promise:
+
+```
+key: stephen king|stephen king
+  .mobi  Firestarter-Stephen; King.mobi   stored title: 'Stephen King'
+  .epub  Misery-Stephen; King.epub         stored title: 'Stephen King'
+                                         dc:title:   'Misery'
+```
+
+`Firestarter` and `Misery` are **different novels by the same author**. They
+merged because both records carry a corrupted `title` of `"Stephen King"` — the
+author stored in the title field — so the key had nothing better to go on.
+`book_key` is faithful to the metadata; it cannot rescue a title that is
+already wrong.
+
+That bounds the guarantee: the key is exactly as good as the title, and no
+better. Where the stored title is junk, the key inherits the junk. It will
+still separate *different authors* sharing a title, which is the case that
+matters most, but it will not split two books that were both mislabelled
+with the same wrong string.
+
 ## What I recommend
 
 1. **Do nothing about A.** It is an ebook library; several formats per book is

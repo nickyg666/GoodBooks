@@ -9649,22 +9649,6 @@ def _run_maintenance_cycle() -> None:
     except Exception:
         logger.exception("Failed to check disable_background_jobs setting")
         return
-
-    logger.info("Background maintenance: cycle start")
-
-    # Plugins first, and by hook rather than by a hardcoded call. Narration
-    # is visible progress and has its own budget inside the plugin; a plugin
-    # that raises is isolated by the manager and cannot stop the cycle.
-    if PLUGINS is not None:
-        try:
-            PLUGINS.run_maintenance()
-        except Exception:
-            logger.exception("plugin maintenance hooks failed")
-
-    # Advance any audiobook conversion FIRST, and independently of feeds.
-    # It used to live inside _poll_feeds_in_maintenance(), which returns
-    # early when no feeds are configured -- so a queued job sat at
-    # phase=queued forever. Conversion is not a feed concern.
     _advance_audiobook_job()
 
     # 1) Warm the library scan cache

@@ -2283,6 +2283,12 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
 }
 .ab-toggles label { display: flex; align-items: center; gap: 0.45rem; margin: 0; }
 .ab-toggles input[type="checkbox"] { flex: none; margin: 0; }
+/* A flex item with min-width:auto refuses to shrink below its content
+ * width, so the label text stayed one line wide and overflowed the
+ * 560px audiobook dialog by exactly 18px, adding a horizontal
+ * scrollbar. Measured computed style: spanMinWidth 'auto',
+ * spanOverflowWrap 'normal'. This is the whole fix. */
+.ab-toggles span { min-width: 0; overflow-wrap: anywhere; }
 .ab-toggles label:has(input:disabled) { opacity: 0.5; }
 .ab-note {
   margin: 0 0 0.8rem; font-size: 0.78rem; color: var(--muted, #6b7280);
@@ -2430,3 +2436,57 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   min-height: 2rem;
 }
 .plugin-btn:hover { background: var(--hover, #e5e7eb); }
+
+/* ---------------------------------------- audiobook dialog --------------
+ * The dialog was 560 px wide but its scrollWidth measured 577 px, so ~34 px
+ * of content was clipped: the FOR row rendered as fragments ("En to Ki wf")
+ * and a horizontal scrollbar appeared under the form.
+ *
+ * Two causes, both fixed here:
+ *   1. box-sizing is not inherited into the form controls, so a child's
+ *      declared width plus its padding exceeded the parent. Measured
+ *      560 declared vs 577 scrollWidth.
+ *   2. a <select> has an intrinsic min-width that a flex row will not
+ *      shrink below, so it pushed the FOR row wider than the dialog.
+ */
+.audiobook-dialog,
+.audiobook-dialog * {
+  box-sizing: border-box;
+}
+
+.audiobook-dialog .ab-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.audiobook-dialog .ab-field > label,
+.audiobook-dialog .ab-field > span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* min-width:0 is what actually lets a flex child shrink; width:100% then
+ * makes it fill the row instead of contributing its intrinsic width. */
+.audiobook-dialog select,
+.audiobook-dialog input[type="text"],
+.audiobook-dialog input[type="file"] {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.audiobook-dialog .ab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.audiobook-dialog .ab-actions button {
+  flex: 0 1 auto;
+  min-width: 0;
+}

@@ -239,7 +239,7 @@
                 <span class="library-refresh-label">Refresh metadata</span>
                 <span class="library-refresh-state" aria-live="polite"></span>
             </button>
-            {% if view_mode != 'plugins' %}<span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>{% endif %}
+            {% if view_mode not in ('plugins', 'audiobooks') %}<span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>{% endif %}
             <label class="checkbox select-all-label" style="margin: 0;">
                 <input type="checkbox" id="library-select-all" style="cursor: pointer;">
                 <span>Select all</span>
@@ -303,6 +303,7 @@
                 </button>
             </div>
             {% if view_mode != 'plugins' %}
+            {% if view_mode not in ('plugins', 'audiobooks') %}
             <form method="get" id="library-filter-form" class="form-grid library-filters lib-filters" style="margin: 0;"
                   data-auto-submit="1">
                 <label class="lib-search" style="margin-bottom: 0;">
@@ -374,6 +375,7 @@
                             title="Get random book(s) from your selection">Random</button>
                 </div>
             </form>
+            {% endif %}
             {% endif %}
             <div id="library-multi-actions" class="hidden">
                 <span id="library-multi-count" class="multi-count">0 selected</span>
@@ -873,7 +875,7 @@
         {% endfor %}
     </div>
     {% else %}
-    {% if view_mode != 'plugins' %}
+    {% if view_mode not in ('plugins', 'audiobooks') %}
     <p>No books found in this folder.</p>
     {% endif %}
     {% endif %}
@@ -1573,6 +1575,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const vRecentBtn = document.getElementById('library-view-recent');
         const vKindleBtn = document.getElementById('library-view-kindle');
         const vCoverBtn = document.getElementById('library-view-cover');
+        const vPluginsBtn = document.getElementById('library-view-plugins');
+            const vAudiobooksBtn = document.getElementById('library-view-audiobooks');
 
         // Single source of truth for which view is active. Each setter used to
         // hand-remove 'active' from the other buttons, which meant a fifth view
@@ -1640,8 +1644,39 @@ document.addEventListener('DOMContentLoaded', function () {
             url.searchParams.delete('prefix');
             window.location = url.toString();
         }
+        function setAudiobooksView() {
+            setActiveView('audiobooks');
+            localStorage.setItem('library-view', 'audiobooks');
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'audiobooks');
+            url.searchParams.delete('prefix');
+            url.searchParams.delete('search_query');
+            url.searchParams.delete('genre');
+            url.searchParams.delete('author');
+            window.location = url.toString();
+        }
+
+        function setPluginsView() {
+            setActiveView('plugins');
+            localStorage.setItem('library-view', 'plugins');
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'plugins');
+            url.searchParams.delete('prefix');
+            url.searchParams.delete('search_query');
+            url.searchParams.delete('genre');
+            url.searchParams.delete('author');
+            window.location = url.toString();
+        }
+
         if (vCoverBtn) {
             vCoverBtn.addEventListener('click', setCoverView);
+
+        if (vPluginsBtn) {
+                vPluginsBtn.addEventListener('click', setPluginsView);
+            }
+            if (vAudiobooksBtn) {
+                vAudiobooksBtn.addEventListener('click', setAudiobooksView);
+            }
         }
         vGridBtn.addEventListener('click', setGridView);
         vListBtn.addEventListener('click', setListView);

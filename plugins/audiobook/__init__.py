@@ -321,19 +321,76 @@ def register(ctx):
 
     @app.route("/api/audiobooks")
     def api_audiobooks():
+        """The audiobook list, in the shape the Audiobooks view consumes.
+
+        The view's JavaScript expects, per row:
+            title, narrator, cloned, chapters, hours, mb, delivered
+        and at the top level:
+            count, total_hours, total_mb
+
+        The first version of this plugin returned only progress keys
+        (audio_seconds, done, total, pct, phase), so fmtDur(a.hours) rendered
+        NaN and d.total_mb.toLocaleString() threw -- which the view's .catch()
+        reported as "Could not load the audiobook list." even though this
+        endpoint answered 200 with real data.
+
+        So both shapes are served: the view's keys are authoritative, and the
+        progress keys are kept alongside them so nothing that already reads
+        them loses anything.
+        """
         import gb_abjob as JOB
+        import gb_audiobook as AB
+
         live_phases = ("queued", "parsing", "narrating", "assembling")
         out = []
+        total_seconds = 0.0
+        total_mb = 0.0
+
         for j in JOB._all_jobs():
-            if j.get("phase") in live_phases:
-                out.append(JOB.progress(j.get("entry_id")))
-            elif j.get("phase") == "done":
-                p = JOB.progress(j.get("entry_id"))
-                p["result"] = j.get("result")
-                p["bytes"] = j.get("bytes")
-                out.append(p)
+            eid = j.get("entry_id")
+            row = dict(JOB.progress(eid))
+            row["result"] = j.get("result")
+            row["bytes"] = j.get("bytes")
+
+            # ---- the keys the view needs -------------------------------
+            secs = float(row.get("audio_seconds") or 0.0)
+            row["hours"] = round(secs / 3600.0, 2) if secs else 0.0
+
+            mb = 0.0
+            if j.get("bytes"):
+                try:
+                    mb = int(j["bytes"]) / 1048576.0
+                except (TypeError, ValueError):
+                    mb = 0.0
+            elif secs and row.get("bitrate") in AB.AUDIO_QUALITY:
+                info = AB.AUDIO_QUALITY[row["bitrate"]]
+                mb = round(secs * AB._bitrate_kbps(info) * 1000.0
+                           / 8.0 / 1048576.0, 1)
+            row["mb"] = round(mb, 1)
+
+            voice = (j.get("voice") or "").strip()
+            voice_ref = (j.get("voice_ref") or "").strip()
+            row["narrator"] = voice or ("cloned voice" if voice_ref
+                                        else "unknown")
+            row["cloned"] = bool(voice_ref)
+
+            # Chapters only exist once assembly has run.
+            row["chapters"] = len(j.get("chapters") or []) or None
+
+            if j.get("phase") == "done":
+                total_seconds += secs
+                total_mb += mb
+
+            out.append(row)
+
         out.sort(key=lambda d: str(d.get("title") or "").casefold())
-        return jsonify({"ok": True, "count": len(out), "audiobooks": out})
+        return jsonify({
+            "ok": True,
+            "count": len(out),
+            "total_hours": round(total_seconds / 3600.0, 2),
+            "total_mb": round(total_mb, 1),
+            "audiobooks": out,
+        })
 
     @app.route("/audiobook/progress")
     def audiobook_progress():

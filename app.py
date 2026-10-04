@@ -10076,52 +10076,6 @@ def user_obj_name_for(entry_id: str) -> str:
     return ""
 
 
-def _ab_entry(entry_id: str):
-    entry = get_library_entry(entry_id)
-    if not entry:
-        # NotFound(description=...), NOT HTTPException(404, "...").
-        # The two-argument form passes the message as `response`, and
-        # HTTPException.__call__ then expects a WSGI callable there:
-        #   TypeError: 'str' object is not callable
-        #   werkzeug/exceptions.py, line 162, in __call__
-        # Flask turns a raised NotFound into a proper 404 response.
-        raise NotFound(description="book not found in library")
-    return entry
-
-
-def _ab_resolve_path(entry: Dict) -> Optional[str]:
-    """The real file for a library entry.
-
-    build_library_entries() sets no "path" key. The id is a composite
-    "<resolved root>::<relpath with forward slashes>" (app.py:3002-3004), so
-    the file is recovered by splitting it. Reading entry["path"] returned None
-    and the route wrongly reported the file as missing.
-    """
-    explicit = entry.get("path")
-    if explicit and os.path.exists(explicit):
-        return explicit
-
-    eid = str(entry.get("id") or "")
-    root = settings_manager.settings.library_root
-    rel = None
-    if "::" in eid:
-        rel = eid.split("::", 1)[1]
-    elif root and eid.startswith(str(root)):
-        rel = os.path.relpath(eid, str(root))
-    if rel:
-        candidate = os.path.join(str(root), rel.replace("/", os.sep))
-        if os.path.exists(candidate):
-            return os.path.realpath(candidate)
-
-    # last resort: match on the file name alone
-    name = os.path.basename(eid)
-    if name and root:
-        for p in Path(root).rglob(name):
-            if p.is_file():
-                return str(p)
-    return None
-
-
 # ------------------------------------------------- audiobooks in library --
 # Narrated books are a different kind of object from ebooks: they have a
 # duration, a size, a narrator, a chapter count and a delivery state. They get
@@ -10257,9 +10211,6 @@ def audiobook_index() -> List[Dict]:
 # clip does not belong in a JSON field, so the reference is uploaded here and
 # the studio fetches it by path.
 
-REFERENCE_DIR = DATA_DIR / "audiobook_refs"
-
-
 # ------------------------------------------- audiobook: options + sizing --
 # The dialog needs to answer "how long and how big?" BEFORE the user commits
 # to a job that runs for hours. Both figures come from measured rates
@@ -10267,25 +10218,6 @@ REFERENCE_DIR = DATA_DIR / "audiobook_refs"
 #
 # Kept deliberately small: user, voice, auto-send, notify, bitrate. Anything
 # more is clutter on a dialog most people open once per book.
-
-def _ab_quality_choices():
-    """Quality options, read from gb_audiobook so they cannot drift.
-
-    The old hardcoded list was ["128k", "160k", "192k"] with 192 as the
-    default. Measured on real narration audio, AAC at 24 kHz mono saturates
-    near 99 kbps: all three encode to byte-identical files, so the default was
-    above the codec's ceiling and the other two were no-ops.
-    """
-    import gb_audiobook as AB
-    return [
-        {"bitrate": b,
-         "label": (info.get("label") or b),
-         "kbps": info.get("kbps"),
-         "m10": info.get("m10")}
-        for b, info in AB.AUDIO_QUALITY.items()
-    ]
-
-
 
 # ------------------------------------------------------ audiobook: preview --
 # Hear a passage before committing to a multi-hour narration. The clip is
@@ -10348,32 +10280,6 @@ def _rotate_debug_log(force: bool = False) -> None:
                     prev.name, DEBUG_LOG_MAX_BYTES // (1024 * 1024))
     except Exception:
         logger.debug("debug.log rotation failed", exc_info=True)
-
-def _ab_user_options():
-    """The per-user choices the dialog offers."""
-    out = []
-    for u in (getattr(settings_manager.settings, "users", None) or []):
-        out.append({
-            "name": getattr(u, "name", "") or "",
-            "kindle_email": getattr(u, "kindle_email", "") or "",
-            "notification_email": getattr(u, "notification_email", "") or "",
-        })
-    return out
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # ------------------------------------------------------------ cover cache --
 # Folder composites deliberately never fetch during a render, so they silently

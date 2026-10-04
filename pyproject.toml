@@ -53,6 +53,7 @@ py-modules = [
   "epub_distributor",
   "gb_abjob",
   "gb_audiobook",
+  "gb_audit",
   "gb_authors",
   "gb_epub_urls",
   "gb_fastdl",

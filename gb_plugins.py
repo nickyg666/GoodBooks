@@ -361,6 +361,9 @@ class PluginManager:
             # `maintenance` reachable this way.
             hooks = {n: getattr(module, n) for n in ("maintenance",)
                      if callable(getattr(module, n, None))}
+            # ...and the declared route list, which is what the guard needs in
+            # order to attribute paths to this plugin at all.
+            hooks["_routes"] = list(getattr(module, "ROUTES", []) or [])
         declared = list(hooks.get("_routes") or []) if hooks else []
         routes = []
         if self._app is not None:
@@ -380,11 +383,17 @@ class PluginManager:
         # can be refused per request. Flask's url_map cannot be subtracted
         # from, so "disable" cannot mean "unregister"; it has to mean "this
         # plugin's paths stop answering".
-        if register_routes:
-            for r in routes:
-                base = str(r).strip()
-                if base and not base.endswith(" (declared)"):
-                    self._route_owner.setdefault(base, pid)
+        # Route ownership is a property of the MANIFEST, not of this load.
+        # It must be recorded on every load, including the runtime-enable
+        # path that deliberately skips calling register() -- otherwise the
+        # guard cannot tell that a path belongs to an enabled plugin and
+        # refuses it. Measured: after a runtime enable the state file said
+        # {"audiobook": true} and /api/plugins reported enabled=true, while
+        # /audiobook/options returned 404.
+        for r in (declared or routes):
+            base = str(r).strip()
+            if base and not base.endswith(" (declared)"):
+                self._route_owner.setdefault(base, pid)
         logger.info("plugin %s v%s loaded (provides: %s)",
                     pid, manifest.get("version"), manifest.get("provides"))
         return True

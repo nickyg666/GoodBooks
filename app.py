@@ -4835,7 +4835,7 @@ def index():
     #   compact   - dense text list, fastest for large libraries
     view_mode = request.args.get("view", "folder").strip().lower()
     if view_mode not in {"folder", "collection", "cover", "compact", "recent",
-                         "kindle", "audiobooks"}:
+                         "kindle", "audiobooks", "plugins"}:
         view_mode = "folder"
     # Keep what the user actually asked for. "recent" is resolved to
     # collection mode below for its behaviour, but the template needs the
@@ -5252,6 +5252,12 @@ def index():
         # Measured: the old `filetype == 'epub'` gate removed the button
         # from 12 of 50 cards.
         audiobook_supported_formats=set(gb_extract.SUPPORTED_FORMATS),
+        # Plugin inventory for the Plugins view. Read live
+        # from the manager rather than cached, so a plugin that
+        # failed to load is VISIBLE instead of silently absent.
+        plugin_summaries=(PLUGINS.summaries()
+                          if PLUGINS is not None else []),
+        plugin_host_ok=(PLUGINS is not None),
         author_options=author_options,
         genre_filter=genre_filter,
         author_filter=author_filter,
@@ -10571,22 +10577,40 @@ def api_plugins():
     return jsonify({"ok": True, "plugins": PLUGINS.summaries()})
 
 
+def _plugin_wants_html() -> bool:
+    """True when the caller is a browser form rather than a script.
+
+    The plugin view submits a plain form, so without this the person who
+    clicked Enable lands on a bare JSON page with no way back. JSON clients
+    (curl, scripts) do not send these content types, so they keep getting
+    JSON and nothing else changes for them.
+    """
+    ctype = (request.content_type or "").lower()
+    return ("application/x-www-form-urlencoded" in ctype
+            or "multipart/form-data" in ctype)
+
+
+def _plugin_result(ok, plugin_id):
+    """JSON for scripts, a redirect back to the view for a browser form."""
+    payload = {"ok": bool(ok), "plugin_id": plugin_id,
+               "plugins": PLUGINS.summaries() if PLUGINS else []}
+    if _plugin_wants_html():
+        return redirect(url_for("index", view="plugins"))
+    return jsonify(payload)
+
+
 @app.post("/api/plugins/<plugin_id>/enable")
 def api_plugin_enable(plugin_id):
     if PLUGINS is None:
         return jsonify({"ok": False, "error": "plugin subsystem unavailable"}), 503
-    ok = PLUGINS.set_enabled(plugin_id, True)
-    return jsonify({"ok": bool(ok), "plugin_id": plugin_id,
-                    "plugins": PLUGINS.summaries()})
+    return _plugin_result(PLUGINS.set_enabled(plugin_id, True), plugin_id)
 
 
 @app.post("/api/plugins/<plugin_id>/disable")
 def api_plugin_disable(plugin_id):
     if PLUGINS is None:
         return jsonify({"ok": False, "error": "plugin subsystem unavailable"}), 503
-    ok = PLUGINS.set_enabled(plugin_id, False)
-    return jsonify({"ok": bool(ok), "plugin_id": plugin_id,
-                    "plugins": PLUGINS.summaries()})
+    return _plugin_result(PLUGINS.set_enabled(plugin_id, False), plugin_id)
 
 
 

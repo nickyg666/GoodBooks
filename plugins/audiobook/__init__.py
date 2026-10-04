@@ -38,6 +38,24 @@ NARRATION_MAX_CHUNKS = 40
 _state = {"ctx": None, "log": print}
 
 
+
+# The paths this plugin owns. Exposed at module level (not only inside the
+# dict returned by register) because the manager needs them on the
+# runtime-enable path too: when register() is skipped -- which it must be,
+# since Flask forbids adding routes after the first request -- the guard
+# still has to know which URLs belong here in order to stop answering while
+# the plugin is disabled.
+ROUTES = [
+    "/audiobook/start",
+    "/audiobook/cancel",
+    "/audiobook/options",
+    "/audiobook/estimate",
+    "/audiobook/preview",
+    "/audiobook/progress",
+    "/audiobook/voices",
+    "/api/audiobooks",
+]
+
 def register(ctx):
     """Called once at load. Returns the hooks the host may invoke.
 

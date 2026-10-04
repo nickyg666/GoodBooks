@@ -2375,3 +2375,58 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   .audiobook-row { flex-direction: column; align-items: flex-start; }
   .ab-facts { width: 100%; }
 }
+
+/* ---------------------------------------------- plugins view -------- */
+.plugin-view { display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0; }
+.plugin-summary { color: var(--text-muted, #666); margin-bottom: .5rem; line-height: 1.5; }
+.plugin-empty { color: var(--text-muted, #666); font-style: italic; }
+
+.plugin-card {
+  display: flex; flex-direction: column; gap: .5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+}
+.plugin-card-error { border-color: var(--danger, #c0392b); }
+
+.plugin-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.plugin-name { font-weight: 600; font-size: 1.05rem; }
+.plugin-version { color: var(--text-muted, #666); font-size: .9rem; }
+.plugin-id { font-size: .85rem; color: var(--text-muted, #666); }
+.plugin-id code, .plugin-cap { font-family: var(--mono, monospace); }
+
+.plugin-provides { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.plugin-cap {
+  background: var(--surface-alt, #f3f4f6);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  padding: .1rem .4rem;
+  font-size: .85rem;
+}
+.plugin-cap + .plugin-cap { margin-left: .3rem; }
+
+.plugin-routes summary { cursor: pointer; font-size: .9rem; color: var(--text-muted, #666); }
+.plugin-routes ul { margin: .4rem 0 0 1.2rem; font-size: .85rem; }
+
+.plugin-error-detail {
+  color: var(--danger, #c0392b);
+  font-family: var(--mono, monospace);
+  font-size: .85rem;
+  word-break: break-word;
+}
+
+.plugin-toggle { margin-top: .25rem; }
+.plugin-btn {
+  padding: .4rem .9rem;
+  border: 1px solid var(--border, #bbb);
+  border-radius: 6px;
+  background: var(--surface-alt, #f3f4f6);
+  /* Explicit colours: the inherited foreground resolved to white on this
+     pale background, so the label was effectively invisible. */
+  color: var(--text, #1f2933);
+  cursor: pointer;
+  font-size: .9rem;
+  min-height: 2rem;
+}
+.plugin-btn:hover { background: var(--hover, #e5e7eb); }

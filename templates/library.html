@@ -239,7 +239,7 @@
                 <span class="library-refresh-label">Refresh metadata</span>
                 <span class="library-refresh-state" aria-live="polite"></span>
             </button>
-            <span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>
+            {% if view_mode != 'plugins' %}<span>Total titles: <strong id="library-total-count">{{ library_headline_count }}</strong></span>{% endif %}
             <label class="checkbox select-all-label" style="margin: 0;">
                 <input type="checkbox" id="library-select-all" style="cursor: pointer;">
                 <span>Select all</span>
@@ -290,6 +290,10 @@
                 </svg>
                 <span class="view-toggle-text">Audiobooks</span>
             </button>
+                <button type="button" id="library-view-plugins" class="view-toggle {% if view_mode_requested == 'plugins' %}active{% endif %}"
+                    data-view="plugins" title="Plugins: installed extensions and what they provide">
+                    Plugins
+                </button>
             <button type="button" id="library-view-recent" class="view-toggle {% if view_mode_requested == 'recent' %}active{% endif %}" data-view="recent" title="Newest: most recently added books first">
                     <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
                         <circle cx="10" cy="10" r="7.2" stroke="currentColor" fill="none" stroke-width="1.4"/>
@@ -298,6 +302,7 @@
                     <span class="view-toggle-text">Newest</span>
                 </button>
             </div>
+            {% if view_mode != 'plugins' %}
             <form method="get" id="library-filter-form" class="form-grid library-filters lib-filters" style="margin: 0;"
                   data-auto-submit="1">
                 <label class="lib-search" style="margin-bottom: 0;">
@@ -369,6 +374,7 @@
                             title="Get random book(s) from your selection">Random</button>
                 </div>
             </form>
+            {% endif %}
             <div id="library-multi-actions" class="hidden">
                 <span id="library-multi-count" class="multi-count">0 selected</span>
                 <button type="button" id="library-multi-send" class="primary">Send to Kindle</button>
@@ -581,6 +587,74 @@
         </div>
         {% endif %}
 
+        {# ------------------------------------------ plugins view ---- #}
+        {% if view_mode == 'plugins' %}
+        <div id="plugin-view" class="plugin-view">
+            <div class="plugin-summary" id="plugin-summary">
+                {% if plugin_host_ok %}
+                Extensions installed in this GoodBooks. Disabling one stops its
+                URLs answering without a restart; enabling one reloads its
+                hooks.
+                {% else %}
+                The plugin subsystem failed to start, so no extensions are
+                available. The rest of GoodBooks is unaffected.
+                {% endif %}
+            </div>
+
+            {% if not plugin_summaries %}
+            <p class="plugin-empty" id="plugin-empty">
+                No plugins found in <code>plugins/</code>.
+            </p>
+            {% endif %}
+
+            {% for p in plugin_summaries %}
+            <div class="card plugin-card{% if p.error %} plugin-card-error{% endif %}"
+                 data-plugin-id="{{ p.id }}">
+                <div class="plugin-head">
+                    <span class="plugin-name">{{ p.name }}</span>
+                    <span class="plugin-version">v{{ p.version }}</span>
+                    {% if p.enabled %}
+                    <span class="chip chip-ok">enabled</span>
+                    {% else %}
+                    <span class="chip chip-muted">disabled</span>
+                    {% endif %}
+                </div>
+
+                <div class="plugin-id">id: <code>{{ p.id }}</code></div>
+
+                {% if p.provides %}
+                <div class="plugin-provides">
+                    provides:
+                    {% for cap in p.provides %}<code class="plugin-cap">{{ cap }}</code>{% endfor %}
+                </div>
+                {% endif %}
+
+                {% if p.routes %}
+                <details class="plugin-routes">
+                    <summary>{{ p.routes|length }} route(s)</summary>
+                    <ul>
+                        {% for r in p.routes %}<li><code>{{ r }}</code></li>{% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
+
+                {% if p.error %}
+                <div class="plugin-error-detail">{{ p.error }}</div>
+                {% endif %}
+
+                {# A plain form POST, so this still works with the script
+                   layer dead -- which is exactly when you need it. #}
+                <form class="plugin-toggle" method="post"
+                      action="/api/plugins/{{ p.id }}/{{ 'disable' if p.enabled else 'enable' }}">
+                    <button type="submit" class="plugin-btn">
+                        {{ 'Disable' if p.enabled else 'Enable' }} {{ p.id }}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         {# ------------------------------------------------ Kindle library #}
         {% if view_mode == 'kindle' %}
         {% set reading_now = kindled_reading_now | default([]) %}
@@ -684,7 +758,7 @@
         {% endif %}
         {% endif %}
     {# Unified grid for both folder cards and book cards #}
-    {% if view_mode not in ('kindle', 'audiobooks') and (entries or (folder_cards and not filters_active)) %}
+    {% if view_mode not in ('kindle', 'audiobooks', 'plugins') and (entries or (folder_cards and not filters_active)) %}
     <div id="library-content" class="grid results-grid library-view-grid" data-view="{{ view_mode }}">
         {# Folder cards (only when no filters are active) #}
         {% if folder_cards and not filters_active %}
@@ -799,7 +873,9 @@
         {% endfor %}
     </div>
     {% else %}
+    {% if view_mode != 'plugins' %}
     <p>No books found in this folder.</p>
+    {% endif %}
     {% endif %}
 
     {% if total_pages > 1 %}

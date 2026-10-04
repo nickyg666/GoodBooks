@@ -225,6 +225,82 @@ def _first_line_title(text: str) -> str:
     return ""
 
 
+# --- chapter headings that are split across two elements ---------------
+#
+# MEASURED on a real .azw3 from the library, converted by calibre:
+#
+#     <h2 class="calibre6" id="calibre_pb_2">C H A P T E R</h2>
+#     <h3 class="sigilnotintoc">One</h3>
+#
+# The chapter word is the generic <h2>; the title and number are in the
+# <h3> right after it. Taking the first heading therefore produced seven
+# chapters all titled 'C H A P T E R' with no numbers.
+#
+# calibre's `sigilnotintoc` class marks exactly this pattern, but relying on
+# one tool's class name would be brittle, so this is structural: a generic
+# label followed by real words means the second is the title.
+_GENERIC_HEADINGS = frozenset({
+    "chapter", "part", "book", "section", "prologue", "epilogue",
+    "contents", "table of contents", "frontispiece", "foreword",
+    "preface", "introduction", "afterword", "acknowledgments",
+    "acknowledgements", "copyright", "about the author",
+})
+
+
+def _normalise_heading(text: str) -> str:
+    """Clean a heading, undoing letter-spacing display artefacts.
+
+    'C H A P T E R' is a single word CSS has letter-spaced; read literally it
+    is not a title at all. Collapse only when that is unambiguous: single
+    letters separated by spaces, or an all-caps phrase with no lowercase.
+    """
+    t = re.sub(r"\s+", " ", (text or "")).strip()
+    if not t:
+        return ""
+    # 'C H A P T E R' -> 'CHAPTER'
+    if re.fullmatch(r"(?:[A-Za-z]\s+){1,}[A-Za-z]", t):
+        collapsed = re.sub(r"\s+", "", t)
+        if collapsed.isupper():
+            # Collapse the letter-spacing but keep the book's own
+            # casing: 'CHAPTER' is not ours to rewrite as
+            # 'Chapter', and the join below needs the label
+            # verbatim.
+            return collapsed
+        return collapsed
+    return t
+
+
+def _is_generic_heading(title: str) -> bool:
+    """True when this heading carries no identifying information."""
+    t = _normalise_heading(title)
+    if not t:
+        return True
+    low = t.casefold().strip(" .:;,")
+    return low in _GENERIC_HEADINGS
+
+
+def _join_split_heading(first: str, second: str) -> str:
+    """'C H A P T E R' + 'One' -> 'Chapter One'.
+
+    Keeps the number and the real title, which are the two things a listener
+    needs to navigate by.
+    """
+    a = _normalise_heading(first)
+    b = _normalise_heading(second)
+    if not b:
+        return a
+    if not a:
+        return b
+    # 'One' alone should read 'Chapter One'
+    # No special case for a single-word second heading: that
+    # word IS the number ('One' vs 'Ten'), so dropping
+    # the first half loses the chapter numbering.
+    # Always join.
+    # (the old 'return b' is gone)
+    return f"{a} {b}"
+
+
+
 def read_epub(path: Path) -> EpubBook:
     """Parse an EPUB using its OPF spine, so chapter order and titles are
     the book's own rather than archive order."""
@@ -357,13 +433,50 @@ def _toc_titles(z, pkg, opf_dir, manifest) -> dict:
 
 
 def _first_heading(raw: bytes) -> str:
-    m = re.search(rb"<h[1-3][^>]*>(.*?)</h[1-3]>", raw, re.I | re.S)
-    if not m:
+    """The document's first meaningful heading, from the RAW markup.
+
+    Read the bytes, not the stripped text. The previous version did:
+
+        text = _html_to_text(raw.decode(...))
+        heads = re.findall(r"<h[1-4][^>]*>(.*?)</h[1-4]>", text, ...)
+
+    but _html_to_text REMOVES the tags, so the regex matched nothing, this
+    function always returned "", and read_epub fell back to
+    _first_line_title -- i.e. the first line of PROSE.
+
+    Measured on a real library EPUB:
+
+        raw has <h2>                 : True
+        text has <h2>                : False   <- stripped
+        h[1-4] matches in text      : 0
+        _first_heading(raw)          -> ''
+        _first_line_title(text)      -> 'C H A P T E R'
+
+    which is why seven chapters were all titled 'C H A P T E R'.
+    """
+    markup = raw.decode("utf-8", "replace") if isinstance(raw, bytes) \
+        else str(raw)
+    heads = re.findall(r"<h([1-4])[^>]*>(.*?)</h\1>", markup,
+                       re.S | re.I)
+    if not heads:
         return ""
-    return unescape(TAG.sub("", m.group(1).decode("utf-8", "replace"))).strip()
+    # each element is (level, inner markup)
+    first = _normalise_heading(re.sub(r"<[^>]+>", " ", heads[0][1]))
+    # A generic label immediately followed by a real heading means the title
+    # is the second one: 'CHAPTER' then 'One' is Chapter One. This is the
+    # pattern in the measured file:
+    #     <h2>CHAPTER</h2>
+    #     <h3>One</h3>
+    if len(heads) > 1 and _is_generic_heading(first):
+        second = _normalise_heading(re.sub(r"<[^>]+>", " ", heads[1][1]))
+        if second and not _is_generic_heading(second):
+            return _join_split_heading(first, second)
+    return first
+
+# A line that is nothing but a heading: short, no sentence punctuation, and
+# either a generic label or set in capitals.
 
 
-# ------------------------------------------------------------ chunking ---
 
 # A line like "CHAPTER 1" or "PROLOGUE" names a section; it is not prose to be
 # spoken on its own. Measured: after the front-matter fix, the first chunk was
@@ -371,7 +484,6 @@ def _first_heading(raw: bytes) -> str:
 _HEADING_ONLY = re.compile(
     r"^(chapter|part|book|section|prologue|epilogue)\b.{0,24}$", re.I)
 MIN_CHUNK_CHARS = 25
-
 
 def _is_heading_only(s: str) -> bool:
     t = s.strip()

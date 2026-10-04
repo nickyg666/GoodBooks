@@ -9920,7 +9920,7 @@ def _run_maintenance_cycle() -> None:
         if covers_cached > 0:
             logger.info("Background maintenance: cached %d cover URLs to local files", covers_cached)
             # Save updated metadata
-            save_library_metadata(library_metadata)
+            _atomic_write_metadata(library_metadata)
     except Exception as e:
         logger.debug("Failed to cache covers in background: %s", e)
 
@@ -9982,6 +9982,16 @@ def start_background_maintenance_thread() -> threading.Thread:
 
 
 # Start the background maintenance worker immediately when the module is imported.
+# Log-rotation caps, declared here rather than beside the rotate
+# function further down. The maintenance thread starts the moment this
+# assignment completes and does not wait for the rest of the module,
+# so the first tick can reach _rotate_debug_log() -- which the cycle
+# calls first -- before these names exist. Same class as PLUGINS being
+# read before it was assigned.
+DEBUG_LOG_MAX_BYTES = 512 * 1024 * 1024
+DEBUG_LOG_KEEP = 1
+_log_rotated_at = {"t": 0.0}
+
 BACKGROUND_MAINTENANCE_THREAD = start_background_maintenance_thread()
 # Configure global download concurrency (Semaphore in search_engine.py).
 set_download_concurrency(
@@ -10291,9 +10301,6 @@ def _ab_quality_choices():
 # debug.log is the service's own log and was growing without bound. Rotate
 # once past 512MB, keeping a single previous file, and check on startup then
 # hourly so it does not depend on request traffic.
-DEBUG_LOG_MAX_BYTES = 512 * 1024 * 1024
-DEBUG_LOG_KEEP = 1
-_log_rotated_at = {"t": 0.0}
 
 
 def _rotate_debug_log(force: bool = False) -> None:

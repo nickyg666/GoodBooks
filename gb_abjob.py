@@ -472,7 +472,6 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
 
         if not todo:
             job.pop("error", None)
-            job.pop("error", None)
             job["phase"] = "assembling"
             job["updated"] = time.time()
             save_job(entry_id, job)
@@ -606,6 +605,26 @@ def run_job(entry_id: str, log=print, budget_seconds: float = 0.0,
 
 
 def pending_jobs() -> List[str]:
+    """Runnable jobs, OLDEST-TOUCHED FIRST.
+
+    Order matters: active_job() takes the first entry, and it is consulted
+    once per maintenance cycle. With glob() order -- which is stable but
+    arbitrary -- one job wins every cycle forever and the rest starve.
+
+    Measured 2026-10-03: a job sat at 384/603, untouched for 507 minutes,
+    while a second job was served every cycle for the same window. It read as
+    "the second book never started" when the real cause was that the first
+    book was permanently first in an arbitrary list.
+
+    Sorting by each job's own `updated` stamp gives round-robin for free: the
+    narrator refreshes it every window, so the least-recently-served job
+    sorts first. A queued job has never been touched, so its stamp is old and
+    it correctly outranks a job already in progress.
+
+    entry_id breaks ties so the order is deterministic when two jobs share a
+    timestamp; without it the maintenance cycle and the UI could disagree
+    about which job is active and flip between them.
+    """
     out = []
     for p in _jobs_dir().glob("*.json"):
         try:
@@ -613,8 +632,13 @@ def pending_jobs() -> List[str]:
         except Exception:
             continue
         if j.get("phase") in ("queued", "narrating", "assembling"):
-            out.append(j["entry_id"])
-    return out
+            try:
+                stamp = float(j.get("updated") or 0.0)
+            except (TypeError, ValueError):
+                stamp = 0.0
+            out.append((stamp, str(j.get("entry_id") or "")))
+    out.sort(key=lambda t: (t[0], t[1]))
+    return [eid for _, eid in out]
 
 
 def active_job() -> Optional[str]:

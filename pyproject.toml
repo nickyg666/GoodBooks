@@ -55,6 +55,8 @@ py-modules = [
   "gb_audiobook",
   "gb_audit",
   "gb_authors",
+  "gb_bookkey",
+  "gb_bookkey_apply",
   "gb_epub_urls",
   "gb_fastdl",
   "gb_goodreads",

@@ -301,6 +301,48 @@ def _join_split_heading(first: str, second: str) -> str:
 
 
 
+_IMAGE_EXT = re.compile(
+    r"\.(?:jpg|jpeg|png|gif|webp|tif|tiff|bmp|avif)$", re.I)
+
+# Enough text to know the book is fine. A real novel clears this within the
+# first few documents, so the scan costs almost nothing on a normal book.
+_TEXT_ENOUGH = 20000
+# Image bytes that mean "this is a scan" rather than "this book has a cover".
+_IMAGE_HEAVY = 2 * 1024 * 1024
+
+
+def _looks_scanned(z, names):
+    """Is this book a scan with no text layer?
+
+    Returns (is_scan, total_text_chars, total_image_bytes).
+
+    Measured on a real library file: 126 page images carrying 24.4 MB and
+    2,340 characters of text across 127 documents.
+    """
+    total_text = 0
+    image_bytes = 0
+    for name in names:
+        if _IMAGE_EXT.search(name):
+            try:
+                image_bytes += z.getinfo(name).file_size
+            except Exception:
+                pass
+            continue
+        if not name.lower().endswith((".xhtml", ".html", ".htm", ".xml")):
+            continue
+        try:
+            raw = z.read(name)
+        except Exception:
+            continue
+        total_text += len(_html_to_text(
+            raw.decode("utf-8", "replace")).strip())
+        if total_text >= _TEXT_ENOUGH and image_bytes < _IMAGE_HEAVY:
+            return False, total_text, image_bytes
+    return image_bytes >= _IMAGE_HEAVY and total_text < _TEXT_ENOUGH, \
+        total_text, image_bytes
+
+
+
 def read_epub(path: Path) -> EpubBook:
     """Parse an EPUB using its OPF spine, so chapter order and titles are
     the book's own rather than archive order."""
@@ -393,7 +435,16 @@ def read_epub(path: Path) -> EpubBook:
                                         text=text))
 
         if not book.chapters:
-            raise ConversionError("no readable chapters found in the EPUB")
+            (_is_scan, _txt, _img) = _looks_scanned(z, names)
+            if _is_scan:
+                raise ConversionError(
+                    'this book is a SCAN: '
+                    f'{_img / 1048576:.0f} MB of page images with only '
+                    f'{_txt:,} characters of text, so there is nothing '
+                    'to narrate. It needs OCR, or a text edition.')
+            raise ConversionError(
+                f'no readable text found in this EPUB ({_txt:,} characters '
+                'across its documents); it may be empty or corrupt.')
         if not book.title:
             book.title = path.stem
         return book

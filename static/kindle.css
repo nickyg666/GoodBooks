@@ -1956,3 +1956,9 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
 .plugin-card { border: 1px solid #999; padding: .6rem; }
 .plugin-cap { margin-right: .3rem; }
 .plugin-btn { padding: .3rem .7rem; border: 1px solid #999; background: #fff; }
+/* the Convert chip must sit above the meta strip here too */
+.library-card .ab-start-btn { position: relative; z-index: 2; }
+.library-card .library-meta { position: relative; z-index: 1; }
+.library-card .library-meta:not(:has(a, button, input, select))
+  { pointer-events: none; }
+.library-card .library-meta > * { pointer-events: auto; }

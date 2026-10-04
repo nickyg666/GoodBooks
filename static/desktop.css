@@ -2490,3 +2490,110 @@ body, .kindle-grid, .kindle-rail, .library-toolbar {
   flex: 0 1 auto;
   min-width: 0;
 }
+
+/* The Convert-to-audiobook chip must be clickable on EVERY card.
+
+ * MEASURED (hit-test over all 50 cards, not .click()):
+ *   total 50, covered 7, uncovered 43
+ *   button x=2 y=542 w=112 h=33
+ *   meta   x=2 y=542 w=165 h=21   <- same y, WIDER, painted later
+ *   document.elementFromPoint(button centre) returned DIV.library-meta
+ *
+ * So on any card that has a meta strip, the strip sits on top of the control
+ * and swallows every click. Cards without meta are unaffected, which is why
+ * it read as "the button is sometimes missing".
+ *
+ * position:relative + z-index lifts the chip into its own stacking context
+ * above the strip; pointer-events on the strip stops it intercepting anything
+ * that is not its own text. Both are scoped to the library card so nothing
+ * else on the page moves.
+ */
+.library-card .ab-start-btn {
+  position: relative;
+  z-index: 2;
+}
+
+.library-card .library-meta {
+  position: relative;
+  z-index: 1;
+}
+
+/* Belt and braces: even if the geometry changes later, the meta strip cannot
+ * capture a click meant for a control. */
+.library-card .library-meta:not(:has(a, button, input, select)) {
+  pointer-events: none;
+}
+
+.library-card .library-meta > * {
+  pointer-events: auto;
+}
+
+/* And the cover stays clickable underneath, which it must remain. */
+.library-card .library-cover-link {
+  position: relative;
+  z-index: 1;
+}
+
+/* Convert chip: keep it above the meta strip AND out of the cover's clip.
+ * The markup now places it as a card child; this is the belt to that
+ * braces. If it ever moves back inside .library-cover, overflow:visible
+ * stops the same "invisible button" bug returning silently. */
+.library-card .ab-start-btn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  margin: 0;
+  z-index: 3;
+}
+
+.library-card .library-meta {
+  position: relative;
+  z-index: 1;
+}
+
+.library-card .library-meta:not(:has(a, button, input, select)) {
+  pointer-events: none;
+}
+
+.library-card .library-meta > * {
+  pointer-events: auto;
+}
+
+/* Convert chip: a child of .card, absolutely placed over the cover.
+
+ * It cannot live inside .library-cover: that element is overflow:hidden, so
+ * a chip inside it is clipped and never receives a click. Measured:
+ * offsetParent .library-cover, elementFromPoint at the chip's own centre
+ * returned DIV.card, and z-index / pointer-events changes did nothing --
+ * they only reorder painted elements. */
+.library-card {
+  position: relative;
+}
+
+.library-card .ab-start-btn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  margin: 0;
+  z-index: 3;
+}
+
+/* Guard: if the markup ever moves back inside the cover, do not go silent. */
+.library-card .library-cover .ab-start-btn {
+  overflow: visible;
+  position: absolute;
+  z-index: 3;
+}
+
+.library-card .library-meta {
+  position: relative;
+  z-index: 1;
+}
+
+.library-card .library-meta:not(:has(a, button, input, select)) {
+  pointer-events: none;
+}
+
+.library-card .library-meta > * {
+  pointer-events: auto;
+}

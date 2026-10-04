@@ -847,6 +847,14 @@
                         </div>
                     </div>
                 </a>                        {% set _ab_fmt = (entry.filetype or '')|lower %}
+
+
+            </div>
+                        {# Convert chip: a child of .card, NOT of .library-cover.
+                           The cover is overflow:hidden, and a chip inside it is CLIPPED --
+                           measured offsetParent .library-cover and elementFromPoint at
+                           its own coordinates returned DIV.card. z-index and
+                           pointer-events cannot rescue a clipped element. #}
                         {% if _ab_fmt in audiobook_supported_formats %}
                         <button type="button"
                                 class="library-status-chip chip chip-compact ab-start-btn"
@@ -858,8 +866,6 @@
                             <span class="ab-btn-label">Audiobook</span>
                         </button>
                         {% endif %}
-
-            </div>
 
             <div class="library-meta">
                 {# Only show tags if present, no duplicate title/author here #}

@@ -338,6 +338,7 @@ def register(ctx):
         progress keys are kept alongside them so nothing that already reads
         them loses anything.
         """
+        import re
         import gb_abjob as JOB
         import gb_audiobook as AB
 
@@ -376,6 +377,28 @@ def register(ctx):
 
             # Chapters only exist once assembly has run.
             row["chapters"] = len(j.get("chapters") or []) or None
+
+            # Who this audiobook belongs to and what cover to show.
+            # entry_id lets the view link back to the source book; cover
+            # is the entry's cover URL when one exists, else ''.
+            row["entry_id"] = eid
+            cover = ""
+            try:
+                e = svc.get_library_entry(eid)
+                if e:
+                    cover = (e.get("cover") or "") if isinstance(e, dict) else getattr(e, "cover", "") or ""
+            except Exception:
+                cover = ""
+            # 'data/covers/<32-hex>.jpg' is a FILE path; the URL the browser can
+            # load is the /cover/<32-hex> route. Emitting the raw relative path
+            # 404'd and showed a broken-image X on rows that DO have covers.
+            if cover:
+                m = re.match(r".*data/covers/([0-9a-fA-F]{32})\.(?:jpg|jpeg|png|webp|gif)$", cover)
+                if m:
+                    cover = "/cover/" + m.group(1)
+                elif not cover.startswith(("http://", "https://", "/")):
+                    cover = ""            # unknown form: show the empty cover
+            row["cover"] = cover
 
             if j.get("phase") == "done":
                 total_seconds += secs

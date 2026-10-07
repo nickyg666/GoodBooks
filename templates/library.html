@@ -2416,7 +2416,20 @@ document.addEventListener('DOMContentLoaded', function () {
         var sent = a.delivered === true ? 'sent to Kindle'
                 : a.delivered === false ? 'Kindle send failed'
                 : 'not sent';
-        return '<div class="audiobook-row">' +
+        var cover = a.cover ? '<img class="ab-cover" src="' + esc(a.cover) + '" alt="" loading="lazy" decoding="async">'
+                          : '<span class="ab-cover ab-cover-empty" aria-hidden="true"></span>';
+      var dl = a.result
+        ? '<a class="ab-btn" href="/library/download/' + encodeURIComponent(a.entry_id || '') + '?fmt=m4b">Download</a>'
+        : '';
+      var kindle = a.entry_id
+        ? '<form class="ab-kindle-form" method="post" action="/library/send-to-kindle">' +
+            '<input type="hidden" name="entry_id" value="' + esc(a.entry_id) + '">' +
+            '<input type="hidden" name="user_name" value="nick">' +
+            '<button type="submit" class="ab-btn">Send to Kindle</button>' +
+          '</form>'
+        : '';
+      return '<div class="audiobook-row">' +
+          cover +
           '<div class="ab-main">' +
             '<span class="ab-row-title">' + esc(a.title) + '</span>' +
             '<span class="ab-row-meta">' + narrator +
@@ -2430,6 +2443,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<span class="ab-fact ab-sent-' + (a.delivered === true ? 'yes' : 'no') +
               '">' + sent + '</span>' +
           '</div>' +
+          '<div class="ab-actions">' + dl + kindle + '</div>' +
         '</div>';
       }).join('');
     })

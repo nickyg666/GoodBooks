@@ -34,19 +34,24 @@
     background-color: #000;
     color: var(--text-dark);
     font-family: "Share Tech Mono", "VT323", "Courier New", monospace;
-    text-shadow: 0 0 4px rgba(0, 255, 102, 0.55);
+    /* E-INK: no text-shadow on body text. A 0 0 4px green glow treats every
+       glyph stroke with a halo that a 6-inch grayscale panel renders as mud -
+       the aliasing between glow and black background destroys the letterforms.
+       Glow is kept only on :hover and headings, which have larger strokes. */
     position: relative;
     min-height: 100vh;
 }
 
-/* Scanline overlay - fixed positioned, sits above content but below modals */
+/* SCANLINES: off by default.
+   On an RGB LCD this reads as CRT texture. On a 6-inch grayscale e-ink panel
+   the 2px black bands alias against 2px glyph strokes and turn body text into
+   noise. Re-enable by uncommenting for phosphor-CRT displays only. */
+/*
 [data-theme="matrix"] body::before {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
     pointer-events: none;
     z-index: 1;
     background: repeating-linear-gradient(
@@ -58,6 +63,7 @@
     );
     mix-blend-mode: multiply;
 }
+*/
 
 [data-theme="matrix"] nav,
 [data-theme="matrix"] .navbar,
@@ -73,7 +79,8 @@
     background: var(--bg-white);
     color: var(--text-dark);
     border-color: var(--border);
-    box-shadow: 0 0 6px rgba(0, 255, 102, 0.3) inset, 0 0 8px rgba(0, 255, 102, 0.15);
+    /* was: inset glow + outer glow. In grayscale, a 6px inset glow is
+       indistinguishable from a dirty screen on e-ink. Border alone is sharper. */
 }
 
 [data-theme="matrix"] a { color: var(--primary-light); }

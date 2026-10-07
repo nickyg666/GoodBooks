@@ -434,6 +434,19 @@ def read_epub(path: Path) -> EpubBook:
             book.chapters.append(Chapter(title=title.strip()[:120],
                                         text=text))
 
+        # A single headingless chapter that contains scene separators is a
+        # missed structure, not a fact about the book: split it. ('The Button
+        # Bin' narrated as ['Start'] before this.)
+        if len(book.chapters) == 1:
+            ch = book.chapters[0]
+            parts = _split_on_scene_breaks(ch.text)
+            if parts:
+                book.chapters = [
+                    Chapter(title=(f"{ch.title} {i+1}" if ch.title
+                                   else f"Chapter {i+1}"), text=p)
+                    for i, p in enumerate(parts)
+                ]
+
         if not book.chapters:
             (_is_scan, _txt, _img) = _looks_scanned(z, names)
             if _is_scan:
@@ -481,6 +494,41 @@ def _toc_titles(z, pkg, opf_dir, manifest) -> dict:
         except Exception:
             pass
     return out
+
+
+def _split_on_scene_breaks(text: str) -> list:
+    """Split a headingless document at repeated scene separators.
+
+    A book like 'The Button Bin' converts to a single 31k-char document with
+    no h-tags, no TOC, and no anchors - but its text uses a bare '*' line
+    for each scene break (measured: 5 separators). Narrating that as one
+    chapter is technically correct and useless in practice: a chapter list
+    of ['Start'] gives the listener nothing.
+
+    Rule: separator lines are lines whose non-space characters are all '*'
+    (handles '*', '**', '* * *'). Only applied when a document produces
+    exactly ONE chapter AND each part is substantial (>= 400 chars, so a
+    stray '*' between paragraphs cannot shred real prose).
+
+    Returns the parts; [] when the rule does not apply.
+    """
+    lines = text.splitlines()
+    sep_idx = [i for i, l in enumerate(lines)
+               if l.strip() and set(l.replace(" ", "")) <= {"*"}]
+    if len(sep_idx) < 1:
+        return []
+    parts, prev = [], 0
+    for i in sep_idx:
+        seg = "\n".join(lines[prev:i]).strip()
+        if len(seg) >= 400:
+            parts.append(seg)
+        prev = i + 1
+    tail = "\n".join(lines[prev:]).strip()
+    if len(tail) >= 400:
+        parts.append(tail)
+    if len(parts) < 2:
+        return []
+    return parts
 
 
 def _first_heading(raw: bytes) -> str:

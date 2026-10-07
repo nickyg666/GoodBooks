@@ -54,6 +54,7 @@ ROUTES = [
     "/audiobook/progress",
     "/audiobook/voices",
     "/api/audiobooks",
+    "/audiobook/download/<path:entry_id>",
 ]
 
 def register(ctx):
@@ -414,6 +415,35 @@ def register(ctx):
             "total_mb": round(total_mb, 1),
             "audiobooks": out,
         })
+
+    @app.route("/audiobook/download/<path:entry_id>")
+    def audiobook_download(entry_id):
+        """Serve the FINISHED audiobook file for an entry.
+
+        The Download button on an audiobook row used to point at
+        /library/download/<entry_id>, which serves the source EBOOK - measured:
+        229677 bytes of .azw3 for a 64 MB .m4b audiobook. Wrong file, silently.
+        This route serves the job's result instead, and 404s (not redirects) so a
+        missing result is visible in the browser	console rather than silently
+        becoming an ebook download.
+        """
+        import gb_abjob as JOB
+        from flask import send_file, abort
+
+        # werkzeug squashes a double slash
+        # (/download//mnt -> /download/mnt), so a library id that STARTS with /
+        # arrives without it and load_job returns None -> 404. Restore it.
+        if not entry_id.startswith("/"):
+            entry_id = "/" + entry_id
+        j = JOB.load_job(entry_id)
+        result = (j.get("result") or "") if isinstance(j, dict) else ""
+        if not result:
+            abort(404, description="no finished audiobook for this entry")
+        result_path = Path(result)
+        if not result_path.exists():
+            abort(404, description="audiobook file is missing on disk")
+        return send_file(str(result_path), as_attachment=True,
+                         download_name=result_path.name)
 
     @app.route("/audiobook/progress")
     def audiobook_progress():

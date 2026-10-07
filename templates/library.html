@@ -2419,7 +2419,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var cover = a.cover ? '<img class="ab-cover" src="' + esc(a.cover) + '" alt="" loading="lazy" decoding="async">'
                           : '<span class="ab-cover ab-cover-empty" aria-hidden="true"></span>';
       var dl = a.result
-        ? '<a class="ab-btn" href="/library/download/' + encodeURIComponent(a.entry_id || '') + '?fmt=m4b">Download</a>'
+        ? '<a class="ab-btn" href="/audiobook/download/' + encodeURIComponent(a.entry_id || '') + '">Download</a>'
         : '';
       var kindle = a.entry_id
         ? '<form class="ab-kindle-form" method="post" action="/library/send-to-kindle">' +

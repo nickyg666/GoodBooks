@@ -92,7 +92,7 @@
     background: transparent;
     color: var(--primary);
     border: 1px solid var(--primary);
-    text-shadow: 0 0 4px var(--primary);
+    /* was 4px green glow; on e-ink a solid button Halos into a double-stroke */
 }
 [data-theme="matrix"] .btn-primary:hover,
 [data-theme="matrix"] button.primary:hover { background: var(--primary); color: #000; }
@@ -114,8 +114,8 @@
     border: 1px solid var(--border);
 }
 [data-theme="matrix"] h1, [data-theme="matrix"] h2, [data-theme="matrix"] h3 {
-    color: #b3ffcc;
-    text-shadow: 0 0 8px var(--primary);
+    color: #d6ffe4;             /* was #b3ffcc + 8px green glow;
+                                  glow halos on e-ink; brighter solid reads better */
     letter-spacing: 0.05em;
 }
 [data-theme="matrix"] hr { border-color: var(--border); }

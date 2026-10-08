@@ -39,8 +39,16 @@ def test_playback_rate_is_separate_from_synthesis_rate():
 
 
 def test_playback_rate_is_documented_as_measured():
-    assert "84.26 words per second" in ab, \
-        "the playback constant must record where the number came from"
+    # The constant must carry the measurement that produced it, including the
+    # per-book figures. An earlier version pinned 84.26 words/s, which came from
+    # dividing final word count by a PARTIAL 286.704 s of audio (20 chunks of a
+    # 161-chunk job) and overstated playback by 26x. A test that only asserted
+    # "some number is documented" is what let that through.
+    for token in ("3.20 w/s", "39,133 words", "12,246.8 s"):
+        assert token in ab, (
+            f"the playback constant must record the measured rate ({token}) "
+            "so the next correction is checked against real finished audio, "
+            "not against a partial run")
 
 
 # --------------------------------------------------------------------------

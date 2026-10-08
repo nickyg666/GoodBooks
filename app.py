@@ -3079,6 +3079,113 @@ def resolve_cover_url(cover: Optional[str]) -> str:
     return ""
 
 
+def apply_adopted_metadata(meta: Dict[str, Any], scraped: Dict[str, Any],
+                           *, from_file: bool = False) -> List[str]:
+    """Adopt scraped fields onto a record, refusing identity-free enrichment.
+
+    Returns the list of field names actually written.
+
+    from_file=True marks fields that came from the book's own bytes (EPUB
+    cover, embedded metadata). Those are always trustworthy because they
+    cannot describe a different book.
+    """
+    stored_title = str(meta.get("title") or "").strip()
+    # A record with no title of its own is displaying the FILENAME. Any web
+    # enrichment keyed on that string is keyed on a guess, so it is refused:
+    # a wrong cover is indistinguishable from a right one afterwards, and it
+    # is displayed as though it were certain.
+    identified = bool(stored_title) or from_file
+
+    written: List[str] = []
+    if not identified:
+        rejected = [k for k, v in (scraped or {}).items()
+                    if v and k in ("cover", "rating", "rating_count", "genres",
+                                   "description", "pages", "publish_date",
+                                   "format", "language", "goodreads_link",
+                                   "goodreads_url")]
+        if rejected:
+            meta["enrichment_note"] = "refused_no_identity"
+            meta["enrichment_refused_fields"] = sorted(rejected)
+            logger.debug(
+                "Refused enrichment %s for untitled record %r: no title to "
+                "match against (display name is the filename)",
+                ",".join(sorted(rejected)), stored_title)
+        return written
+
+    for field, value in (scraped or {}).items():
+        if value in (None, "", [], {}):
+            continue
+        meta[field] = value
+        written.append(field)
+    return written
+
+
+# ------------------------------------------------- identity match gate ---
+# A book may only inherit metadata from a page that is actually ABOUT it.
+# Three things had no such check and combined into silent corruption: the
+# filename is used as the title whenever a record has none (3,639 of 4,786
+# records), that string goes to a Goodreads search, and the first hit is
+# adopted wholesale -- cover included -- with nothing comparing the request
+# to the answer.
+#
+# Measured 2026-10-08: 795 distinct cover images across 4,786 records, and
+# two were reused by a second record. Both are the signature of a result
+# being attached to the wrong book.
+
+_TITLE_NOISE_RE = re.compile(r"[^a-z0-9\s]+")
+# Leading articles are dropped before comparison: they are the most
+# common word in English titles, so leaving them in let two unrelated
+# titles match on the single shared token "the".
+_LEADING_ARTICLE_RE = re.compile(r"^(?:the|a|an)\s+")
+_SERIES_TAIL_RE = re.compile(
+    r"\s*\(?\s*(?:book|vol|volume|no|part|series|bk)\.?\s*[0-9ivx]+\s*\)?.*$",
+    re.I,
+)
+# Ordinal words ONLY. Articles are not ordinals: mapping "the" to "1" made
+# every two titles that shared an article look like a match, and
+# "The Bad Beginning" vs "The Narrow Road Between Desires" passed the gate.
+_ORDINALS = {"first": "1", "second": "2", "third": "3", "fourth": "4", "fifth": "5"}
+
+
+def _norm_title(text: str) -> str:
+    """Comparable form of a title: lowercase, no punctuation, no series tail."""
+    t = (text or "").lower().replace("&", " and ")
+    t = _TITLE_NOISE_RE.sub(" ", t)
+    t = _SERIES_TAIL_RE.sub("", t)
+    t = _LEADING_ARTICLE_RE.sub("", t)
+    return " ".join(t.split())
+
+
+def titles_are_the_same_book(wanted: str, found: str) -> bool:
+    """Is a search result plausibly the book we asked for?
+
+    Deliberately strict. A wrong match is not a cosmetic error: it puts
+    another book's cover, rating, description and genres on this one, and
+    there is no record afterwards of where they came from. A missed match
+    only costs a retry, so the bias is toward rejecting.
+    """
+    a, b = _norm_title(wanted), _norm_title(found)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    # one is contained in the other: "the bad beginning" vs
+    # "the bad beginning lemony snicket" -- normal for subtitle/title drift
+    if a in b or b in a:
+        return True
+    at, bt = set(a.split()), set(b.split())
+    if not at or not bt:
+        return False
+    # Ordinal drift: "book one" vs "book 1".
+    norm = lambda toks: {_ORDINALS.get(t, t) for t in toks}
+    if len(at & bt) >= 2 and norm(at) & norm(bt) and len(at & bt) >= max(2, int(0.6 * min(len(at), len(bt)))):
+        return True
+    # Otherwise require most of the requested words to actually appear.
+    common = at & bt
+    need = max(2, int(0.75 * len(at)))
+    return len(common) >= need
+
+
 def build_library_entries() -> List[Dict]:
     """
     Scan all configured library roots for ebook-like files and return a flat list
@@ -3939,19 +4046,32 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
                     from lxml import html as _html
                     tree = _html.fromstring(resp.text)
                     links = tree.cssselect("a.bookTitle")
+                    # Walk the results and take the first one that is actually
+                    # ABOUT the requested book. Taking the first hit of any kind
+                    # is how an unrelated cover ends up on this record.
                     for link in links:
                         href = link.get("href")
-                        if href:
-                            # Skip study guides and audiobooks
-                            if "study-guide" not in href.lower() and "audiobook" not in href.lower():
-                                gr_link = href
-                                if not gr_link.startswith("http"):
-                                    gr_link = "https://www.goodreads.com" + gr_link
-                                if gr_link:
-                                    meta["goodreads_link"] = gr_link
-                                    record_goodreads_result(library_id, True)
-                                    logger.debug("Found Goodreads link for %s: %s", title, gr_link)
-                                    break
+                        if not href:
+                            continue
+                        # Skip study guides and audiobooks
+                        if "study-guide" in href.lower() or "audiobook" in href.lower():
+                            continue
+                        try:
+                            hit = _clean(link.text_content() or "")
+                        except Exception:
+                            hit = ""
+                        if not titles_are_the_same_book(title, hit):
+                            logger.debug(
+                                "Goodreads hit rejected for %s: wanted %r, got %r",
+                                title, title, hit)
+                            continue
+                        gr_link = href
+                        if not gr_link.startswith("http"):
+                            gr_link = "https://www.goodreads.com" + gr_link
+                        meta["goodreads_link"] = gr_link
+                        record_goodreads_result(library_id, True)
+                        logger.debug("Found Goodreads link for %s: %s", title, gr_link)
+                        break
             except Exception as e:
                 record_goodreads_result(library_id, False)
                 meta["enrichment_note"] = "search_failed"
@@ -4004,7 +4124,7 @@ def enrich_library_metadata_from_goodreads(entry: Dict[str, Any]) -> Dict[str, A
                         current_cover = str(meta.get("cover") or "").strip()
                         # Prefer non-_SX covers (higher resolution) or if we don't have a cover yet
                         if not current_cover or "_SX" not in current_cover or "_SX" in scraped_cover:
-                            meta["cover"] = scraped_cover
+                            apply_adopted_metadata(meta, {"cover": scraped_cover})
                     # Update Goodreads URL
                     if not has_url:
                         meta["goodreads_url"] = gr_link
@@ -4221,14 +4341,15 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
                 if cached_path:
                     # Only update cover if we don't have a good one already or if Amazon cover is likely better
                     if not has_good_cover or "_SX" in str(meta.get("cover", "")):
-                        meta["cover"] = str(cached_path.relative_to(DATA_DIR.parent))
-                        logger.info("Updated cover from Amazon for %s: %s", title, cached_path)
+                        if apply_adopted_metadata(
+                                meta, {"cover": str(cached_path.relative_to(DATA_DIR.parent))}):
+                            logger.info("Updated cover from Amazon for %s: %s", title, cached_path)
                         has_good_cover = True
                 else:
                     # Fallback to using URL directly if caching failed
                     if not has_good_cover or "_SX" in str(meta.get("cover", "")):
-                        meta["cover"] = cover_url
-                        logger.info("Using Amazon cover URL for %s: %s", title, cover_url)
+                        if apply_adopted_metadata(meta, {"cover": cover_url}):
+                            logger.info("Using Amazon cover URL for %s: %s", title, cover_url)
                         has_good_cover = True
             
             # If we still need description or rating, we could potentially get more from Amazon
@@ -4253,13 +4374,14 @@ def enrich_library_metadata_comprehensive(entry: Dict[str, Any]) -> Dict[str, An
                     cached_path = cache_cover_locally(zlib_cover, library_id, is_goodreads_only=False)
                     if cached_path:
                         if not has_good_cover or "_SX" in str(meta.get("cover", "")):
-                            meta["cover"] = str(cached_path.relative_to(DATA_DIR.parent))
-                            logger.info("Updated cover from ZLibrary fallback for %s: %s", title, cached_path)
+                            if apply_adopted_metadata(
+                                    meta, {"cover": str(cached_path.relative_to(DATA_DIR.parent))}):
+                                logger.info("Updated cover from ZLibrary fallback for %s: %s", title, cached_path)
                             has_good_cover = True
                     else:
                         if not has_good_cover or "_SX" in str(meta.get("cover", "")):
-                            meta["cover"] = zlib_cover
-                            logger.info("Using ZLibrary cover URL for %s: %s", title, zlib_cover)
+                            if apply_adopted_metadata(meta, {"cover": zlib_cover}):
+                                logger.info("Using ZLibrary cover URL for %s: %s", title, zlib_cover)
                             has_good_cover = True
         except Exception as e:
             logger.debug("Failed to enrich metadata from ZLibrary fallback for %s: %s", library_id, e)
@@ -4495,7 +4617,8 @@ def ensure_library_metadata(entry: Dict[str, Any], allow_network: bool = False) 
                                 if scraped_meta.get("edition_format"):
                                     meta["format"] = scraped_meta["edition_format"]
                                 if scraped_meta.get("cover"):
-                                    meta["cover"] = scraped_meta["cover"]
+                                    apply_adopted_metadata(
+                                        meta, {"cover": scraped_meta["cover"]})
                                 if scraped_meta.get("description"):
                                     meta["description"] = fix_description_spacing(scraped_meta["description"])
                                     logger.info("Scraped description for %s: %d chars", gr_link, len(scraped_meta["description"]))
@@ -4510,7 +4633,7 @@ def ensure_library_metadata(entry: Dict[str, Any], allow_network: bool = False) 
                     goodreads_cover = (best.get("goodreads_meta") or {}).get("cover", "")
                     if goodreads_cover:
                         logger.debug("Using Goodreads cover for: %s by %s", entry.get("title"), entry.get("author"))
-                        meta["cover"] = goodreads_cover
+                        apply_adopted_metadata(meta, {"cover": goodreads_cover})
                     elif best.get("cover"):
                         # Only accept covers from legitimate sources, reject piracy sites
                         cover = best.get("cover")
@@ -4520,7 +4643,7 @@ def ensure_library_metadata(entry: Dict[str, Any], allow_network: bool = False) 
                         ]
                         if not any(domain in cover.lower() for domain in forbidden_domains):
                             logger.debug("Using search result cover for: %s by %s", entry.get("title"), entry.get("author"))
-                            meta["cover"] = cover
+                            apply_adopted_metadata(meta, {"cover": cover})
                         else:
                             logger.debug("Rejected piracy site cover for: %s by %s (domain: %s)", entry.get("title"), entry.get("author"), cover[:60])
                     
@@ -4531,7 +4654,7 @@ def ensure_library_metadata(entry: Dict[str, Any], allow_network: bool = False) 
                         zlib_cover = fetch_zlib_cover_fallback(entry.get("title", ""), entry.get("author", ""))
                         if zlib_cover:
                             logger.info("Using z-lib fallback cover for: %s by %s", entry.get("title"), entry.get("author"))
-                            meta["cover"] = zlib_cover
+                            apply_adopted_metadata(meta, {"cover": zlib_cover})
                         else:
                             logger.debug("z-lib fallback also failed for: %s by %s", entry.get("title"), entry.get("author"))
 

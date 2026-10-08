@@ -77,17 +77,34 @@ WORDS_PER_SECOND = 3.3
 # N hours of audio" figure the dialog shows.
 #
 # These are different numbers and conflating them made the estimate wrong by
-# ~25x. Measured on DAS from audio this service actually produced:
+# ~25x. WORDS_PER_SECOND = 3.3 was being used for that display, so a
+# 201,709-word book was announced as "About 17.0 h of audio" when it is
+# roughly 17 hours at the true playback rate -- the two errors happened to
+# point in opposite directions and cancelled into a number that was wrong for
+# no stated reason.
 #
-#     20 chunks, 286.704 s of finished audio
-#     the job's chapters contain 24,159 words
-#     -> 24,159 / 286.704 = 84.26 words per second of playback
+# The first correction (to 84.0) was wrong in the other direction. It came
+# from dividing the book's final word count by the audio that existed when the
+# constant was written -- 286.704 s, which was 20 finished chunks of a
+# 161-chunk job. The completed job runs 7,578.2 s, so 84.26 words/s overstated
+# playback by 26x and a 201,709-word book was shown as "about 40 minutes" when
+# it is about 17.5 hours.
 #
-# WORDS_PER_SECOND = 3.3 was being used for that display, so a 201,709-word
-# book was announced as "About 17.0 h of audio" when it is roughly 40
-# minutes. Narration at ~150 wpm is ~2.5 words/sec, so 84 w/s is right for a
-# synthesiser reading continuous prose.
-WORDS_PER_SECOND_PLAYBACK = 84.0
+# Measured 2026-10-08 from every finished audiobook on this host, comparing
+# recorded chapter word counts against the ffprobe duration of the result:
+#
+#     A Series of Unfortunate Events 1   24,159 words   7,578.2 s   3.19 w/s
+#     Amber Brown is not a Crayon         9,296 words   2,927.4 s   3.18 w/s
+#     The Button Bin                      5,678 words   1,741.2 s   3.26 w/s
+#     --------------------------------------------------------
+#     combined                           39,133 words  12,246.8 s   3.20 w/s
+#
+# 3.20 words/s of playback is 192 words/minute -- a normal narration pace --
+# and it holds across three books of very different length, so it is a
+# property of how this synthesiser reads rather than an artefact of one
+# sample. WORDS_PER_SECOND (3.3) is synthesis throughput and is unaffected:
+# it comes from request timing, not from audio duration.
+WORDS_PER_SECOND_PLAYBACK = 3.20
 # measured overhead per request to the studio, added per chunk
 SECONDS_PER_CHUNK_OVERHEAD = 2.0
 

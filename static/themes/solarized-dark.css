@@ -16,7 +16,10 @@
     --success: #859900;        /* solarized green */
     --warning: #b58900;        /* solarized yellow */
     --danger: #dc322f;         /* solarized red */
-    --text-dark: #93a1a1;      /* solarized base1 - the body text */
+    --text-dark: #eee8d5;      /* solarized base2 - body text.
+                                  was base1 #93a1a1 = 2.77:1 in GRAYSCALE
+                                  (unreadable on 6-inch e-ink); base2 keeps
+                                  the scheme and measures ~13:1 */
     --text-light: #586e75;     /* solarized base01 - muted */
     --bg-light: #002b36;       /* solarized base03 - background */
     --bg-white: #073642;       /* solarized base02 - panels */

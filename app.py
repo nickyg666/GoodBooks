@@ -2986,6 +2986,52 @@ def generate_folder_cover(folder_prefix: str, all_entries: List[Dict]) -> Option
         logger.debug(f"Could not generate folder cover composite: {e}")
         return None
 
+def _tokenize_title(title: str) -> List[str]:
+    """Tokenize a title for matching, handling prepositions and articles.
+    
+    Returns a list of significant tokens (words > 2 chars, excluding
+    common prepositions and articles).
+    """
+    import re
+    if not title:
+        return []
+    # Remove punctuation and split
+    clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', title.lower())
+    tokens = clean.split()
+    # Filter out short words and common prepositions/articles
+    stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'of', 'for', 'with', 'by'}
+    significant = [t for t in tokens if len(t) > 2 and t not in stopwords]
+    return significant
+
+
+def _titles_match(title1: str, title2: str) -> bool:
+    """Check if two titles match, using tokenization for fuzzy matching.
+    
+    Handles:
+    - Different word order
+    - Prepositions and articles (an, the, on, in)
+    - Subtitles and series information
+    """
+    if not title1 or not title2:
+        return False
+    t1 = title1.lower().strip()
+    t2 = title2.lower().strip()
+    if t1 == t2:
+        return True
+    # Check if one is contained in the other
+    if t1 in t2 or t2 in t1:
+        return True
+    # Token-based matching
+    tokens1 = _tokenize_title(title1)
+    tokens2 = _tokenize_title(title2)
+    if not tokens1 or not tokens2:
+        return False
+    # Check overlap
+    overlap = len(set(tokens1) & set(tokens2))
+    min_tokens = min(len(tokens1), len(tokens2))
+    return overlap >= min_tokens * 0.6  # 60% overlap required
+
+
 def get_metadata_field(meta: Dict, field: str, title: str = "", default=""):
     """Get metadata field: goodreads_meta > top-level > extract from title > default"""
     # Try goodreads_meta first (best source)

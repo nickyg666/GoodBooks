@@ -93,6 +93,7 @@ class Settings:
     library_extra_dirs: List[str] = field(default_factory=list)
     library_items_per_page: int = 50
     library_default_sort: str = "date_newest"
+    library_default_view: str = "collection"  # default view for the library page
 
     # Threading / concurrency
     max_feed_workers: int = 4
@@ -186,6 +187,7 @@ class SettingsManager:
         library_extra_dirs = data.get("library_extra_dirs", []) or []
         library_items_per_page = int(data.get("library_items_per_page", 50))
         library_default_sort = data.get("library_default_sort", "date_newest")
+        library_default_view = data.get("library_default_view", "collection")
 
         max_feed_workers = int(data.get("max_feed_workers", 4))
         max_concurrent_downloads = int(
@@ -218,6 +220,7 @@ class SettingsManager:
             library_extra_dirs=library_extra_dirs,
             library_items_per_page=library_items_per_page,
             library_default_sort=library_default_sort,
+            library_default_view=library_default_view,
             max_feed_workers=max_feed_workers,
             max_concurrent_downloads=max_concurrent_downloads,
             disable_background_jobs=disable_background_jobs,
@@ -244,6 +247,7 @@ class SettingsManager:
             "library_extra_dirs": self.settings.library_extra_dirs,
             "library_items_per_page": self.settings.library_items_per_page,
             "library_default_sort": self.settings.library_default_sort,
+            "library_default_view": self.settings.library_default_view,
             "max_feed_workers": self.settings.max_feed_workers,
             "max_concurrent_downloads": self.settings.max_concurrent_downloads,
             "disable_background_jobs": self.settings.disable_background_jobs,
@@ -410,8 +414,12 @@ class SettingsManager:
             )
         )
         library_default_sort = form.get(
-            "library-default-sort",
+            "library_default_sort",
             self.settings.library_default_sort or "date_newest",
+        )
+        library_default_view = form.get(
+            "library_default_view",
+            self.settings.library_default_view or "collection",
         )
 
         max_feed_workers = int(
@@ -462,6 +470,7 @@ class SettingsManager:
             library_extra_dirs=library_extra_dirs,
             library_items_per_page=library_items_per_page,
             library_default_sort=library_default_sort,
+            library_default_view=library_default_view,
             max_feed_workers=max_feed_workers,
             max_concurrent_downloads=max_concurrent_downloads,
             disable_background_jobs=disable_background_jobs,

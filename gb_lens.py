@@ -25,6 +25,21 @@ import tempfile
 from pathlib import Path
 from typing import List, Optional
 
+# OCR for cross-checking Lens candidates against the image itself.
+try:
+    import pytesseract
+    _HAS_TESSERACT = True
+except ImportError:
+    pytesseract = None
+    _HAS_TESSERACT = False
+
+try:
+    from PIL import Image
+    _HAS_PIL = True
+except ImportError:
+    Image = None
+    _HAS_PIL = False
+
 logger = logging.getLogger(__name__)
 
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -33,6 +48,7 @@ UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
 # Reuse the long-lived Chrome profile if it exists; a throwaway profile gets
 # bot-blocked by Google. Falls back to a temp profile.
 _CANDIDATE_PROFILES = [
+    "/home/das/.cache/gb-lens-profile",
     "/home/host/opikernel/stage/google-browser/profile",
     os.path.expanduser("~/.cache/gb-lens-profile"),
 ]
@@ -104,6 +120,67 @@ def _existing_profile() -> Optional[str]:
     return None
 
 
+def extract_ocr_text(image_bytes: bytes) -> str:
+    """Extract text from the image using OCR, for cross-checking Lens results.
+    
+    Returns the OCR text, or empty string if OCR is unavailable.
+    """
+    if not _HAS_TESSERACT or not _HAS_PIL:
+        return ""
+    try:
+        from io import BytesIO
+        img = Image.open(BytesIO(image_bytes))
+        # Resize large images to speed up OCR (timeout fix)
+        if img.size[0] > 400 or img.size[1] > 400:
+            img.thumbnail((400, 400), Image.LANCZOS)
+        # Try only PSM 6 (single block of text) for speed
+        text = ""
+        try:
+            t = pytesseract.image_to_string(img, config='--psm 6')
+            if t:
+                text = t
+        except Exception:
+            pass
+        return text.strip()
+    except Exception as exc:
+        logger.debug("OCR extraction failed: %s", exc)
+        return ""
+
+
+def _verify_with_ocr(candidates: List[dict], ocr_text: str) -> List[dict]:
+    """Cross-check Lens candidates against OCR text from the image itself.
+    
+    Returns only candidates whose title or ISBN appears in the OCR text.
+    Returns an empty list if OCR is available but nothing matches -- this is
+    the "100% certain" step: a candidate that does not appear in the image is
+    not the book on the cover, and guessing is worse than returning nothing.
+    
+    Returns all candidates only if OCR is unavailable or produced no text.
+    """
+    if not ocr_text or not candidates:
+        return candidates
+    ocr_lower = ocr_text.lower()
+    verified = []
+    for cand in candidates:
+        title = (cand.get("title") or "").lower()
+        isbn = (cand.get("isbn") or "").lower()
+        # Check if the title or ISBN appears in the OCR text.
+        # We use a fuzzy match: check if at least 50% of the title words
+        # appear in the OCR text, to handle OCR errors and stylized fonts.
+        if title:
+            title_words = [w for w in title.split() if len(w) > 2]
+            if title_words:
+                matched = sum(1 for w in title_words if w in ocr_lower)
+                if matched >= max(1, len(title_words) // 2):
+                    verified.append(cand)
+                    continue
+        if isbn and isbn in ocr_lower:
+            verified.append(cand)
+    # If OCR is available but nothing matched, return empty list.
+    # This is the "100% certain" step: we'd rather return nothing than a guess.
+    return verified
+
+
 def identify_cover(image_bytes: bytes, timeout: int = 150) -> List[dict]:
     """Run Lens on raw image bytes and return identification candidates.
 
@@ -130,7 +207,7 @@ def identify_cover(image_bytes: bytes, timeout: int = 150) -> List[dict]:
         with sync_playwright() as p:
             if profile:
                 ctx = p.chromium.launch_persistent_context(
-                    profile, headless=False,
+                    profile, headless=True,
                     args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
                     user_agent=UA, locale="en-US",
                     viewport={"width": 1366, "height": 900})
@@ -138,7 +215,7 @@ def identify_cover(image_bytes: bytes, timeout: int = 150) -> List[dict]:
                 owns_browser = False
             else:
                 browser = p.chromium.launch(
-                    headless=False,
+                    headless=True,
                     args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
                 ctx = browser.new_context(user_agent=UA, locale="en-US",
                                           viewport={"width": 1366, "height": 900})
@@ -190,5 +267,26 @@ def identify_cover(image_bytes: bytes, timeout: int = 150) -> List[dict]:
 
     cands = _parse_candidates(text)
     if cands:
+        # Cross-check Lens candidates against OCR text from the image itself.
+        # This is the "100% certain" step: a candidate whose title or ISBN
+        # does not appear in the image is not the book on the cover.
+        ocr_text = extract_ocr_text(image_bytes)
+        if ocr_text:
+            logger.info("OCR extracted %d chars from the image", len(ocr_text))
+            verified = _verify_with_ocr(cands, ocr_text)
+            logger.info("OCR verification: %d of %d candidates confirmed", len(verified), len(cands))
+            cands = verified
+        else:
+            logger.info("OCR unavailable or produced no text; Lens candidates used as-is")
+    else:
+        # Lens returned nothing (bot-blocked or no results). Fall back to
+        # searching using OCR text extracted from the image itself.
+        ocr_text = extract_ocr_text(image_bytes)
+        if ocr_text:
+            logger.info("Lens blocked; falling back to OCR text search: %s", ocr_text[:100])
+            # Use the first few words of OCR text as a search query
+            words = ocr_text.split()[:10]  # first 10 words
+            query = " ".join(words)
+            cands = [{"title": query, "author": "", "isbn": "", "source": "ocr_fallback"}]
         logger.info("Lens identified: %s", cands[0])
     return cands

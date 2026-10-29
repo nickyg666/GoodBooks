@@ -1,0 +1,2773 @@
+:root {
+  --accent: #2563eb;
+  --hover: #f3f4f6;
+  --surface: #ffffff;
+  --text: #111827;
+}
+
+/* ============================================================================
+   DESKTOP POLISHED LIGHT THEME CSS
+   Modern, smooth, premium feel with gradients and blur effects
+   ============================================================================ */
+
+:root {
+    --card-bg: #ffffff;
+    --text-color: #1a1a1a;
+    --border: #d8d8d8;
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --primary-dark: #1e40af;
+  --secondary: #7c3aed;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --text-dark: #1f2937;
+  --text-light: #6b7280;
+  --bg-light: #f9fafb;
+  --bg-white: #ffffff;
+  --border: #e5e7eb;
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dark);
+  background-color: var(--bg-light);
+}
+
+/* TYPOGRAPHY */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-dark);
+}
+
+h1 { font-size: 28px; }
+h2 { font-size: 24px; }
+h3 { font-size: 20px; }
+h4 { font-size: 18px; }
+
+p {
+  margin-bottom: 1rem;
+  color: var(--text-light);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+/* NAVIGATION */
+nav {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+nav .navbar-brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: stretch;
+  padding: 0 2rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+nav .navbar-brand-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+nav .navbar-logo {
+  height: 100%;
+  width: auto;
+  min-height: 56px;
+  object-fit: contain;
+  padding: 0.5rem 0;
+}
+
+nav .navbar-title {
+  white-space: nowrap;
+}
+
+nav .nav-links {
+  display: flex;
+  gap: 40px;
+  margin-left: auto;
+  padding: 0 2rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+nav .nav-link {
+  display: inline-block;
+  padding: 1.2rem 0;
+  color: var(--text-dark);
+  transition: all 0.3s ease;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+nav .nav-link:hover {
+  color: var(--primary-dark);
+  border-bottom-color: var(--primary);
+}
+
+nav .nav-link.active {
+  color: var(--primary-dark);
+  border-bottom-color: var(--primary);
+}
+
+nav .nav-external {
+  color: var(--success);
+}
+
+nav .nav-external:hover {
+  border-bottom-color: var(--success);
+}
+
+#metadata-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+#metadata-progress-container.active {
+  display: flex;
+}
+
+#metadata-progress-container:not(.active) {
+  display: none;
+}
+
+.metadata-progress-toggle {
+  display: none;
+}
+
+.metadata-progress-bar {
+  width: 80px;
+  height: 6px;
+  background-color: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.metadata-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Feed progress bar in navbar */
+.feed-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.feed-progress-bar {
+  width: 80px;
+  height: 6px;
+  background-color: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.feed-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4CAF50 0%, #81C784 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+#feed-progress-wrapper,
+#metadata-progress-wrapper {
+  display: none;
+  flex: 0 0 auto;
+}
+
+#feed-progress-wrapper.active,
+#metadata-progress-wrapper.active {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+/* MAIN LAYOUT */
+main {
+  min-height: calc(100vh - 200px);
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.container, .container-fluid {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* CARDS */
+.card, .book-item {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  margin: 0;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.card-img, .book-image {
+  width: 100%;
+  height: auto;
+  border-radius: 0;
+  margin: 0;
+  object-fit: cover;
+}
+
+.card-body, .book-info {
+  padding: 0.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title, .book-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 0.4rem 0;
+  color: var(--text-dark);
+  line-height: 1.3;
+}
+
+.card-text, .book-author {
+  font-size: 12px;
+  color: var(--text-light);
+  margin: 0;
+}
+
+/* GRID LAYOUT */
+.grid, .results-grid, .library-view-grid, .history-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+}
+
+/* Library cards - modern card design */
+.library-card {
+  position: relative;
+}
+
+.library-select {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  padding: 0.25rem;
+}
+
+.library-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--bg-light);
+  flex-shrink: 0;
+}
+
+.library-cover img,
+.library-cover .cover-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--bg-light) 0%, #f0f0f0 100%);
+  color: var(--text-light);
+  font-size: 12px;
+  padding: 1rem;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.cover-placeholder.folder-placeholder {
+  font-size: 80px;
+  padding: 0;
+}
+
+.cover-placeholder.folder-placeholder i {
+  font-size: 80px;
+  color: #c0a030;
+}
+
+.library-cover-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.library-cover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.75rem;
+}
+
+.library-cover-link:hover .library-cover-overlay {
+  opacity: 1;
+}
+
+.library-title-overlay {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.library-title-author {
+  font-weight: 400;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.library-meta {
+  padding: 0.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.library-title {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.library-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.folder-card .library-info {
+  padding: 0.5rem;
+  background: var(--bg-light);
+}
+
+.library-author {
+  font-size: 12px;
+  color: var(--text-light);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.library-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.chip:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.library-status-chip {
+  padding: 0.4rem 0.8rem;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-dark);
+  border: none;
+}
+
+.library-status-chip:hover {
+  background: white;
+}
+
+/* BUTTONS */
+button, .btn, a.btn {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btn-primary, button {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover, button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, var(--secondary) 0%, #6d28d9 100%);
+  color: white;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  color: white;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+  color: white;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+  color: white;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline:hover {
+  background: var(--primary-light);
+}
+
+/* FORMS & INPUTS */
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  background-color: var(--bg-white);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+/* TABLES */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-white);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+thead {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+}
+
+th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+tbody tr:hover {
+  background-color: var(--bg-light);
+}
+
+/* ALERTS */
+.alert {
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 4px solid;
+}
+
+.alert-info {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--primary-dark);
+  border-left-color: var(--primary);
+}
+
+.alert-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #065f46;
+  border-left-color: var(--success);
+}
+
+.alert-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+  border-left-color: var(--warning);
+}
+
+.alert-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #7f1d1d;
+  border-left-color: var(--danger);
+}
+
+/* BADGES & TAGS */
+.badge, .tag {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-primary {
+  background-color: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+.badge-success {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #065f46;
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #92400e;
+}
+
+.badge-danger {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #7f1d1d;
+}
+
+/* MODALS */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal:not(.hidden) {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal.hidden {
+  display: none !important;
+}
+
+.modal.show {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow-xl);
+  max-width: 600px;
+  width: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 2rem;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  main {
+    padding: 1rem;
+  }
+
+  nav {
+    padding: 0;
+  }
+
+  nav .navbar-brand {
+    padding: 0.5rem 1.5rem;
+  }
+
+  nav .navbar-logo {
+    min-height: 48px;
+  }
+
+  nav .nav-links {
+    gap: 20px;
+    padding: 0 1.5rem;
+  }
+
+  nav .nav-link {
+    padding: 1rem 0;
+    font-size: 13px;
+  }
+
+  h1 { font-size: 22px; }
+  h2 { font-size: 18px; }
+  h3 { font-size: 16px; }
+
+  button, .btn, a.btn {
+    padding: 0.5rem 1rem;
+    font-size: 13px;
+  }
+
+  .grid, .results-grid, .library-view-grid, .history-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 0.75rem;
+  }
+
+  button, .btn, a.btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .card, .book-item {
+    margin: 0.5rem 0;
+  }
+
+  nav {
+    flex-direction: column;
+    padding: 0;
+  }
+
+  nav .navbar-brand {
+    padding: 0.75rem 1rem;
+  }
+
+  nav .nav-links {
+    flex-direction: row;
+    width: 100%;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
+  }
+
+  nav .nav-link {
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    font-size: 12px;
+  }
+
+  .grid, .results-grid, .library-view-grid, .history-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Shared modal dialog sizing (see references/goodbooks-library-view.md).
+
+   Every modal used to carry its own inline max-width (400/500/600px, some
+   with a fixed width and a 400px max-height, several with none), so dialogs
+   did not match each other and could overflow a short window; the library
+   random modal also hardcoded `background: white`, a white box on a dark
+   theme. base.html loads only kindle.css or desktop.css, so this rule must
+   live in both.
+   ------------------------------------------------------------------ */
+.modal-dialog {
+    box-sizing: border-box;
+    background: var(--card-bg, #ffffff);
+    color: var(--text-color, inherit);
+    border: 1px solid var(--border, #d8d8d8);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .28);
+    padding: 1.5rem;
+    width: min(560px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    position: relative;
+}
+
+.modal-dialog.modal-dialog-wide { width: min(760px, calc(100vw - 2rem)); }
+
+@media (max-width: 560px) {
+    .modal-dialog {
+        width: calc(100vw - 1.5rem);
+        max-width: calc(100vw - 1.5rem);
+        padding: 1.1rem;
+        max-height: calc(100vh - 2rem);
+    }
+}
+
+/* ------------------------------------------------------------------
+   Variable aliases: desktop.css and kindle.css are the two loaded base
+   sheets but used different names for the same concepts, so a rule written
+   for one did not apply to the other. Either spelling now resolves.
+   ------------------------------------------------------------------ */
+:root {
+    --primary-color: var(--primary, #2f6fb3);
+    --bg-color: var(--bg-light, #f5f6f8);
+    --border-color: var(--border, #d8d8d8);
+    --muted: var(--text-muted, #6b7280);
+}
+
+/* ---------------------------------------------------- view segmented ctrl */
+/* Four unlabelled icon buttons gave no way to tell what any of them did.
+   Now each shows its name, and the active one is obvious. */
+.view-segments {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.view-segments-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7280);
+  margin-right: 0.15rem;
+}
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease,
+              color 120ms ease;
+}
+.view-toggle:hover {
+  background: var(--hover, #f3f4f6);
+  border-color: var(--accent, #2563eb);
+}
+.view-toggle.active {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+}
+.view-toggle.active:hover { filter: brightness(1.08); }
+.view-toggle:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+.view-toggle-text { font-weight: 500; }
+
+/* On a narrow screen the labels wrap under the icons rather than clipping. */
+@media (max-width: 720px) {
+  .view-toggle { padding: 0.4rem 0.55rem; font-size: 0.82rem; }
+  .view-segments-label { width: 100%; margin-bottom: 0.1rem; }
+}
+
+/* ----------------------------------------------------- author combobox -- */
+/* Replaces a 3,948-option <select> that could not be typed into. */
+.author-filter { position: relative; }
+.author-combobox { position: relative; }
+.author-combobox-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.author-combobox-input::placeholder { color: var(--muted, #6b7280); }
+.author-combobox-input:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #2563eb) 22%,
+                                   transparent);
+}
+.author-combobox-list {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+.author-combobox-list[hidden] { display: none; }
+.author-combobox-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.author-combobox-list li:hover,
+.author-combobox-list li.active {
+  background: var(--hover, #f3f4f6);
+}
+.author-combobox-list li.active {
+  box-shadow: inset 2px 0 0 var(--accent, #2563eb);
+}
+.author-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.author-count {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  background: color-mix(in srgb, var(--muted, #6b7280) 14%, transparent);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- folders -- */
+/* Folder cards used to be 495px tall with a 455px empty grey placeholder and
+   the name printed twice, so the Folders view read as blank boxes. A folder
+   is not a book: give it a compact tile so the names are what you see. */
+.library-view-grid .folder-card {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: auto;
+  min-height: 0;
+  max-height: none;
+}
+.library-view-grid .folder-cover {
+  position: relative;
+  height: 132px;
+  flex: none;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  background: linear-gradient(160deg,
+              color-mix(in srgb, var(--accent, #2563eb) 12%, transparent),
+              color-mix(in srgb, var(--muted, #6b7280) 14%, transparent));
+}
+.library-view-grid .folder-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: var(--text, #111827);
+  position: relative;
+}
+.library-view-grid .folder-icon {
+  font-size: 2.6rem;
+  opacity: 0.55;
+  color: var(--accent, #2563eb);
+}
+.library-view-grid .folder-chip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--surface, #fff);
+  color: var(--muted, #6b7280);
+  border: 1px solid var(--border, #d4d4d8);
+}
+.library-view-grid .folder-info {
+  padding: 0.6rem 0.7rem 0.75rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.library-view-grid .folder-name {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-view-grid .folder-count {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The "Folder" chip was clipped to "OLDER": the per-card select checkbox is
+   absolutely positioned in the same corner and painted over the chip's left
+   edge. Lift the chip above it and offset it clear of the checkbox. */
+.library-view-grid .folder-chip {
+  z-index: 2;
+  top: 10px;
+  left: 34px;              /* clear of the select checkbox */
+  font-size: 0.66rem;
+  padding: 0.12rem 0.4rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.library-view-grid .folder-card .library-select {
+  z-index: 3;
+}
+.library-view-grid .folder-icon { position: relative; z-index: 1; }
+
+/* --------------------------------------------------------- bookshelf ---- */
+/* Measured in the live Bookshelf view: 305px cards holding a 455px cover, so
+   each cover was 1.5x TALLER than it was wide (a book is 2:3) and the cards
+   ran off the bottom of the viewport. Only 4 books fit a 1280px screen.
+   Size the card from its cover so the 2:3 ratio is exact and the info block
+   fits underneath. */
+.library-view-grid[data-view="collection"] {
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 20px 16px;
+  align-items: start;
+}
+.library-view-grid[data-view="collection"] .library-card {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: auto;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+}
+.library-view-grid[data-view="collection"] .library-cover {
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--muted, #6b7280) 12%, transparent);
+}
+.library-view-grid[data-view="collection"] .library-cover img,
+.library-view-grid[data-view="collection"] .cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.library-view-grid[data-view="collection"] .library-info {
+  padding: 0.5rem 0.15rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.library-view-grid[data-view="collection"] .library-title {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.25;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.15em;      /* two lines, so single- and double-line cards align */
+}
+.library-view-grid[data-view="collection"] .library-author {
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 720px) {
+  .library-view-grid[data-view="collection"] {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 14px 10px;
+  }
+}
+
+/* ---------------------------------------------------- library header ----- */
+/* One compact toolbar replaces three stacked rows. The view controls used to
+   be nested inside #library-multi-actions, which is `hidden` yet forced
+   visible by an inline display:flex, so Send/Delete appeared permanently
+   including with 0 selected. */
+.library-header {
+  margin-bottom: 0.9rem;
+}
+.library-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted, #4b5563);
+}
+.library-summary strong { color: var(--text, #111827); }
+
+.library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.9rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 10px;
+}
+.library-toolbar .view-segments { flex: 0 0 auto; }
+.library-toolbar .library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.7rem;
+  flex: 1 1 460px;
+  min-width: 0;
+}
+.library-toolbar .library-filters label {
+  flex: 1 1 110px;
+  min-width: 96px;
+  margin-bottom: 0;
+}
+.library-toolbar .library-filters label > span {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted, #6b7280);
+  margin-bottom: 0.2rem;
+}
+.library-toolbar .library-filters select,
+.library-toolbar .library-filters input[type="text"] {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+.library-toolbar .toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  padding-bottom: 1px;
+}
+.library-toolbar .clear-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.7rem;
+  border-radius: 7px;
+  border: 1px solid var(--border, #d4d4d8);
+  text-decoration: none;
+  color: var(--text, #111827);
+  background: var(--surface, #fff);
+  font-size: 0.88rem;
+}
+.library-toolbar .clear-link:hover { background: var(--hover, #f3f4f6); }
+
+/* The multi-action bar only appears when something is selected, and no
+   longer uses an inline display that would defeat the `hidden` class. */
+#library-multi-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  padding-bottom: 1px;
+}
+#library-multi-actions.hidden { display: none; }
+#library-multi-actions .multi-count {
+  font-size: 0.85rem;
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 900px) {
+  .library-toolbar .library-filters { flex: 1 1 100%; }
+}
+@media (max-width: 720px) {
+  .library-toolbar .library-filters label { flex: 1 1 calc(50% - 0.35rem); }
+}
+
+/* Refresh and Random are utility actions, not primary ones. They inherited
+   the blue "primary" look next to Apply, so two of the four buttons in the
+   toolbar shouted while the destructive/primary hierarchy was lost. */
+.library-toolbar .toolbar-buttons button.secondary,
+.library-toolbar .toolbar-buttons .clear-link {
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  border: 1px solid var(--border, #d4d4d8);
+  font-weight: 500;
+}
+.library-toolbar .toolbar-buttons button.secondary:hover,
+.library-toolbar .toolbar-buttons .clear-link:hover {
+  background: var(--hover, #f3f4f6);
+  border-color: var(--accent, #2563eb);
+}
+.library-toolbar .toolbar-buttons button.primary {
+  font-weight: 600;
+}
+/* a hair of separation before the utility pair */
+.library-toolbar .toolbar-buttons .clear-link { margin-left: 0.1rem; }
+
+/* ===================================================== Kindle library ==== */
+/* Target is the Paperwhite library, not a web dashboard: flat, high
+   contrast, no gradients, no drop shadows, no hover-only affordances
+   (e-ink has no cursor), and touch targets sized for thumbs. */
+
+.kindle-rail { margin-bottom: 1.25rem; }
+.kindle-rail-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text, #111827);
+}
+.kindle-rail-strip {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scrollbar-width: thin;
+}
+.kindle-rail-card {
+  flex: 0 0 auto;
+  width: 132px;
+  text-decoration: none;
+  color: inherit;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 3px;
+}
+.kindle-rail-card:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+.kindle-rail-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+.kindle-rail-cover img,
+.kindle-book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.kindle-rail-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.1rem 0.15rem;
+}
+.kindle-rail-book {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kindle-rail-pct {
+  flex: none;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #111827);
+}
+.kindle-muted { color: var(--muted, #6b7280); }
+
+/* progress: a hard-edged bar, no rounding, no shadow */
+.kindle-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+}
+.kindle-progress-fill {
+  height: 100%;
+  background: #fff;
+}
+.kindle-progress-pct {
+  position: absolute;
+  right: 4px;
+  bottom: 10px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.62);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.kindle-opened-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text, #111827);
+  background: #fff;
+  border: 1px solid var(--text, #111827);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* shelves as tabs, the way a Kindle collection strip reads */
+.kindle-shelf-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--border, #b9b9b9);
+}
+.kindle-shelf-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.7rem;
+  min-height: 36px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text, #111827);
+  background: transparent;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 4px;
+}
+.kindle-shelf-tab.active {
+  background: var(--text, #111827);
+  color: #fff;
+  border-color: var(--text, #111827);
+}
+.kindle-shelf-tab.active .kindle-shelf-n {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+.kindle-shelf-n {
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+
+/* the grid */
+.kindle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 1rem 0.85rem;
+}
+.kindle-book {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 4px;
+  padding: 2px;
+}
+.kindle-book:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 1px;
+}
+.kindle-book-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+}
+.kindle-book-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.35rem 0.05rem 0;
+}
+.kindle-book-title {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 1.9em;
+}
+.kindle-book-author {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kindle-book-format {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7280);
+  margin-top: 1px;
+}
+
+/* no cover: a plain, legible card rather than an empty grey box */
+.kindle-cover-fallback {
+  width: 100%;
+  height: 100%;
+  padding: 8px 7px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  border: 1px solid var(--border, #b9b9b9);
+  background: #fff;
+  color: var(--text, #111827);
+}
+.kindle-fallback-title {
+  font-size: 0.74rem;
+  line-height: 1.2;
+  font-weight: 700;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kindle-fallback-author {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: var(--muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* pagination */
+.kindle-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  font-size: 0.88rem;
+}
+.kindle-pager-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--text, #111827);
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--text, #111827);
+  background: transparent;
+  font-weight: 600;
+}
+.kindle-pager-state { color: var(--muted, #6b7280); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .kindle-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  .kindle-rail-card { width: 112px; }
+}
+
+/* ================================================= e-ink & ereader ====== */
+/* Nick: "lean pages, responsive e ink friendly design. Mirror appearance, not
+   function." The priorities are contrast, touch targets, and small payloads --
+   so nothing here uses shadows, gradients, blurs or webfonts. */
+
+:root {
+  --eink-ink: #000;
+  --eink-paper: #fff;
+  --eink-grey: #4a4a4a;
+}
+
+/* Flatten every decorative effect globally. An e-ink panel renders a drop
+   shadow as a grey smear, which reads as dirt. */
+@media (monochrome), (update: slow) {
+  .card, .library-card, .kindle-book, .kindle-rail-card,
+  .modal-dialog, .author-combobox-list, .view-toggle, .kindle-shelf-tab {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  * { background-image: none !important; }
+}
+
+/* Dark e-ink devices invert: paper becomes black, ink becomes white, and the
+   greys step up so mid-tones survive a 16-level panel. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f2f2f2;
+    --muted: #b4b4b4;
+    --border: #6f6f6f;
+    --surface: #101010;
+    --hover: #242424;
+    --accent: #9ec7ff;
+  }
+  .kindle-grid, .kindle-rail-strip { --paper: var(--surface); }
+  .kindle-book-cover, .kindle-rail-cover, .kindle-cover-fallback {
+    background: #1b1b1b;
+    border-color: #6f6f6f;
+  }
+  .kindle-cover-fallback { color: #f2f2f2; }
+  .kindle-shelf-tab.active {
+    background: #f2f2f2;
+    color: #000;
+    border-color: #f2f2f2;
+  }
+  .kindle-progress { background: rgba(0, 0, 0, 0.75); border-top-color: #999; }
+  .kindle-progress-fill { background: #fff; }
+  .kindle-opened-badge { background: #f2f2f2; color: #000; border-color: #f2f2f2; }
+}
+
+/* Lean typography: the system stack, so no font is ever downloaded. */
+body, .kindle-grid, .kindle-rail, .library-toolbar {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Touch targets. A finger or a stylus, not a cursor, so hover-only affordance
+   is not an option and hit areas grow. */
+@media (pointer: coarse) {
+  .view-toggle,
+  .kindle-shelf-tab,
+  .kindle-pager-link,
+  .library-toolbar button,
+  .library-toolbar .clear-link,
+  .toolbar-buttons button {
+    min-height: 44px;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+  .author-combobox-input { min-height: 44px; }
+  .author-combobox-list li { min-height: 44px; padding: 0.55rem 0.6rem; }
+  /* no hover styling on touch: it sticks after a tap */
+  .view-toggle:hover, .author-combobox-list li:hover { background: none; }
+  .kindle-shelf-tab:active, .view-toggle:active { background: var(--hover); }
+}
+
+/* Small ereader screens: fewer columns, larger relative type, tighter gutters
+   so the covers stay legible without a magnifier. */
+@media (max-width: 600px) {
+  .kindle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem 0.5rem; }
+  .kindle-book-title { font-size: 0.8rem; }
+  .kindle-book-author { font-size: 0.74rem; }
+  .kindle-rail-card { width: 118px; }
+  .library-header { margin-bottom: 0.6rem; }
+  .library-toolbar { padding: 0.5rem 0.55rem; gap: 0.45rem 0.5rem; }
+  .library-toolbar .view-toggle-text { font-size: 0.8rem; }
+  .kindle-shelf-tabs { gap: 0.25rem; }
+  .kindle-shelf-tab { padding: 0.4rem 0.55rem; font-size: 0.84rem; }
+}
+
+/* Very narrow (some 6" panels report ~320px) */
+@media (max-width: 380px) {
+  .kindle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .library-toolbar .view-segments-label { display: none; }
+}
+
+/* e-ink panels have no animation worth keeping, and some refresh visibly. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .view-toggle { transition: none; }
+}
+
+/* High-contrast: pure black on white, thicker borders, no grey text. */
+@media (prefers-contrast: more) {
+  :root { --muted: #1a1a1a; --border: #000; }
+  .kindle-book-title, .kindle-rail-book { font-weight: 700; }
+  .kindle-book-cover, .kindle-rail-cover, .kindle-cover-fallback {
+    border-width: 2px;
+  }
+}
+
+/* Print, for anyone exporting a shelf list. */
+@media print {
+  .library-toolbar, .kindle-pager, .kindle-rail { display: none; }
+  .kindle-book { break-inside: avoid; }
+  .kindle-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* --------------------------------------------------- navbar on small --- */
+/* Measured at a 600px viewport: .nav-links was 489px wide and pushed 52px
+   past the viewport, so the whole page scrolled sideways. Not the library
+   markup -- this is the top nav, and it is the first thing an ereader user
+   sees. The nav wraps to two rows and the theme picker keeps its own line
+   rather than forcing a single wide row. */
+@media (max-width: 760px) {
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.15rem 0.4rem;
+    width: 100%;
+  }
+  .nav-links a,
+  .nav-links > span {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.85rem;
+  }
+  .nav-links select {
+    max-width: 100%;
+  }
+}
+@media (max-width: 420px) {
+  .nav-links a,
+  .nav-links > span {
+    font-size: 0.8rem;
+    padding: 0.28rem 0.36rem;
+  }
+}
+
+/* Nothing should ever scroll the document sideways on a small panel. */
+@media (max-width: 760px) {
+  body { overflow-x: hidden; }
+  .container, main, .library-header, .library-toolbar { max-width: 100%; }
+  /* let long words in metadata wrap instead of stretching the page */
+  .kindle-book-meta, .library-info, .modal-dialog { overflow-wrap: anywhere; }
+}
+
+/* The theme picker forced the nav row wide on a 585px viewport: the select
+   had a hard width, so .nav-links stayed 585px wide but the row's content
+   pushed the document to 733px. Let the select shrink and wrap. */
+@media (max-width: 760px) {
+  .nav-links select,
+  .nav-links .theme-select,
+  .nav-links select[name="theme"] {
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+    width: auto;
+  }
+  /* the select sits inside a span wrapper; let that shrink too */
+  .nav-links > span {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .nav-links a {
+    white-space: nowrap;
+  }
+}
+
+/* Mid-width gap: 600px sat between the <=720px and <=420px rule sets, so
+   neither constrained the nav and the document still scrolled to 733px. Add
+   an explicit band for ereader widths rather than relying on the edges. */
+@media (min-width: 561px) and (max-width: 900px) {
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.2rem 0.35rem;
+    width: 100%;
+  }
+  .nav-links > span,
+  .nav-links select,
+  .nav-links .theme-select {
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+  }
+  .nav-links a { padding: 0.3rem 0.4rem; font-size: 0.82rem; }
+  .nav-links select { font-size: 0.82rem; height: 30px; }
+  .container, main { max-width: 100%; }
+  .kindle-shelf-tabs { overflow-x: auto; flex-wrap: nowrap; }
+}
+
+/* ------------------------------------------------- audiobook convert --- */
+/* The icon is a book, an arrow and headphones in one 38x20 glyph, so the
+   chip carrying it is wider than the text-only chips next to it. */
+.ab-start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.ab-start-btn .ab-icon,
+.ab-title .ab-icon {
+  flex: none;
+  display: block;
+}
+.ab-btn-label { font-weight: 600; }
+/* The book-cover overlay is small; keep the label, drop it if it will not fit */
+@container (max-width: 0px) { .ab-btn-label { display: none; } }
+@media (max-width: 720px) {
+  .ab-btn-label { display: none; }
+  .ab-start-btn { padding: 0.4rem 0.5rem; }
+}
+
+.audiobook-dialog { max-width: 520px; }
+.ab-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+.ab-book-name {
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+  color: var(--muted, #6b7280);
+  overflow-wrap: anywhere;
+}
+.ab-field { display: block; margin-bottom: 0.3rem; }
+.ab-field > span {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted, #6b7280);
+  margin-bottom: 0.25rem;
+}
+.ab-select {
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  min-height: 40px;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.92rem;
+  font-family: inherit;
+}
+.ab-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  color: var(--muted, #6b7280);
+}
+.ab-progress-wrap { margin-bottom: 0.8rem; }
+.ab-progress-wrap[hidden] { display: none; }
+.ab-bar {
+  height: 10px;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 2px;
+  background: var(--surface, #fff);
+  overflow: hidden;
+}
+.ab-bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent, #2563eb);
+  transition: width 400ms linear;
+}
+@media (prefers-reduced-motion: reduce) { .ab-bar-fill { transition: none; } }
+.ab-status {
+  margin: 0.5rem 0 0.15rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ab-detail {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+.ab-error {
+  margin: 0 0 0.8rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #b91c1c;
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: rgba(185, 28, 28, 0.07);
+  color: #b91c1c;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.ab-error[hidden] { display: none; }
+.ab-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.ab-actions button { min-height: 40px; padding: 0.5rem 0.9rem; }
+.ab-actions button[hidden] { display: none; }
+
+/* ------------------------------------------------ library filter row --- */
+/* Nick: centre both rows, halve the field widths, make search 2x.
+   The author <select> is gone -- the search bar matches titles OR authors,
+   so a second 4,000-option dropdown was redundant. */
+.library-toolbar {
+  justify-content: center;   /* centre the whole control group */
+}
+.lib-filters {
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.5rem 0.75rem;
+  flex: 1 1 auto;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0;
+}
+/* every field is half the old basis; search is twice a normal field */
+.lib-filters > label {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 150px;         /* was ~300px: half */
+  margin-bottom: 0;
+}
+.lib-filters > label.lib-search {
+  flex: 2 1 0;
+  max-width: 300px;         /* 2x a normal field */
+}
+.lib-filters > label > span {
+  display: block;
+  text-align: center;        /* labels centred over their field */
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted, #6b7280);
+  margin-bottom: 0.2rem;
+}
+.lib-filters select,
+.lib-filters input[type="search"],
+.lib-filters input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  font-size: 0.88rem;
+  font-family: inherit;
+  text-align: center;
+}
+.lib-filters input[type="search"] { text-align: left; }
+.lib-filters input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+.lib-filters select:focus,
+.lib-filters input:focus {
+  outline: none;
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #2563eb) 20%, transparent);
+}
+/* the action buttons sit centred beneath, on their own row */
+.lib-filters .toolbar-buttons {
+  flex: 0 0 100%;
+  justify-content: center;
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+/* the summary line above it: centred too */
+.library-summary { justify-content: center; }
+
+/* narrow: search keeps the full width, the rest share a row */
+@media (max-width: 760px) {
+  .lib-filters > label { max-width: none; flex: 1 1 30%; }
+  .lib-filters > label.lib-search { flex: 1 1 100%; max-width: none; }
+  .lib-filters .toolbar-buttons { flex-wrap: wrap; }
+}
+
+/* ---------------------------------------------------- folder view tidy --- */
+/* The summary row sat left of centre while the toolbar below it was centred,
+   so the two rows disagreed. Nick: align the elements between both rows,
+   centrally. */
+.library-summary {
+  justify-content: center;
+  text-align: center;
+  gap: 0.9rem;
+  margin-bottom: 0.55rem;
+}
+.library-summary .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+/* The "Folder" chip was drawn over the composite art, which now fills the
+   tile. Sit it below the art, on the info row, where nothing overlaps. */
+.library-view-grid .folder-chip {
+  position: static;
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  border: 1px solid var(--border, #b9b9b9);
+  background: transparent;
+  color: var(--muted, #6b7280);
+}
+/* Fill the tile: the composite is a background image, so give the link the
+   full height of the cover box and let the image cover it. */
+.library-view-grid .folder-cover { height: 150px; }
+.library-view-grid .folder-link {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-size: cover;
+  background-position: center;
+}
+.library-view-grid .folder-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  opacity: 0.5;
+  color: var(--accent, #2563eb);
+}
+.library-view-grid .folder-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* ------------------------------------------------------------ folder chip
+   Four rules target .folder-chip and one of them position:absolute, so the
+   label floated over the composite artwork. A previous attempt removed the
+   rules by splicing the file, which broke the toolbar layout entirely, so
+   this keeps every rule and wins on specificity instead: qualifying with
+   .folder-info beats .library-view-grid .folder-chip regardless of order. */
+.library-view-grid .folder-info .folder-chip {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: auto;
+  flex: none;
+  display: inline-block;
+  margin: 0;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+}
+/* And keep the summary row from wrapping "Select all" onto two lines. */
+.library-summary,
+.library-summary .checkbox,
+.library-summary .checkbox > span { white-space: nowrap; }
+.library-summary .checkbox > span,
+.library-summary .checkbox input[type="checkbox"] { flex: none; }
+
+/* Search box: the field, magnifier and cross must share ONE row.
+   The .lib-search-box is a <span>, and a span is inline by default, so the
+   absolutely-positioned controls had no positioned box to sit in and the
+   field wrapped onto a second row below the label. */
+.lib-search-box {
+  position: relative;
+  display: block;          /* was inline: no containing block for the controls */
+  width: 100%;
+  min-width: 0;
+}
+.lib-search > span:first-child { display: block; }
+.lib-search-box input[type="search"] {
+  display: block;
+  width: 100%;
+  padding-right: 3.1rem;
+  text-align: left;
+}
+/* Keep the search field and the buttons on the same flex line as the other
+   filters, so the whole row stays one band. */
+.lib-filters > label.lib-search {
+  flex: 2 1 0;
+  min-width: 0;
+  align-self: flex-end;
+}
+.lib-filters > label.lib-search > span:first-child {
+  text-align: center;
+  margin-bottom: 0.2rem;
+}
+
+/* Give the filter row enough width for search + 3 selects on ONE line.
+   Measured: form width 725px, children 245 + 150 + 150 + 150 = 695 plus gaps,
+   so the search label wrapped onto its own row above the selects. Widening
+   the row to its natural size (max-width 980 was not the constraint; the
+   container is) is what puts them back on one band. */
+.library-toolbar {
+  justify-content: center;
+}
+.lib-filters {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1100px;      /* was 980: the row needed ~900 for one line */
+  margin: 0 auto;
+  padding: 0;
+}
+/* Once there is room, let the fields breathe without a hard cap that
+   forces the wrap back. */
+.lib-filters > label {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 190px;
+}
+.lib-filters > label.lib-search {
+  flex: 2 1 0;
+  max-width: 380px;
+}
+/* If the row still cannot fit (narrow screens), keep search full width and
+   let the selects share the next line, which is the intended fallback. */
+@media (max-width: 900px) {
+  .lib-filters > label { max-width: none; flex: 1 1 30%; }
+  .lib-filters > label.lib-search { max-width: none; flex: 1 1 100%; }
+}
+
+/* The filter form was capped by a stale flex basis.
+   Measured chain: .container 1265px > .card 1265 > .library-header 1263 >
+   .library-toolbar 1263 > FORM 725px.
+
+   The form computed flex: 1 1 460px -- a basis of 460 from an earlier rule --
+   and .library-toolbar is flex: 0 1 auto, so the toolbar's intrinsic content
+   took the rest and the form never grew. 245 + 150*3 + gaps = 695, which just
+   overflows 725, so the search field wrapped onto its own row.
+
+   Give the form the full width and stop the toolbar from competing for it.
+*/
+.lib-filters {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0;
+}
+.library-toolbar { flex-wrap: wrap; }
+.library-toolbar > .view-segments { flex: 0 0 auto; }
+
+/* Put the view control on its OWN line above the filters, and let the
+   filter form have the full width.
+
+   Measured: .library-toolbar is a flex row holding TWO siblings -- the view
+   segment control (501px) and the filter form (flex 1 1 460px, resolving to
+   725px). 501 + 725 exceeds the 1263px row, so they stack, and inside the
+   725px form the search field (245) plus three selects (150 each) is 695
+   before gaps, which wraps the search onto a second line.
+
+   The view buttons are a control, not a filter, so giving them their own
+   row is also the right hierarchy. The form then spans the full width and
+   every filter lands on one line. The !important is needed because several
+   earlier blocks set flex on .lib-filters and later equal-specificity rules
+   lose to whichever the browser kept.
+*/
+.library-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+}
+.library-toolbar > .view-segments {
+  flex: 0 0 auto;
+  align-self: center;
+}
+.lib-filters {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  max-width: 1100px !important;
+  margin: 0 auto !important;
+  flex-wrap: nowrap !important;
+}
+.lib-filters > label { flex: 1 1 0; min-width: 0; max-width: 200px; }
+.lib-filters > label.lib-search { flex: 2 1 0; max-width: 400px; }
+.lib-filters .toolbar-buttons { flex: 0 0 auto; }
+@media (max-width: 900px) {
+  .lib-filters { flex-wrap: wrap !important; }
+  .lib-filters > label { flex: 1 1 30%; max-width: none; }
+  .lib-filters > label.lib-search { flex: 1 1 100%; max-width: none; }
+}
+
+/* The search field and its two controls must share one line.
+   The box is 372px and the input is 100% of it, but the label's inner <span>
+   is a block whose label line ("SEARCH") sits above, and the absolutely
+   positioned controls anchor to the BOX, so they render below the input.
+
+   Lay the box out as a grid instead: the input fills column 1, the two
+   controls sit in column 2, all in one row. No absolute positioning, so
+   nothing can fall out of the flow.
+*/
+.lib-search-box {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  column-gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+}
+.lib-search-box input[type="search"] {
+  display: block;
+  grid-column: 1;
+  width: 100%;
+  padding-right: 0.5rem;   /* no longer need room for overlaid controls */
+  text-align: left;
+}
+.lib-search-go,
+.lib-search-clear {
+  position: static !important;
+  top: auto !important; left: auto !important; right: auto !important;
+  bottom: auto !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+  line-height: 0;
+  text-decoration: none;
+}
+.lib-search-go    { grid-column: 2; }
+.lib-search-clear { grid-column: 3; }
+.lib-search-go:hover,
+.lib-search-clear:hover { color: var(--accent, #2563eb); background: var(--hover, #f3f4f6); }
+.lib-search-go:focus-visible,
+.lib-search-clear:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  .lib-search-go, .lib-search-clear { width: 34px; }
+}
+
+
+/* Refresh metadata is a maintenance action, not the page's primary action.
+   It used to render as a large blue button beside the total, and it had no
+   handler at all, so clicking it did nothing. It now posts the real route and
+   reports progress here. */
+.library-summary .library-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted, #6b7280);
+  background: transparent;
+  border: 1px solid var(--border, #b9b9b9);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.library-summary .library-refresh-btn:hover:not(:disabled) {
+  color: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+}
+.library-summary .library-refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+.library-refresh-state:empty { display: none; }
+.library-refresh-state {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, #2563eb);
+}
+
+/* ------------------------------------------ audiobook dialog ---------- */
+.audiobook-dialog { max-width: 560px; }
+.ab-title {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin: 0 0 0.3rem; font-size: 1.05rem;
+}
+.ab-book-name {
+  margin: 0 0 0.7rem; font-size: 0.9rem; color: var(--muted, #6b7280);
+  overflow-wrap: anywhere;
+}
+
+/* The estimate is the reason this dialog is safe to use: it answers "how long
+   and how big" before a multi-hour job is committed to. Give it presence. */
+.ab-estimate {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, #b9b9b9);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent, #2563eb) 6%, transparent);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text, #111827);
+}
+@media (prefers-color-scheme: dark) {
+  .ab-estimate { background: rgba(158, 199, 255, 0.10); }
+}
+
+.ab-field { display: block; margin-bottom: 0.55rem; }
+.ab-field > span {
+  display: block; font-size: 0.7rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--muted, #6b7280); margin-bottom: 0.2rem;
+}
+.ab-select {
+  width: 100%; padding: 0.5rem 0.55rem; min-height: 40px;
+  border: 1px solid var(--border, #d4d4d8); border-radius: 7px;
+  background: var(--surface, #fff); color: var(--text, #111827);
+  font-size: 0.9rem; font-family: inherit;
+}
+.ab-select:disabled { opacity: 0.55; }
+
+/* zero-shot clip picker */
+.ab-clone-field[hidden] { display: none; }
+.ab-file-input {
+  display: block; width: 100%; padding: 0.45rem;
+  border: 1px dashed var(--border, #b9b9b9); border-radius: 7px;
+  background: var(--surface, #fff); color: var(--text, #111827);
+  font-size: 0.85rem; min-height: 40px;
+}
+.ab-file-name {
+  display: block; margin-top: 0.25rem;
+  font-size: 0.8rem; color: var(--muted, #6b7280); overflow-wrap: anywhere;
+}
+.ab-hint {
+  margin: 0.3rem 0 0.7rem; font-size: 0.79rem; color: var(--muted, #6b7280);
+}
+.ab-existing-ref[hidden] { display: none; }
+.ab-existing-ref { margin: 0 0 0.6rem; }
+
+/* auto-send / notify */
+.ab-toggles {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  margin: 0.3rem 0 0.8rem;
+}
+.ab-toggles label { display: flex; align-items: center; gap: 0.45rem; margin: 0; }
+.ab-toggles input[type="checkbox"] { flex: none; margin: 0; }
+/* A flex item with min-width:auto refuses to shrink below its content
+ * width, so the label text stayed one line wide and overflowed the
+ * 560px audiobook dialog by exactly 18px, adding a horizontal
+ * scrollbar. Measured computed style: spanMinWidth 'auto',
+ * spanOverflowWrap 'normal'. This is the whole fix. */
+.ab-toggles span { min-width: 0; overflow-wrap: anywhere; }
+.ab-toggles label:has(input:disabled) { opacity: 0.5; }
+.ab-note {
+  margin: 0 0 0.8rem; font-size: 0.78rem; color: var(--muted, #6b7280);
+}
+
+.ab-progress-wrap[hidden] { display: none; }
+.ab-progress-wrap { margin-bottom: 0.8rem; }
+.ab-bar {
+  height: 10px; border: 1px solid var(--border, #b9b9b9);
+  border-radius: 2px; background: var(--surface, #fff); overflow: hidden;
+}
+.ab-bar-fill { height: 100%; width: 0; background: var(--accent, #2563eb); }
+.ab-status {
+  margin: 0.5rem 0 0.15rem; font-size: 0.9rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ab-detail {
+  margin: 0; font-size: 0.8rem; color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.ab-error[hidden] { display: none; }
+.ab-error {
+  margin: 0 0 0.8rem; padding: 0.5rem 0.6rem;
+  border: 1px solid #b91c1c; border-left-width: 3px; border-radius: 4px;
+  background: rgba(185, 28, 28, 0.07); color: #b91c1c; font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+.ab-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.ab-actions button { min-height: 40px; padding: 0.5rem 0.9rem; }
+.ab-actions button[hidden] { display: none; }
+
+/* ------------------------------------------- audiobooks view ---------- */
+/* A list, not a cover grid: an audiobook is a long piece of work whose useful
+   facts (length, size, narrator, chapters, delivery) a cover cannot show. */
+.audiobook-view { margin: 0.5rem 0 1.2rem; }
+.audiobook-summary {
+  margin: 0 0 0.8rem;
+  font-size: 0.88rem;
+  color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums;
+}
+.audiobook-empty {
+  padding: 1.4rem 0.9rem;
+  border: 1px dashed var(--border, #b9b9b9);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--muted, #6b7280);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.audiobook-empty[hidden] { display: none; }
+.audiobook-empty a { color: var(--accent, #2563eb); }
+
+.audiobook-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.audiobook-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+}
+@media (hover: hover) {
+  .audiobook-row:hover { border-color: var(--accent, #2563eb); }
+}
+.ab-main { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.ab-row-title {
+  font-size: 0.95rem; font-weight: 600; color: var(--text, #111827);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ab-row-meta {
+  font-size: 0.8rem; color: var(--muted, #6b7280);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ab-facts { display: flex; gap: 0.5rem; flex: none; flex-wrap: wrap; }
+.ab-fact {
+  font-size: 0.78rem;
+  color: var(--text, #111827);
+  background: color-mix(in srgb, var(--muted, #6b7280) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ab-sent-yes { background: rgba(22, 101, 52, 0.16); color: #166534; }
+.ab-sent-no  { background: color-mix(in srgb, var(--muted, #6b7280) 12%, transparent); }
+@media (max-width: 620px) {
+  .audiobook-row { flex-direction: column; align-items: flex-start; }
+  .ab-facts { width: 100%; }
+}
+
+/* ---- card layout (v1.8.0): cover art + chips, like every other view ---- */
+/* The row layout above is kept for the kindle.css variant and for any code
+   still rendering rows; new work renders .ab-card only. */
+.audiobook-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.1rem;
+  align-items: start;
+  padding: 0.4rem 0 1.2rem;
+}
+.ab-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  overflow: hidden;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+@media (hover: hover) {
+  .ab-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent, #2563eb);
+    box-shadow: 0 6px 18px rgba(0,0,0,.14);
+  }
+}
+.ab-card-art {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: linear-gradient(150deg, #2b2f36 0%, #1b1e23 100%);
+  overflow: hidden;
+}
+.ab-cover-art { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ab-cover-missing {
+  display: block;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 8px, transparent 8px 16px),
+    linear-gradient(150deg, #2b2f36 0%, #1b1e23 100%);
+}
+.ab-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem 0.7rem;
+  min-width: 0;
+}
+.ab-card-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text, #111827);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ab-card-meta {
+  font-size: 0.74rem;
+  color: var(--muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ab-card-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ab-card-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.15rem; }
+
+.ab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.34rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border, #d4d4d8);
+  background: color-mix(in srgb, var(--muted, #6b7280) 8%, transparent);
+  color: var(--text, #111827);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+a.ab-chip { text-decoration: none; cursor: pointer; }
+button.ab-chip { cursor: pointer; font-family: inherit; }
+a.ab-chip:hover, button.ab-chip:hover { border-color: var(--accent, #2563eb); }
+
+.ab-chip-fact { background: color-mix(in srgb, var(--muted, #6b7280) 12%, transparent); }
+.ab-chip-voice { background: color-mix(in srgb, var(--secondary, #7c3aed) 10%, transparent); }
+
+/* Play chip: the play glyph plus a 15s badge, so nobody is surprised by what
+   pressing it does. Turns to a "playing" state while the sample runs. */
+.ab-chip-play {
+  background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent);
+  border-color: color-mix(in srgb, var(--primary, #2563eb) 35%, transparent);
+  color: var(--primary, #2563eb);
+  font-weight: 600;
+}
+.ab-chip-play:hover {
+  background: color-mix(in srgb, var(--primary, #2563eb) 22%, transparent);
+}
+.ab-chip-play.is-playing {
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border-color: var(--primary, #2563eb);
+}
+.ab-play-icon { display: block; flex: none; }
+.ab-play-15 {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+.ab-chip-dl {
+  background: color-mix(in srgb, var(--success, #10b981) 12%, transparent);
+  border-color: color-mix(in srgb, var(--success, #10b981) 32%, transparent);
+  color: color-mix(in srgb, var(--success, #10b981) 85%, var(--text, #111827));
+  font-weight: 600;
+}
+.ab-chip-dl.is-disabled { opacity: 0.45; cursor: default; }
+.ab-chip-send {
+  background: color-mix(in srgb, var(--secondary, #7c3aed) 12%, transparent);
+  border-color: color-mix(in srgb, var(--secondary, #7c3aed) 32%, transparent);
+  color: color-mix(in srgb, var(--secondary, #7c3aed) 88%, var(--text, #111827));
+  font-weight: 600;
+}
+.ab-sent-fail { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
+
+@media (max-width: 620px) {
+  .audiobook-list { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 0.8rem; }
+}
+
+/* ---- LibriVox narrator picker (modal, clone mode) ---- */
+.ab-narrator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--muted, #6b7280) 4%, transparent);
+}
+.ab-narrator-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .14s ease, background .14s ease;
+}
+.ab-narrator-card:hover { border-color: var(--accent, #2563eb); }
+.ab-narrator-card.is-chosen {
+  border-color: var(--primary, #2563eb);
+  background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent);
+}
+.ab-narrator-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text, #111827);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ab-narrator-book {
+  font-size: 0.72rem;
+  color: var(--muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------- plugins view -------- */
+.plugin-view { display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0; }
+.plugin-summary { color: var(--text-muted, #666); margin-bottom: .5rem; line-height: 1.5; }
+.plugin-empty { color: var(--text-muted, #666); font-style: italic; }
+
+.plugin-card {
+  display: flex; flex-direction: column; gap: .5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+}
+.plugin-card-error { border-color: var(--danger, #c0392b); }
+
+.plugin-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.plugin-name { font-weight: 600; font-size: 1.05rem; }
+.plugin-version { color: var(--text-muted, #666); font-size: .9rem; }
+.plugin-id { font-size: .85rem; color: var(--text-muted, #666); }
+.plugin-id code, .plugin-cap { font-family: var(--mono, monospace); }
+
+.plugin-provides { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.plugin-cap {
+  background: var(--surface-alt, #f3f4f6);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 4px;
+  padding: .1rem .4rem;
+  font-size: .85rem;
+}
+.plugin-cap + .plugin-cap { margin-left: .3rem; }
+
+.plugin-routes summary { cursor: pointer; font-size: .9rem; color: var(--text-muted, #666); }
+.plugin-routes ul { margin: .4rem 0 0 1.2rem; font-size: .85rem; }
+
+.plugin-error-detail {
+  color: var(--danger, #c0392b);
+  font-family: var(--mono, monospace);
+  font-size: .85rem;
+  word-break: break-word;
+}
+
+.plugin-toggle { margin-top: .25rem; }
+.plugin-btn {
+  padding: .4rem .9rem;
+  border: 1px solid var(--border, #bbb);
+  border-radius: 6px;
+  background: var(--surface-alt, #f3f4f6);
+  /* Explicit colours: the inherited foreground resolved to white on this
+     pale background, so the label was effectively invisible. */
+  color: var(--text, #1f2933);
+  cursor: pointer;
+  font-size: .9rem;
+  min-height: 2rem;
+}
+.plugin-btn:hover { background: var(--hover, #e5e7eb); }
+
+/* ---------------------------------------- audiobook dialog --------------
+ * The dialog was 560 px wide but its scrollWidth measured 577 px, so ~34 px
+ * of content was clipped: the FOR row rendered as fragments ("En to Ki wf")
+ * and a horizontal scrollbar appeared under the form.
+ *
+ * Two causes, both fixed here:
+ *   1. box-sizing is not inherited into the form controls, so a child's
+ *      declared width plus its padding exceeded the parent. Measured
+ *      560 declared vs 577 scrollWidth.
+ *   2. a <select> has an intrinsic min-width that a flex row will not
+ *      shrink below, so it pushed the FOR row wider than the dialog.
+ */
+.audiobook-dialog,
+.audiobook-dialog * {
+  box-sizing: border-box;
+}
+
+.audiobook-dialog .ab-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.audiobook-dialog .ab-field > label,
+.audiobook-dialog .ab-field > span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* min-width:0 is what actually lets a flex child shrink; width:100% then
+ * makes it fill the row instead of contributing its intrinsic width. */
+.audiobook-dialog select,
+.audiobook-dialog input[type="text"],
+.audiobook-dialog input[type="file"] {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.audiobook-dialog .ab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.audiobook-dialog .ab-actions button {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The Convert-to-audiobook chip must be clickable on EVERY card.
+
+ * MEASURED (hit-test over all 50 cards, not .click()):
+ *   total 50, covered 7, uncovered 43
+ *   button x=2 y=542 w=112 h=33
+ *   meta   x=2 y=542 w=165 h=21   <- same y, WIDER, painted later
+ *   document.elementFromPoint(button centre) returned DIV.library-meta
+ *
+ * So on any card that has a meta strip, the strip sits on top of the control
+ * and swallows every click. Cards without meta are unaffected, which is why
+ * it read as "the button is sometimes missing".
+ *
+ * position:relative + z-index lifts the chip into its own stacking context
+ * above the strip; pointer-events on the strip stops it intercepting anything
+ * that is not its own text. Both are scoped to the library card so nothing
+ * else on the page moves.
+ */
+.library-card .ab-start-btn {
+  position: relative;
+  z-index: 2;
+}
+
+.library-card .library-meta {
+  position: relative;
+  z-index: 1;
+}
+
+/* Belt and braces: even if the geometry changes later, the meta strip cannot
+ * capture a click meant for a control. */
+.library-card .library-meta:not(:has(a, button, input, select)) {
+  pointer-events: none;
+}
+
+.library-card .library-meta > * {
+  pointer-events: auto;
+}
+
+/* And the cover stays clickable underneath, which it must remain. */
+.library-card .library-cover-link {
+  position: relative;
+  z-index: 1;
+}
+
+/* Convert chip: keep it above the meta strip AND out of the cover's clip.
+ * The markup now places it as a card child; this is the belt to that
+ * braces. If it ever moves back inside .library-cover, overflow:visible
+ * stops the same "invisible button" bug returning silently. */
+.library-card .ab-start-btn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  margin: 0;
+  z-index: 3;
+}
+
+.library-card .library-meta {
+  position: relative;
+  z-index: 1;
+}
+
+.library-card .library-meta:not(:has(a, button, input, select)) {
+  pointer-events: none;
+}
+
+.library-card .library-meta > * {
+  pointer-events: auto;
+}
+
+/* Convert chip: a child of .card, absolutely placed over the cover.
+
+ * It cannot live inside .library-cover: that element is overflow:hidden, so
+ * a chip inside it is clipped and never receives a click. Measured:
+ * offsetParent .library-cover, elementFromPoint at the chip's own centre
+ * returned DIV.card, and z-index / pointer-events changes did nothing --
+ * they only reorder painted elements. */
+.library-card {
+  position: relative;
+}
+
+.library-card .ab-start-btn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  margin: 0;
+  z-index: 3;
+}
+
+/* Guard: if the markup ever moves back inside the cover, do not go silent. */
+.library-card .library-cover .ab-start-btn {
+  overflow: visible;
+  position: absolute;
+  z-index: 3;
+}
+
+.library-card .library-meta {
+  position: relative;
+  z-index: 1;
+}
+
+.library-card .library-meta:not(:has(a, button, input, select)) {
+  pointer-events: none;
+}
+
+.library-card .library-meta > * {
+  pointer-events: auto;
+}

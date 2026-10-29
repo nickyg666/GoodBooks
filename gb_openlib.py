@@ -216,7 +216,7 @@ def fetch_by_search(title: str, author: str = "", limit: int = 5) -> Optional[di
             # subjects for the same query:
             #   ratings_average: 4.3049326   ratings_count: 446
             #   subject: ['Fiction', 'Fiction, science fiction, general', ...]
-            "fields": ("title,author_name,cover_i,isbn,first_publish_year,"
+            "fields": ("key,title,author_name,cover_i,isbn,first_publish_year,"
                        "ratings_average,ratings_count,subject"),
         })
     except Exception as exc:
@@ -280,6 +280,28 @@ def fetch_by_search(title: str, author: str = "", limit: int = 5) -> Optional[di
         out["rating_count"] = rating_count
     if genres:
         out["genres"] = genres
+
+    # ---- description from the Works API -----------------------------------
+    # search.json has no description field; the Works endpoint does. The
+    # key from search.json looks like "/works/OL12345W". Fetch it, extract
+    # description (sometimes a plain string, sometimes {"value": "..."}).
+    work_key = best.get("key")
+    if work_key:
+        try:
+            wid = work_key.rsplit("/", 1)[-1]
+            wr = requests.get(f"https://openlibrary.org/works/{wid}.json",
+                              timeout=15, headers=UA)
+            if wr.status_code == 200:
+                wdata = wr.json()
+                desc_raw = wdata.get("description")
+                if isinstance(desc_raw, dict):
+                    desc_raw = desc_raw.get("value", "")
+                if isinstance(desc_raw, str) and len(desc_raw.strip()) > 40:
+                    out["description"] = desc_raw.strip()
+            wr.close()
+        except Exception:
+            pass
+
     return out
 
 

@@ -39,3 +39,6 @@ data/audiobook_jobs/
 data/audiobook_work/
 data/plugins_enabled.json
 plugins/__pycache__/
+
+# python 3.12 venv snapshot (local port artifact)
+.venv*/

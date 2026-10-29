@@ -120,28 +120,80 @@ def _existing_profile() -> Optional[str]:
     return None
 
 
+_NOISE_TOKENS = {
+    "the", "and", "for", "with", "from", "that", "this", "was", "are", "all",
+    "not", "but", "his", "her", "has", "had", "you", "out", "who", "how",
+    "its", "one", "two", "new", "now", "off", "our", "way", "may", "own",
+}
+
+
+def _clean_ocr(raw: str) -> str:
+    """Keep only the tokens that can plausibly be words on a cover.
+
+    Stylised cover art makes Tesseract emit runs like '| SCOTT Dae ERALD |'
+    or '2s SSS Ee'. Those noise runs are what made scan & steal return
+    unrelated books, so strip anything that is not 3+ alphanumeric
+    characters and drop pure punctuation/pipe debris before searching.
+    """
+    words = []
+    for w in (raw or "").split():
+        w = w.strip("|.,;:!?()[]{}<>\"'`~*_=-")
+        if len(w) < 3:
+            continue
+        if not any(c.isalnum() for c in w):
+            continue
+        letters = sum(1 for c in w if c.isalpha() or c.isdigit())
+        if letters < max(2, int(len(w) * 0.6)):
+            continue
+        words.append(w)
+    return " ".join(words)
+
+def _dedupe_words(words: List[str]) -> List[str]:
+    seen = set()
+    ordered = []
+    for w in words:
+        if w not in seen:
+            seen.add(w)
+            ordered.append(w)
+    return ordered
 def extract_ocr_text(image_bytes: bytes) -> str:
     """Extract text from the image using OCR, for cross-checking Lens results.
-    
+
     Returns the OCR text, or empty string if OCR is unavailable.
+
+    NOTE: do NOT downscale before OCR. A 400px thumbnail destroys the
+    stylised lettering on cover art, which is exactly where the title
+    lives -- the old code did that and scan & steal matched nothing.
+    Instead upscale anything small and try several page-segmentation
+    modes, keeping the result with the most plausible words.
     """
     if not _HAS_TESSERACT or not _HAS_PIL:
         return ""
     try:
         from io import BytesIO
         img = Image.open(BytesIO(image_bytes))
-        # Resize large images to speed up OCR (timeout fix)
-        if img.size[0] > 400 or img.size[1] > 400:
-            img.thumbnail((400, 400), Image.LANCZOS)
-        # Try only PSM 6 (single block of text) for speed
-        text = ""
-        try:
-            t = pytesseract.image_to_string(img, config='--psm 6')
-            if t:
-                text = t
-        except Exception:
-            pass
-        return text.strip()
+        img.load()
+        if img.mode not in ("L", "RGB"):
+            img = img.convert("RGB")
+
+        if max(img.size) < 900:
+            factor = 900.0 / max(img.size)
+            img = img.resize((int(img.size[0] * factor), int(img.size[1] * factor)),
+                             Image.LANCZOS)
+
+        best = ""
+        for psm in (6, 3, 11, 4):
+            try:
+                raw = pytesseract.image_to_string(img, config=f"--psm {psm}")
+            except Exception:
+                continue
+            cleaned = _clean_ocr(raw)
+            if len(cleaned.split()) > len(best.split()):
+                best = cleaned
+            if len(best.split()) >= 8:
+                break
+
+        return " ".join(_dedupe_words(best.split()))
     except Exception as exc:
         logger.debug("OCR extraction failed: %s", exc)
         return ""
@@ -288,5 +340,8 @@ def identify_cover(image_bytes: bytes, timeout: int = 150) -> List[dict]:
             words = ocr_text.split()[:10]  # first 10 words
             query = " ".join(words)
             cands = [{"title": query, "author": "", "isbn": "", "source": "ocr_fallback"}]
+    if cands:
         logger.info("Lens identified: %s", cands[0])
+    else:
+        logger.info("Lens identified: no candidates")
     return cands

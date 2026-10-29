@@ -459,9 +459,23 @@ def register(ctx):
 
     @app.route("/audiobook/voices")
     def audiobook_voices():
+        """Union of studio voices and LibriVox narrators for the picker."""
         import gb_audiobook as AB
-        voices = AB.list_voices()
-        return jsonify({"voices": voices})
+        import gb_voices as LV
+
+        studio = AB.list_voices() or []
+        narrators = LV.search_narrators(limit=20) or []
+
+        studio_voices = [{"name": v, "type": "studio"} for v in studio]
+        narrator_voices = [{"name": n["name"], "type": "narrator",
+                            "book": n["book"], "seconds": n["seconds"],
+                            "sample_url": n["sample_url"]} for n in narrators]
+
+        return jsonify({
+            "studio": studio_voices,
+            "narrators": narrator_voices,
+            "all": studio_voices + narrator_voices,
+        })
 
     # ------------------------------------------------------------------
     # hooks

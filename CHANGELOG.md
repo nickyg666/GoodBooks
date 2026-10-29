@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-10-12
+
+### Added
+- **Cover Matcher pipeline**: replaced dead Google reverse-image search with a robust local-first chain:
+  1. Crop photo to cover region using edge-energy walk-in (removes background)
+  2. Local barcode ISBN decode (exact fast path)
+  3. Yandex reverse image search (JSON upload → cbirId → SERP → img_url links)
+  4. Download top hits, rank by pHash similarity to the cropped scan
+  5. OCR best-scoring clean copy (upscale, multi-PSM, noise filter) → title tokens
+  6. Build Anna's Archive queries (ISBN first, then OCR title tokens, deduplicated)
+  7. Query Anna's Archive with those queries, return results
+- **New modules**:
+  - `gb_covermatch.py` — orchestrates crop, pHash, Yandex (`gb_yandex2`), OCR helpers
+  - `gb_yandex2.py` — Yandex reverse-search parser (extracts img_url links from results page)
+- `/scan/process` now returns a `match_detail` object with diagnostics (cropped flag, pHash, yandex_hits, ranked hits, ocr_queries).
+
+### Changed
+- Rewired `scan_process()` in `app.py` to use `gb_covermatch.identify_cover()` instead of the deprecated `_reverse_search_google_free` path (Google retired `/searchbyimage` in 2019 and Lens bot-blocks headless profiles).
+- Removed dead Google reverse-image search calls from the scan flow.
+
+### Fixed
+- Scan & steal now produces meaningful queries and results for real covers (verified with 1984, Great Gatsby, Hobbit covers against the live service).
+- Endpoint no longer 500s on a missing `image_data` reference introduced during debugging.
+
 ## [1.2.0] - 2026-03-12
 
 ### Added
@@ -26,38 +50,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Goodreads Genre Feeds**: Browse and subscribe to Goodreads genre lists
 - **Background Maintenance**: Automatic background processing with progress bars and ETA
 - **SMTP Configuration**: Flexible SMTP setup with username/password authentication
-- **E-ink Optimized UI**: Kindle-optimized CSS for reading the web interface on Kindle devices
-
-### Changed
-- **Production Server**: Switched from Flask dev server to Waitress for production deployment
-- **Memory Optimization**: Fixed browser automation memory leaks by properly closing page/context
-- **Package Structure**: Converted to proper Python package with pyproject.toml
-
-### Fixed
-- Cloudflare rate limit detection and handling
-- Title-author formatting consistency
-- Cover display and caching issues
-- Metadata refresh logic to process all incomplete entries
-- Background maintenance progress bar accuracy
-- History page 500 errors with None file types
-- Various null pointer and type errors
-
-### Performance
-- Parallelized metadata enrichment with 8-worker ThreadPool
-- Optimized feed processing with smallest-first ordering
-- Search result caching to reduce redundant API calls
-- Library lookup caching
-
----
-
-## [1.0.0] - 2024-12-13
-
-### Added
-- RSS/Atom feed parsing and processing
-- Goodreads list scraping
-- Basic EPUB generation
-- Simple Kindle email delivery
-- Flask web interface
-- User settings management
-- Basic search functionality
-- Download history tracking
+- **E-ink

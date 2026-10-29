@@ -1154,7 +1154,7 @@ function getRandomBooks(event) {
     
     // Get current view parameters
     const url = new URL(window.location);
-    const view = url.searchParams.get('view') || 'folder';
+    const view = url.searchParams.get('view') || 'users';
     const prefix = url.searchParams.get('prefix') || '';
     const genre = url.searchParams.get('genre') || '';
     const author = url.searchParams.get('author') || '';
@@ -1637,6 +1637,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const vCoverBtn = document.getElementById('library-view-cover');
         const vPluginsBtn = document.getElementById('library-view-plugins');
             const vAudiobooksBtn = document.getElementById('library-view-audiobooks');
+        const vUsersBtn = document.getElementById('library-view-users');
 
         // Single source of truth for which view is active. Each setter used to
         // hand-remove 'active' from the other buttons, which meant a fifth view
@@ -1656,6 +1657,15 @@ document.addEventListener('DOMContentLoaded', function () {
             // Navigate to grid view (collection mode shows all books)
             const url = new URL(window.location);
             url.searchParams.set('view', 'collection');
+            url.searchParams.delete('prefix');
+            window.location = url.toString();
+        }
+
+        function setUsersView() {
+            setActiveView('users');
+            localStorage.setItem('library-view', 'users');
+            const url = new URL(window.location);
+            url.searchParams.set('view', 'users');
             url.searchParams.delete('prefix');
             window.location = url.toString();
         }
@@ -1737,6 +1747,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (vAudiobooksBtn) {
                 vAudiobooksBtn.addEventListener('click', setAudiobooksView);
             }
+            if (vUsersBtn) {
+                vUsersBtn.addEventListener('click', setUsersView);
+            }
         }
         vGridBtn.addEventListener('click', setGridView);
         vListBtn.addEventListener('click', setListView);
@@ -1749,7 +1762,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // "kindle" -- to Folders, so the Library view lit Folders on top of the
         // server's own marking. setActiveView() keys off data-view instead, so
         // it is right for every view that exists without being updated.
-        const currentView = new URL(window.location).searchParams.get('view') || 'folder';
+        const currentView = new URL(window.location).searchParams.get('view') || 'users';
         const isRecentlyAdded = window.location.pathname.includes('recently-added');
         if (isRecentlyAdded) {
             setActiveView('recent');
@@ -2465,38 +2478,45 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       list.innerHTML = rows.map(function (a) {
         var narrator = a.cloned
-          ? esc(a.narrator || 'cloned') + ' \u00b7 cloned'
-          : esc(a.narrator || 'unknown');
-        var sent = a.delivered === true ? 'sent to Kindle'
-                : a.delivered === false ? 'Kindle send failed'
+          ? esc(a.narrator || 'cloned') + ' · cloned'
+          : esc(a.narrator || 'studio voice');
+        var sent = a.delivered === true ? 'sent'
+                : a.delivered === false ? 'send failed'
                 : 'not sent';
-        var cover = a.cover ? '<img class="ab-cover" src="' + esc(a.cover) + '" alt="" loading="lazy" decoding="async">'
-                          : '<span class="ab-cover ab-cover-empty" aria-hidden="true"></span>';
-      var dl = a.result
-        ? '<a class="ab-btn" href="/audiobook/download/' + encodeURIComponent(a.entry_id || '') + '">Download</a>'
-        : '<a class="ab-btn ab-btn-disabled" href="/audiobook/download/' + encodeURIComponent(a.entry_id || '') + '">Download</a>';
+        var sentCls = a.delivered === true ? 'yes'
+                    : a.delivered === false ? 'fail' : 'no';
+        var cover = a.cover ? '<img class="ab-cover-art" src="' + esc(a.cover) + '" alt="" loading="lazy" decoding="async">'
+                          : '<span class="ab-cover-art ab-cover-missing" aria-hidden="true"></span>';
+        var voiceChip = a.cloned
+          ? '<span class="ab-chip ab-chip-voice">🎙 cloned · ' + esc(a.narrator || 'custom') + '</span>'
+          : '<span class="ab-chip ab-chip-voice">🗣 ' + esc(a.narrator || 'studio') + '</span>';
       var play = a.result
-        ? '<button class="ab-preview-btn" data-entry-id="' + esc(a.entry_id) + '">Play sample</button>'
+        ? '<button class="ab-chip ab-chip-play" data-entry-id="' + esc(a.entry_id) + '" title="Play a 15-second sample">' +
+          '<svg class="ab-play-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+          '<span class="ab-play-15">15s</span></button>'
         : '';
+      var dl = a.result
+        ? '<a class="ab-chip ab-chip-dl" href="/audiobook/download/' + encodeURIComponent(a.entry_id || '') + '" title="Download">⬇ Download</a>'
+        : '<span class="ab-chip ab-chip-dl is-disabled" title="Not ready">⬇ Download</span>';
       var kindle = a.entry_id
-        ? '<button type="button" class="ab-btn ab-send-btn" data-entry-id="' + esc(a.entry_id) + '">Send to Kindle</button>'
+        ? '<button type="button" class="ab-chip ab-chip-send" data-entry-id="' + esc(a.entry_id) + '" title="Send to a user">📤 Send</button>'
         : '';
-      return '<div class="audiobook-row">' +
-          cover +
-          '<div class="ab-main">' +
-            '<span class="ab-row-title">' + esc(a.title) + '</span>' +
-            '<span class="ab-row-meta">' + narrator +
-              (a.bitrate ? '  \u00b7  ' + esc(a.bitrate) : '') +
-              (a.chapters ? '  \u00b7  ' + a.chapters + ' chapters' : '') +
+      return '<div class="ab-card" data-entry-id="' + esc(a.entry_id || '') + '">' +
+          '<div class="ab-card-art">' + cover + '</div>' +
+          '<div class="ab-card-body">' +
+            '<span class="ab-card-title">' + esc(a.title) + '</span>' +
+            '<span class="ab-card-meta">' + narrator +
+              (a.bitrate ? ' · ' + esc(a.bitrate) : '') +
+              (a.chapters ? ' · ' + a.chapters + ' ch' : '') +
             '</span>' +
+            '<div class="ab-card-chips">' +
+              '<span class="ab-chip ab-chip-fact">⏱ ' + fmtDur(a.hours) + '</span>' +
+              '<span class="ab-chip ab-chip-fact">📦 ' + a.mb.toLocaleString() + ' MB</span>' +
+              '<span class="ab-chip ab-chip-fact ab-sent-' + sentCls + '">' + sent + '</span>' +
+              voiceChip +
+            '</div>' +
+            '<div class="ab-card-actions">' + play + dl + kindle + '</div>' +
           '</div>' +
-          '<div class="ab-facts">' +
-            '<span class="ab-fact">' + fmtDur(a.hours) + '</span>' +
-            '<span class="ab-fact">' + a.mb.toLocaleString() + ' MB</span>' +
-            '<span class="ab-fact ab-sent-' + (a.delivered === true ? 'yes' : 'no') +
-              '">' + sent + '</span>' +
-          '</div>' +
-          '<div class="ab-actions">' + dl + kindle + play + '</div>' +
         '</div>';
       }).join('');
     })
@@ -2611,21 +2631,69 @@ fetch('/api/users')
         
         // Event delegation for send buttons
         document.addEventListener('click', function(e) {
-            var btn = e.target.closest('.ab-send-btn');
+            var btn = e.target.closest('.ab-chip-send');
             if (!btn) return;
             e.preventDefault();
             var entryId = btn.getAttribute('data-entry-id');
-            var title = btn.closest('.audiobook-row').querySelector('.ab-row-title').textContent;
-            openModal(entryId, title);
+            var card = btn.closest('.ab-card');
+            var title = card ? (card.querySelector('.ab-card-title') || {}).textContent : '';
+            openModal(entryId, title || '');
+        });
+    })();
+
+    // ---- 15-second preview player ----------------------------------------
+    // The "Play sample" chip had NO handler for the life of this view: the
+    // button rendered and swallowed clicks. /audiobook/preview returns the
+    // mp3 directly, so one shared <audio> element and a transient "playing"
+    // state on the chip is the whole implementation.
+    (function () {
+        var audio = null;
+        var activeChip = null;
+
+        function setChipState(chip, playing) {
+            if (!chip) { return; }
+            chip.classList.toggle('is-playing', playing);
+            var label = chip.querySelector('.ab-play-15');
+            if (label) { label.textContent = playing ? 'playing' : '15s'; }
+        }
+
+        document.addEventListener('click', function (e) {
+            var chip = e.target.closest && e.target.closest('.ab-chip-play');
+            if (!chip) { return; }
+            e.preventDefault();
+
+            // Toggle off if this same chip is already playing.
+            if (activeChip === chip && audio && !audio.paused) {
+                audio.pause();
+                return;
+            }
+
+            var entryId = chip.getAttribute('data-entry-id');
+            if (!entryId) { return; }
+
+            if (!audio) {
+                audio = new Audio();
+                audio.addEventListener('ended', function () {
+                    setChipState(activeChip, false);
+                    activeChip = null;
+                });
+                audio.addEventListener('pause', function () {
+                    setChipState(activeChip, false);
+                });
+                audio.addEventListener('play', function () {
+                    setChipState(activeChip, true);
+                });
+            }
+
+            setChipState(activeChip, false);
+            activeChip = chip;
+            audio.src = '/audiobook/preview?entry_id=' + encodeURIComponent(entryId);
+            audio.play().catch(function () {
+                setChipState(chip, false);
+                activeChip = null;
+            });
         });
     })();
     </script>
 
 {% endblock %}
-
-
-        });
-    })
-    .catch(function(err) {
-        console.error('Failed to load users for send-to-kindle dropdown:', err);
-    });

@@ -3032,6 +3032,36 @@ def _titles_match(title1: str, title2: str) -> bool:
     return overlap >= min_tokens * 0.6  # 60% overlap required
 
 
+def _aa_result_matches_query(title: str, query: str) -> bool:
+    """Does an Anna's Archive result title plausibly answer the query?
+
+    The scan flow searches AA with OCR-derived text, which is noisy:
+    "Signet asic GEORGE ORWELI" is really the interior credit of a
+    Signet Classic edition, not a title. Without this check AA happily
+    returns *Calculus: elements of modern mathematics* for that query --
+    structurally a good search, semantically the wrong book.
+
+    Rule: the result must share at least one 4+ character token with the
+    query, or share the query's most distinctive token (author surname).
+    An ISBN query always matches -- AA resolves ISBNs exactly.
+    """
+    import re as _re
+    if not query:
+        return True
+    if _re.search(r"\b97[89][0-9]{10}\b", query):
+        return True
+
+    def toks(x):
+        return {_re.sub(r"[^a-z0-9]", "", w.lower())
+                for w in (x or "").split() if len(w) >= 4}
+
+    qt = toks(query)
+    rt = toks(title)
+    if not qt or not rt:
+        return False
+    return bool(qt & rt)
+
+
 def get_metadata_field(meta: Dict, field: str, title: str = "", default=""):
     """Get metadata field: goodreads_meta > top-level > extract from title > default"""
     # Try goodreads_meta first (best source)
@@ -3470,25 +3500,58 @@ def _entry_matches_search(entry: Dict, needle: str, given=None) -> bool:
     misses a search for "Freida" or "McFadden". gb_authors turns the blob
     into "Freida Mcfadden" and all of "freida", "mcfadden" and "freida
     mcfadden" then match.
+
+    TOKEN MATCH (v1.8.0): a plain substring misses the common catalogue
+    shapes -- "The Silent Patient" stored as "Silent Patient, The" or
+    "The Colour of Magic" as "Colour Of Magic" -- because the leading
+    preposition moves. When the substring test fails, fall back to matching
+    on significant tokens (articles and prepositions removed), so single
+    tokens ("dune") and long titles with moving stop words both hit.
     """
     if not needle:
         return True
     q = needle.casefold()
-    if q in str(entry.get("title", "")).casefold():
+    title = str(entry.get("title", ""))
+    if q in title.casefold():
         return True
     if q in str(entry.get("author", "")).casefold():
         return True
     try:
         import gb_authors
     except Exception:
-        return False
+        gb_authors = None
     disp = entry.get("author_display")
     if not disp:
         if given is None:
             given = _library_search_seed([entry])
-        disp = gb_authors.display_author(str(entry.get("author") or ""), given)
+        disp = gb_authors.display_author(str(entry.get("author") or ""), given) if gb_authors else ""
         entry["author_display"] = disp
-    return bool(disp) and q in str(disp).casefold()
+    if disp and q in str(disp).casefold():
+        return True
+
+    # ---- token fallback ---------------------------------------------------
+    # Only reached when the substring test failed, so this can only ADD
+    # matches, never remove one. Stop words are stripped from both sides so
+    # "the silent patient" matches "Silent Patient, The".
+    _ARTICLE = {"the", "a", "an", "of", "on", "in", "to", "and", "or",
+                "for", "with", "at", "by", "from", "as", "is", "it"}
+
+    def _sig(s: str) -> set:
+        return {t for t in re.split(r"[^a-z0-9]+", s.casefold())
+                if t and t not in _ARTICLE and len(t) > 1}
+
+    q_tokens = _sig(q)
+    if not q_tokens:
+        return False
+    # Every query token must be present somewhere in the haystack, so
+    # "silent patient" cannot match a book that is merely titled "Patient".
+    for hay in (title, str(entry.get("author") or ""), str(disp or "")):
+        if not hay:
+            continue
+        h_tokens = _sig(hay)
+        if h_tokens and q_tokens <= h_tokens:
+            return True
+    return False
 
 
 def _author_sort_key(entry: Dict, descending: bool = False):
@@ -4272,6 +4335,12 @@ def _enrich_from_openlibrary(entry: Dict[str, Any],
         meta["genres"] = fresh[:8]
         filled.append("genres")
 
+    # Description: search.json has none, but the Works API (called inside
+    # fetch_by_search) does. Never overwrite one that is already there.
+    if not str(meta.get("description") or "").strip() and got.get("description"):
+        meta["description"] = got["description"]
+        filled.append("description")
+
     if filled:
         sources = meta.get("enrichment_sources") or []
         if isinstance(sources, list):
@@ -5038,10 +5107,10 @@ def index():
     #   collection- flat list of every book
     #   cover     - cover-forward grid, the "newsstand" layout
     #   compact   - dense text list, fastest for large libraries
-    view_mode = request.args.get("view", "folder").strip().lower()
-    if view_mode not in {"folder", "collection", "cover", "compact", "recent",
+    view_mode = request.args.get("view", "users").strip().lower()
+    if view_mode not in {"folder", "users", "collection", "cover", "compact", "recent",
                          "kindle", "audiobooks", "plugins"}:
-        view_mode = "folder"
+        view_mode = "collection"
     # Keep what the user actually asked for. "recent" is resolved to
     # collection mode below for its behaviour, but the template needs the
     # original name or the "Newest" button can never be the active one.
@@ -5338,6 +5407,54 @@ def index():
     # ------------------------------------------------------------------
     folder_cards: List[Dict] = []
     if view_mode in ("collection", "cover", "compact"):
+        entries_sorted = sort_library_entries(filtered_entries, sort_key)
+        total_items = len(entries_sorted)
+        total_pages = max(1, (total_items + per_page - 1) // per_page)
+        if page > total_pages:
+            page = total_pages
+        start = (page - 1) * per_page
+        end = start + per_page
+        page_entries = entries_sorted[start:end]
+
+    # ------------------------------------------------------------------
+    # Users view: group entries by user (replaces folder view)
+    # ------------------------------------------------------------------
+    elif view_mode == "users":
+        # Build user card data: for each configured user, count their books
+        # and collect a few sample entries for the cover strip.
+        import gb_reading
+        user_cards = []
+        for u in (settings.users or []):
+            uname = u.name
+            user_entries = [e for e in filtered_entries
+                           if e.get("user") == uname or e.get("owner") == uname]
+            # Also check relpath-based ownership
+            if not user_entries:
+                user_entries = [e for e in filtered_entries
+                               if uname.lower() in (e.get("relpath") or "").lower()]
+            user_cards.append({
+                "name": uname,
+                "count": len(user_entries),
+                "kindle_email": u.kindle_email or "",
+                "sample_entries": user_entries[:6],
+                "prefix": f"user/{uname}",
+                "cover": None,
+            })
+        # Always include scan+steal placeholder
+        scan_entries = [e for e in filtered_entries
+                       if e.get("user") == "scan+steal" or e.get("owner") == "scan+steal"
+                       or "scan+steal" in (e.get("relpath") or "").lower()]
+        if scan_entries:
+            user_cards.insert(0, {
+                "name": "scan+steal",
+                "count": len(scan_entries),
+                "kindle_email": "",
+                "sample_entries": scan_entries[:6],
+                "prefix": "user/scan+steal",
+                "cover": None,
+            })
+        folder_cards = user_cards
+        # Show all entries in a flat list below the user cards
         entries_sorted = sort_library_entries(filtered_entries, sort_key)
         total_items = len(entries_sorted)
         total_pages = max(1, (total_items + per_page - 1) // per_page)
@@ -6666,22 +6783,36 @@ def scan_process():
                     image_data = base64.b64decode(image_b64)
                 except Exception:
                     pass
-        
+
         if not image_data:
             return jsonify({"success": False, "error": "No image provided"}), 400
-        
+
         # Upload to x0.at
         image_url = _upload_image_to_host(image_data)
         if not image_url:
             return jsonify({"success": False, "error": "Failed to upload image to host"}), 500
-        
-        # Reverse image search
-        queries = _reverse_search_google_free(image_url)
-        
-        # If we got queries, search Anna's Archive for the first one
+
+        # Identify the cover through the cover matcher: crop, pHash the scan,
+        # run Yandex reverse image search on the crop, pHash-rank the hits,
+        # and OCR the best clean copy for a title query. Google Lens is gone
+        # from this chain -- it bot-blocks and /searchbyimage died in 2019.
+        match_detail = {}
+        try:
+            import gb_covermatch
+            match_detail = gb_covermatch.identify_cover(image_data, timeout=45)
+        except Exception as exc:
+            logger.warning("Cover matcher failed: %s", exc)
+            match_detail = {}
+
+        queries = list(match_detail.get("queries") or [])
+
         results = []
         if queries:
+            seen = set()
             for query in queries[:3]:
+                if not query or query in seen:
+                    continue
+                seen.add(query)
                 search_options = SearchOptions(
                     query=query,
                     language="en",
@@ -6690,33 +6821,99 @@ def scan_process():
                     resolve_downloads=False,
                 )
                 search_results, _ = aa_search_with_retry(source, query, options=search_options)
-                if search_results:
-                    for r in search_results[:5]:
-                        r["scan_query"] = query
-                        results.append(r)
-                if results:
-                    break
-        
-        # Deduplicate by md5/id
-        seen = set()
-        unique_results = []
-        for r in results:
-            key = r.get("md5") or r.get("id") or r.get("detail")
-            if key and key not in seen:
-                seen.add(key)
-                unique_results.append(r)
-        
+                results.extend(search_results or [])
+
         return jsonify({
             "success": True,
             "image_url": image_url,
             "queries": queries,
-            "results": unique_results[:10],
+            "results": results,
+            "match_detail": match_detail,
         })
-        
-    except Exception as e:
-        logger.exception("Scan process error")
-        return jsonify({"success": False, "error": str(e)}), 500
+    except Exception as exc:
+        logger.exception("Scan process failed")
+        return jsonify({"success": False, "error": str(exc)}), 500
 
+
+@app.route("/scan/fetch", methods=["POST"])
+def scan_fetch():
+    """Download a scan & steal result into the library under the scan+steal
+    placeholder user, then return the library entry so the caller can confirm
+    the match and send it to a real user.
+
+    Body (JSON): {"md5": "...", "title": "...", "author": "..."}
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        md5 = (data.get("md5") or "").strip()
+        title = (data.get("title") or "").strip()
+        author = (data.get("author") or "").strip()
+
+        if not md5:
+            return jsonify({"success": False, "error": "No md5 provided"}), 400
+
+        cached = source.cached_result(md5)
+        if not cached:
+            # Re-run a search to populate the cache, then try again.
+            try:
+                results, _ = aa_search_with_retry(source, md5)
+            except Exception as exc:
+                logger.warning("AA refetch failed for %s: %s", md5, exc)
+                results = []
+            if not results:
+                return jsonify({"success": False,
+                                "error": "No cached result and AA refetch failed"}), 404
+            cached = results[0]
+            source.cache[md5] = cached
+
+        best = dict(cached)
+        if title:
+            best["title"] = title
+        if author:
+            best["author"] = author
+
+        file_format = (best.get("selected_format")
+                       or (best.get("formats") or [None])[0])
+        if not file_format:
+            return jsonify({"success": False,
+                            "error": "No downloadable format for this result"}), 400
+
+        # Download into the default directory (the scan+steal placeholder
+        # is not a real user, so the file lands in the default save dir).
+        dest_dir = resolve_download_dir(settings_manager.settings.default_download_dir)
+        try:
+            saved_path = source.download(best, file_format, dest_dir)
+        except Exception as exc:
+            logger.exception("scan_fetch download failed")
+            return jsonify({"success": False, "error": str(exc)}), 500
+
+        cover = normalize_cover_url(best.get("cover", ""))
+        description = strip_html_tags(best.get("description", "")).strip()
+        history_manager.record(
+            "scan+steal",
+            best.get("title", saved_path.stem),
+            cover,
+            best.get("author", ""),
+            best.get("selected_format", ""),
+            "scan",
+            description,
+            str(saved_path),
+        )
+        upsert_library_metadata_for_download(saved_path, best)
+
+        entry_id = get_library_entry_id(saved_path)
+        return jsonify({
+            "success": True,
+            "library_id": entry_id,
+            "title": best.get("title", saved_path.stem),
+            "author": best.get("author", ""),
+            "format": file_format,
+            "cover_url": cover,
+            "file_path": str(saved_path),
+        })
+    except Exception as exc:
+        logger.exception("scan_fetch failed")
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 @app.route("/search/reverse-image", methods=["POST"])
 def reverse_image_search():
@@ -6935,6 +7132,50 @@ def _upload_image_to_host(image_data: bytes) -> Optional[str]:
     return None
 
 
+def _identify_cover_queries(image_data: Optional[bytes]) -> List[str]:
+    """Turn a scanned cover into candidate search queries.
+
+    Chain, strongest signal first:
+      1. barcode/EAN-13 decoded locally (no upload, exact ISBN)
+      2. Google Lens run in a real browser profile
+      3. OCR text off the cover itself
+
+    Returns an ISBN as the first entry when one was decoded, because AA
+    resolves an ISBN directly -- that is the scan & steal fast path.
+    """
+    queries: List[str] = []
+    if not image_data:
+        return queries
+
+    # 1. Local barcode decode -- exact, no external call.
+    try:
+        from io import BytesIO
+        from PIL import Image
+        import gb_isbn
+        img = Image.open(BytesIO(image_data))
+        img.load()
+        isbn = gb_isbn.decode_isbn(img)
+    except Exception as exc:
+        isbn = None
+        logger.debug("barcode decode failed: %s", exc)
+    if isbn:
+        queries.append(isbn)
+        logger.info("scan: barcode ISBN %s", isbn)
+
+    # 2. Lens + OCR cross-check (silent when Google bot-blocks the profile).
+    try:
+        import gb_lens
+        for cand in (gb_lens.identify_cover(image_data, timeout=120) or [])[:3]:
+            q = cand.get("isbn") or cand.get("title") or ""
+            q = q.strip()
+            if q and q not in queries:
+                queries.append(q)
+    except Exception as exc:
+        logger.warning("Lens identification failed: %s", exc)
+
+    return queries[:5]
+
+
 def _reverse_search_google_free(image_url: str) -> List[str]:
     """
     Use the free google-reverse-image-api approach.
@@ -7057,7 +7298,7 @@ def random_books():
         count = request.args.get("count", 1, type=int)
         count = max(1, min(count, 50))  # Clamp to 1-50
 
-        view = request.args.get("view", "folder").strip().lower()
+        view = request.args.get("view", "collection").strip().lower()
         prefix = request.args.get("prefix", "").strip()
         genre = request.args.get("genre", "").strip()
         author = request.args.get("author", "").strip()
